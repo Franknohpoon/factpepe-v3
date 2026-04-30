@@ -246,12 +246,15 @@ const FactNewsTab = () => {
           </div>
         ) : filtered.map(post => (
           <div key={post.id} className="bg-gradient-to-br from-zinc-900 to-black border-2 border-zinc-800 rounded-2xl overflow-hidden hover:border-red-600 transition-all duration-300 hover:scale-[1.02]">
+            {/* 카테고리 배지 — 이미지 위 아닌 카드 상단에 독립 배치 */}
+            <div className="px-4 pt-4">
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border-2 ${categoryColor(post.category)}`}>
+                {post.category}
+              </span>
+            </div>
             {post.imageUrl && (
-              <div className="relative aspect-video bg-zinc-900">
+              <div className="mt-3 aspect-video bg-zinc-900">
                 <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
-                <div className="absolute top-3 left-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border-2 ${categoryColor(post.category)}`}>{post.category}</span>
-                </div>
               </div>
             )}
             <div className="p-5">
