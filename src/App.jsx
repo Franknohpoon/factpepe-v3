@@ -938,22 +938,28 @@ const ComicTab = () => (
 
 // ─── 7. 관리자 페이지 ────────────────────────────────────────────────
 const AdminPage = () => {
-  const [section, setSection] = useState('lineup');
+  const [section, setSection] = useState('news');
+
+  const tabs = [
+    { id: 'news',     label: '🐸 뉴스 작성' },
+    { id: 'lineup',   label: '📋 라인업 입력' },
+    { id: 'seatview', label: '📷 시야 승인' },
+  ];
 
   return (
     <div>
       <h2 className="text-2xl font-black text-white mb-4">🔧 관리자</h2>
-      <div className="flex gap-2 mb-6">
-        <button onClick={() => setSection('lineup')}
-          className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${section === 'lineup' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
-          📋 라인업 입력
-        </button>
-        <button onClick={() => setSection('seatview')}
-          className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${section === 'seatview' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
-          📷 시야 승인
-        </button>
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setSection(t.id)}
+            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${section === t.id ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
-      {section === 'lineup' ? <AdminLineupForm /> : <AdminSeatApproval />}
+      {section === 'news'     && <AdminNewsForm />}
+      {section === 'lineup'   && <AdminLineupForm />}
+      {section === 'seatview' && <AdminSeatApproval />}
     </div>
   );
 };
@@ -1148,6 +1154,197 @@ const AdminSeatApproval = () => {
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+// ─── 어드민: 뉴스 작성 ───────────────────────────────────────────────
+const NEWS_CATEGORIES = ['경기리뷰', '선수분석', '팀분석', '밈'];
+
+const EMPTY_FORM = {
+  title: '',
+  category: '경기리뷰',
+  summary: '',
+  tweetUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+const AdminNewsForm = () => {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [tab, setTab] = useState('write'); // 'write' | 'manage'
+
+  useEffect(() => {
+    onValue(dbRef(database, 'factNews'), (snap) => {
+      const data = snap.val();
+      setPosts(data ? Object.values(data).sort((a, b) => b.timestamp - a.timestamp) : []);
+    });
+  }, []);
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhoto(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    if (!form.title || !form.summary) return;
+    setSaving(true);
+    try {
+      let imageUrl = '';
+      if (photo) {
+        const compressed = await compressImage(photo);
+        const id = Date.now().toString();
+        const ref = storageRef(storage, `news/${id}.jpg`);
+        await uploadBytes(ref, compressed);
+        imageUrl = await getDownloadURL(ref);
+      }
+
+      const id = Date.now().toString();
+      await set(dbRef(database, `factNews/${id}`), {
+        id,
+        ...form,
+        imageUrl,
+        timestamp: Date.now(),
+      });
+
+      setForm(EMPTY_FORM);
+      setPhoto(null);
+      setPreview(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('이 게시물을 삭제하시겠습니까?')) return;
+    await remove(dbRef(database, `factNews/${id}`));
+  };
+
+  return (
+    <div className="max-w-lg">
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setTab('write')}
+          className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${tab === 'write' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          ✏️ 새 게시물
+        </button>
+        <button onClick={() => setTab('manage')}
+          className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${tab === 'manage' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          📋 게시물 관리 ({posts.length})
+        </button>
+      </div>
+
+      {tab === 'write' && (
+        <div className="space-y-4">
+          {/* 이미지 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <label className="text-red-500 font-bold text-xs mb-3 block uppercase tracking-wider">🖼 이미지</label>
+            {preview ? (
+              <div className="relative">
+                <img src={preview} alt="preview" className="w-full aspect-video object-cover rounded-xl" />
+                <button onClick={() => { setPhoto(null); setPreview(null); }}
+                  className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg">×</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
+                <p className="text-3xl mb-2">🖼</p>
+                <p className="text-gray-400 text-sm">이미지 선택</p>
+                <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+              </label>
+            )}
+          </div>
+
+          {/* 카테고리 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <label className="text-red-500 font-bold text-xs mb-3 block uppercase tracking-wider">📌 카테고리</label>
+            <div className="grid grid-cols-4 gap-2">
+              {NEWS_CATEGORIES.map(c => (
+                <button key={c} onClick={() => setForm({ ...form, category: c })}
+                  className={`py-2 rounded-lg text-sm font-bold transition-all ${form.category === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 제목 + 날짜 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+            <div>
+              <label className="text-red-500 font-bold text-xs mb-2 block uppercase tracking-wider">📝 제목</label>
+              <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                placeholder="게시물 제목"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600" />
+            </div>
+            <div>
+              <label className="text-red-500 font-bold text-xs mb-2 block uppercase tracking-wider">📅 날짜</label>
+              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base" />
+            </div>
+          </div>
+
+          {/* 내용 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <label className="text-red-500 font-bold text-xs mb-2 block uppercase tracking-wider">💬 내용</label>
+            <textarea value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })}
+              placeholder="게시물 내용을 입력하세요" rows={5}
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600 resize-none" />
+          </div>
+
+          {/* X 링크 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <label className="text-red-500 font-bold text-xs mb-2 block uppercase tracking-wider">𝕏 트윗 링크 (선택)</label>
+            <input type="url" value={form.tweetUrl} onChange={e => setForm({ ...form, tweetUrl: e.target.value })}
+              placeholder="https://x.com/..."
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600" />
+          </div>
+
+          <button onClick={handleSave}
+            disabled={saving || !form.title || !form.summary}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
+            {saving ? '저장 중...' : '게시하기 🐸'}
+          </button>
+
+          {saved && (
+            <div className="bg-green-900/30 border border-green-600 text-green-400 rounded-xl p-3 text-center font-bold">
+              ✅ 게시물이 등록되었습니다!
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'manage' && (
+        <div className="space-y-3">
+          {posts.length === 0 ? (
+            <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-2xl">
+              <p className="text-gray-400">게시물이 없습니다</p>
+            </div>
+          ) : posts.map(post => (
+            <div key={post.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-start gap-3">
+              {post.imageUrl && (
+                <img src={post.imageUrl} alt={post.title}
+                  className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-red-500 text-xs font-bold">{post.category}</span>
+                  <span className="text-gray-600 text-xs">{post.date}</span>
+                </div>
+                <p className="text-white text-sm font-bold truncate">{post.title}</p>
+                <p className="text-gray-500 text-xs truncate">{post.summary}</p>
+              </div>
+              <button onClick={() => handleDelete(post.id)}
+                className="text-zinc-600 hover:text-red-500 transition-colors text-xl flex-shrink-0 leading-none">×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
