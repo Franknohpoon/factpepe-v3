@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref as dbRef, onValue, set, push, remove } from 'firebase/database';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import html2canvas from 'html2canvas';
 
 const firebaseConfig = {
@@ -16,7 +15,22 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-const storage = getStorage(app);
+
+const CLOUDINARY_CLOUD = 'doxa1dysw';
+const CLOUDINARY_PRESET = 'ml_default';
+
+const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error(data.error?.message || '업로드 실패');
+  return data.secure_url;
+};
 
 // ─── 상수 ────────────────────────────────────────────────────────────
 
@@ -736,10 +750,7 @@ const SeatViewForm = ({ onClose }) => {
     setUploading(true);
     try {
       const compressed = await compressImage(photo);
-      const id = Date.now().toString();
-      const photoRef = storageRef(storage, `seatViews/${id}.jpg`);
-      await uploadBytes(photoRef, compressed);
-      const photoUrl = await getDownloadURL(photoRef);
+      const photoUrl = await uploadToCloudinary(compressed);
 
       await push(dbRef(database, 'seatViews/pending'), {
         ...form,
@@ -1253,10 +1264,7 @@ const AdminNewsForm = () => {
       let imageUrl = '';
       if (photo) {
         const compressed = await compressImage(photo);
-        const id = Date.now().toString();
-        const ref = storageRef(storage, `news/${id}.jpg`);
-        await uploadBytes(ref, compressed);
-        imageUrl = await getDownloadURL(ref);
+        imageUrl = await uploadToCloudinary(compressed);
       }
 
       const id = Date.now().toString();
