@@ -1056,7 +1056,7 @@ const AdminLineupForm = () => {
             value={pitcherQuery || pitcher}
             onChange={e => {
               setPitcherQuery(e.target.value);
-              if (!e.target.value) setPitcher('');
+              setPitcher(e.target.value);
             }}
             onFocus={() => setPitcherQuery(pitcher)}
             placeholder="투수명 검색"
@@ -1088,7 +1088,7 @@ const AdminLineupForm = () => {
                   value={query[idx] || player.name}
                   onChange={e => {
                     const q = [...query]; q[idx] = e.target.value; setQuery(q);
-                    if (!e.target.value) updatePlayer(idx, 'name', '');
+                    updatePlayer(idx, 'name', e.target.value);
                   }}
                   onFocus={e => { const q = [...query]; q[idx] = player.name; setQuery(q); }}
                   placeholder="선수명 검색"
