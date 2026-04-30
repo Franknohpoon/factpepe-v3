@@ -265,6 +265,72 @@ const AdminLoginModal = ({ onClose, onSuccess }) => {
 };
 
 // ─── 1. 팩트 뉴스 ────────────────────────────────────────────────────
+const FactPepeCard = () => {
+  const [latest, setLatest] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'factPepe/latest'), (snap) => {
+      setLatest(snap.val());
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!showHistory) return;
+    onValue(dbRef(database, 'factPepe/history'), (snap) => {
+      const data = snap.val();
+      setHistory(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.createdAt - a.createdAt) : []);
+    });
+  }, [showHistory]);
+
+  if (!latest) return null;
+
+  return (
+    <>
+      <div className="mb-6 bg-gradient-to-br from-red-900/40 via-zinc-900 to-zinc-900 border-2 border-red-600/50 rounded-2xl p-5 relative overflow-hidden">
+        <div className="absolute -top-6 -right-6 text-9xl opacity-10">🐸</div>
+        <div className="flex items-start gap-3 relative">
+          <div className="text-5xl flex-shrink-0">🐸</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider">FACT</span>
+              <span className="text-red-300 font-black text-sm">팩트페페</span>
+            </div>
+            {latest.gameInfo && <p className="text-red-200/80 text-xs mb-2 font-bold">📌 {latest.gameInfo}</p>}
+            <p className="text-white text-base leading-relaxed whitespace-pre-wrap">{latest.text}</p>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-zinc-500 text-xs">{new Date(latest.createdAt).toLocaleDateString('ko-KR')}</p>
+              <button onClick={() => setShowHistory(true)} className="text-red-400 hover:text-red-300 text-xs font-bold">지난 팩트 보기 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowHistory(false)}>
+          <div className="bg-zinc-900 rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-4 border-b border-zinc-800">
+              <h3 className="text-white font-black text-lg">🐸 지난 팩트페페</h3>
+              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+            </div>
+            <div className="p-4 space-y-3">
+              {history.length === 0 ? (
+                <p className="text-zinc-600 text-center py-8">기록 없음</p>
+              ) : history.map(h => (
+                <div key={h.id} className="bg-zinc-800/50 border border-zinc-800 rounded-xl p-4">
+                  {h.gameInfo && <p className="text-red-400/80 text-xs mb-2 font-bold">📌 {h.gameInfo}</p>}
+                  <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">{h.text}</p>
+                  <p className="text-zinc-600 text-xs mt-2">{new Date(h.createdAt).toLocaleDateString('ko-KR')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 const FactNewsTab = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -290,6 +356,7 @@ const FactNewsTab = () => {
 
   return (
     <div>
+      <FactPepeCard />
       <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
         {categories.map(c => (
           <button key={c.id} onClick={() => setFilter(c.id)}
@@ -1217,7 +1284,8 @@ const AdminPage = () => {
   const [section, setSection] = useState('news');
 
   const tabs = [
-    { id: 'news',       label: '🐸 뉴스 작성' },
+    { id: 'factpepe',   label: '🐸 팩트페페' },
+    { id: 'news',       label: '📰 뉴스 작성' },
     { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'seatview',   label: '💬 제보 목록' },
@@ -1234,6 +1302,7 @@ const AdminPage = () => {
           </button>
         ))}
       </div>
+      {section === 'factpepe'  && <AdminFactPepe />}
       {section === 'news'      && <AdminNewsForm />}
       {section === 'lineup'    && <AdminLineupForm />}
       {section === 'seatphoto' && <AdminSeatPhotoUpload />}
@@ -1496,6 +1565,115 @@ const AdminSeatApproval = () => {
         ? <PendingList items={seatPending} onApprove={approveSeat} onReject={rejectSeat} labelFn={i => `${i.zone} ${i.row} ${i.seat}번`} />
         : <PendingList items={goodsPending} onApprove={approveGoods} onReject={rejectGoods} labelFn={i => `${i.goodsType}${i.itemName ? ' · ' + i.itemName : ''}`} />
       }
+    </div>
+  );
+};
+
+// ─── 어드민: 팩트페페 (오늘의 팩트) ───────────────────────────────────
+const AdminFactPepe = () => {
+  const [gameInfo, setGameInfo] = useState('');
+  const [text, setText] = useState('');
+  const [latest, setLatest] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'factPepe/latest'), (snap) => setLatest(snap.val()));
+    onValue(dbRef(database, 'factPepe/history'), (snap) => {
+      const data = snap.val();
+      setHistory(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.createdAt - a.createdAt) : []);
+    });
+  }, []);
+
+  const handlePost = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    try {
+      const newFact = { gameInfo: gameInfo.trim(), text: text.trim(), createdAt: Date.now() };
+      // 기존 latest를 history로 이동
+      if (latest) {
+        await push(dbRef(database, 'factPepe/history'), latest);
+      }
+      await set(dbRef(database, 'factPepe/latest'), newFact);
+      setGameInfo(''); setText('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert(`저장 실패: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteHistory = async (id) => {
+    if (!window.confirm('이 팩트를 삭제하시겠습니까?')) return;
+    await remove(dbRef(database, `factPepe/history/${id}`));
+  };
+
+  const handleDeleteLatest = async () => {
+    if (!window.confirm('현재 게시 중인 팩트를 내리시겠습니까?')) return;
+    await remove(dbRef(database, 'factPepe/latest'));
+  };
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <div className="bg-gradient-to-br from-red-900/30 to-zinc-900 border-2 border-red-600/30 rounded-xl p-4">
+        <p className="text-red-400 font-black text-sm mb-3">🐸 새 팩트 작성 (매 경기 후)</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">경기 정보 (선택)</label>
+            <input type="text" value={gameInfo} onChange={e => setGameInfo(e.target.value)}
+              placeholder="예) 2026.04.30 SSG vs 한화 7-3 승"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">페페의 한마디 *</label>
+            <textarea value={text} onChange={e => setText(e.target.value)}
+              placeholder="으쓱~ 오늘 경기는 말이지..."
+              rows={5}
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600 resize-none" />
+            <p className="text-zinc-600 text-xs mt-1">{text.length}자</p>
+          </div>
+          <button onClick={handlePost} disabled={saving || !text.trim()}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 rounded-xl font-black transition-all">
+            {saving ? '게시 중...' : saved ? '✓ 게시 완료!' : '🐸 게시하기'}
+          </button>
+          <p className="text-zinc-600 text-xs text-center">게시하면 기존 팩트는 자동으로 지난 팩트로 이동됩니다</p>
+        </div>
+      </div>
+
+      {latest && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-red-400 font-bold text-xs">현재 게시 중</p>
+            <button onClick={handleDeleteLatest} className="text-zinc-600 hover:text-red-500 text-xs">내리기</button>
+          </div>
+          {latest.gameInfo && <p className="text-red-300/70 text-xs mb-1 font-bold">📌 {latest.gameInfo}</p>}
+          <p className="text-gray-200 text-sm whitespace-pre-wrap">{latest.text}</p>
+          <p className="text-zinc-600 text-xs mt-2">{new Date(latest.createdAt).toLocaleString('ko-KR')}</p>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p className="text-gray-400 text-xs mb-3">지난 팩트 ({history.length})</p>
+          <div className="space-y-2">
+            {history.map(h => (
+              <div key={h.id} className="bg-zinc-800/50 rounded-lg p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {h.gameInfo && <p className="text-red-400/70 text-xs mb-1 font-bold">📌 {h.gameInfo}</p>}
+                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{h.text}</p>
+                    <p className="text-zinc-600 text-xs mt-1">{new Date(h.createdAt).toLocaleDateString('ko-KR')}</p>
+                  </div>
+                  <button onClick={() => handleDeleteHistory(h.id)} className="text-zinc-600 hover:text-red-500 text-lg flex-shrink-0">×</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
