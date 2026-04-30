@@ -1280,6 +1280,8 @@ const AdminNewsForm = () => {
       setPreview(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert(`저장 실패: ${err.message}`);
     } finally {
       setSaving(false);
     }
