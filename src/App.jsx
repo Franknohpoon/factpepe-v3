@@ -503,18 +503,58 @@ const ChantTab = () => {
 // ─── 4. 4컷 탭 ──────────────────────────────────────────────────────
 const ComicTab = () => {
   return (
-    <div>
-      <h2 className="text-2xl font-black text-white mb-4">🎨 4컷 만화</h2>
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
-        <p className="text-gray-400 text-lg mb-4">4컷 만화 생성기</p>
-        <p className="text-gray-600 text-sm">준비 중입니다...</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="text-7xl mb-6">🎨</div>
+      <h2 className="text-3xl font-black text-white mb-3">4컷 만화</h2>
+      <div className="inline-block bg-red-600/20 border border-red-500/50 text-red-400 text-xs font-bold px-3 py-1 rounded-full mb-6 tracking-widest uppercase">
+        Coming Soon
+      </div>
+      <p className="text-gray-400 text-lg mb-2">SSG 팬을 위한 4컷 만화 생성기</p>
+      <p className="text-gray-600 text-sm max-w-sm">
+        팩트페페만의 4컷 만화 콘텐츠가 곧 오픈됩니다.<br />
+        조금만 기다려주세요! 🐸
+      </p>
+      <div className="mt-8 flex gap-2">
+        <span className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+        <span className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+        <span className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '300ms' }}></span>
       </div>
     </div>
   );
 };
 
 // ─── 5. 라인업 탭 ───────────────────────────────────────────────────
-const PRESETS = {
+
+// ★ 어드민 전용: 경기 라인업 프리셋 여기에 추가/수정
+const LINEUP_PRESETS = [
+  {
+    id: '20260430_KIA',
+    label: '4/30 vs KIA',
+    date: '2026.04.30',
+    opponent: 'KIA',
+    players: [
+      { name: '박성한', pos: '유격수' },
+      { name: '정준재', pos: '2루수' },
+      { name: '최정', pos: '3루수' },
+      { name: '에레디아', pos: '좌익수' },
+      { name: '한유섬', pos: '중견수' },
+      { name: '최지훈', pos: '포수' },
+      { name: '류효승', pos: '지명타자' },
+      { name: '오태곤', pos: '1루수' },
+      { name: '고종욱', pos: '우익수' },
+    ],
+  },
+  // 새 경기 추가 예시:
+  // {
+  //   id: '20260501_두산',
+  //   label: '5/1 vs 두산',
+  //   date: '2026.05.01',
+  //   opponent: '두산',
+  //   players: [ ... ],
+  // },
+];
+
+const STYLE_PRESETS = {
   classic: {
     label: '클래식',
     gradient: 'linear-gradient(135deg, #CE0E2D 0%, #a00b24 35%, #8B0000 65%, #2a0000 100%)',
@@ -542,60 +582,72 @@ const PRESETS = {
   },
 };
 
-const DEFAULT_PLAYERS = [
-  { name: '박성한', pos: '우익수' },
-  { name: '정준재', pos: '2루수' },
-  { name: '최정', pos: '3루수' },
-  { name: '에레디아', pos: '좌익수' },
-  { name: '한유섬', pos: '중견수' },
-  { name: '최지훈', pos: '포수' },
-  { name: '류효승', pos: '지명타자' },
-  { name: '오태곤', pos: '1루수' },
-  { name: '고종욱', pos: '유격수' },
-];
-
 const LineupTab = () => {
   const cardRef = useRef(null);
-  const [preset, setPreset] = useState('classic');
+  const [selectedPresetId, setSelectedPresetId] = useState(LINEUP_PRESETS[0]?.id ?? '');
+  const [stylePreset, setStylePreset] = useState('classic');
   const [logo, setLogo] = useState('🐸');
   const [subtitle, setSubtitle] = useState('SSG LANDERS LINEUP');
   const [customSubtitle, setCustomSubtitle] = useState('');
   const [specialMsg, setSpecialMsg] = useState('');
   const [customMsg, setCustomMsg] = useState('');
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-  });
-  const [opponent, setOpponent] = useState('KIA');
-  const [players, setPlayers] = useState(DEFAULT_PLAYERS);
-  const [downloading, setDownloading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const updatePlayer = (idx, field, value) => {
-    const updated = [...players];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setPlayers(updated);
-  };
-
+  const lineupData = LINEUP_PRESETS.find(p => p.id === selectedPresetId) ?? LINEUP_PRESETS[0];
   const displaySubtitle = subtitle === 'custom' ? customSubtitle : subtitle;
   const displayMsg = specialMsg === 'custom' ? customMsg : specialMsg;
-  const currentPreset = PRESETS[preset];
+  const currentStyle = STYLE_PRESETS[stylePreset];
+
+  const generateCanvas = async () => {
+    return html2canvas(cardRef.current, {
+      scale: 2,
+      backgroundColor: null,
+      logging: false,
+      useCORS: true,
+    });
+  };
 
   const downloadImage = async () => {
-    if (!cardRef.current || downloading) return;
-    setDownloading(true);
+    if (!cardRef.current || busy) return;
+    setBusy(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        backgroundColor: null,
-        logging: false,
-        useCORS: true,
-      });
+      const canvas = await generateCanvas();
       const link = document.createElement('a');
-      link.download = `lineup-${date.replace(/\./g, '')}.png`;
+      link.download = `lineup-${lineupData.date.replace(/\./g, '')}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } finally {
-      setDownloading(false);
+      setBusy(false);
+    }
+  };
+
+  const shareToX = async () => {
+    if (!cardRef.current || busy) return;
+    setBusy(true);
+    try {
+      const canvas = await generateCanvas();
+      const tweetText = encodeURIComponent(
+        `SSG vs ${lineupData.opponent} 선발 라인업 🐸\n\n#SSG랜더스 #팩트페페 #KBO`
+      );
+
+      // Web Share API (모바일에서 이미지 포함 공유)
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'lineup.png', { type: 'image/png' });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: '팩트페페 라인업', text: decodeURIComponent(tweetText) });
+        } else {
+          // 폴백: 이미지 다운로드 + 트위터 창 열기
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = `lineup-${lineupData.date.replace(/\./g, '')}.png`;
+          link.click();
+          setTimeout(() => {
+            window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+          }, 500);
+        }
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -603,23 +655,65 @@ const LineupTab = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-black text-white">📋 라인업 생성기</h2>
-        <button onClick={downloadImage} disabled={downloading}
-          className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
-          {downloading ? '저장 중...' : '⬇ 이미지 저장'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={downloadImage} disabled={busy}
+            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">
+            ⬇ 저장
+          </button>
+          <button onClick={shareToX} disabled={busy}
+            className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-1">
+            𝕏 공유
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 컨트롤 패널 */}
         <div className="space-y-4">
+          {/* 라인업 선택 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">📅 경기 선택</p>
+            <div className="flex flex-wrap gap-2">
+              {LINEUP_PRESETS.map(p => (
+                <button key={p.id} onClick={() => setSelectedPresetId(p.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                    selectedPresetId === p.id
+                      ? 'bg-red-600 text-white'
+                      : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
+                  }`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 선택된 라인업 미리보기 (읽기전용) */}
+          {lineupData && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-red-500 font-bold text-xs uppercase tracking-wider">👥 라인업</p>
+                <span className="text-gray-500 text-xs">SSG vs {lineupData.opponent}</span>
+              </div>
+              <div className="space-y-1">
+                {lineupData.players.map((player, idx) => (
+                  <div key={idx} className="flex items-center gap-2 py-1 border-b border-zinc-800 last:border-0">
+                    <span className="text-red-500 font-black text-xs w-4">{idx + 1}</span>
+                    <span className="text-white text-sm font-bold flex-1">{player.name}</span>
+                    <span className="text-gray-500 text-xs">{player.pos}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 스타일 */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">⚡ 스타일</p>
             <div className="grid grid-cols-5 gap-2">
-              {Object.entries(PRESETS).map(([key, val]) => (
-                <button key={key} onClick={() => setPreset(key)}
+              {Object.entries(STYLE_PRESETS).map(([key, val]) => (
+                <button key={key} onClick={() => setStylePreset(key)}
                   className={`py-2 px-1 rounded-lg text-xs font-bold transition-all ${
-                    preset === key ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
+                    stylePreset === key ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
                   }`}>
                   {val.label}
                 </button>
@@ -637,23 +731,6 @@ const LineupTab = () => {
                     logo === e ? 'bg-red-600' : 'bg-zinc-800 hover:bg-zinc-700'
                   }`}>{e}</button>
               ))}
-            </div>
-          </div>
-
-          {/* 경기 정보 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">📅 경기 정보</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-gray-500 text-xs mb-1 block">날짜</label>
-                <input type="text" value={date} onChange={e => setDate(e.target.value)}
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm" />
-              </div>
-              <div>
-                <label className="text-gray-500 text-xs mb-1 block">상대팀</label>
-                <input type="text" value={opponent} onChange={e => setOpponent(e.target.value)}
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm" />
-              </div>
             </div>
           </div>
 
@@ -691,24 +768,6 @@ const LineupTab = () => {
               )}
             </div>
           </div>
-
-          {/* 라인업 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">👥 라인업</p>
-            <div className="space-y-2">
-              {players.map((player, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-red-500 font-black w-5 text-center text-sm">{idx + 1}</span>
-                  <input type="text" value={player.name} onChange={e => updatePlayer(idx, 'name', e.target.value)}
-                    placeholder="선수명"
-                    className="flex-1 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-1.5 text-sm placeholder-zinc-600" />
-                  <input type="text" value={player.pos} onChange={e => updatePlayer(idx, 'pos', e.target.value)}
-                    placeholder="포지션"
-                    className="w-24 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-1.5 text-sm placeholder-zinc-600" />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* 미리보기 카드 */}
@@ -716,15 +775,14 @@ const LineupTab = () => {
           <div
             ref={cardRef}
             style={{
-              background: currentPreset.gradient,
-              boxShadow: currentPreset.shadow,
+              background: currentStyle.gradient,
+              boxShadow: currentStyle.shadow,
               width: '340px',
               borderRadius: '20px',
               padding: '28px 22px',
               fontFamily: 'sans-serif',
             }}
           >
-            {/* 헤더 */}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               <div style={{ fontSize: '36px', marginBottom: '4px' }}>{logo}</div>
               <div style={{ color: 'white', fontWeight: 900, fontSize: '22px', letterSpacing: '2px' }}>팩트페페</div>
@@ -733,7 +791,6 @@ const LineupTab = () => {
               </div>
             </div>
 
-            {/* 특별 메시지 */}
             {displayMsg && (
               <div style={{
                 background: 'rgba(255,255,255,0.15)',
@@ -749,17 +806,17 @@ const LineupTab = () => {
               }}>{displayMsg}</div>
             )}
 
-            {/* 경기 정보 */}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px', marginBottom: '3px' }}>{date}</div>
+              <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px', marginBottom: '3px' }}>
+                {lineupData?.date}
+              </div>
               <div style={{ color: 'white', fontWeight: 900, fontSize: '17px' }}>
-                SSG <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px' }}>VS</span> {opponent}
+                SSG <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px' }}>VS</span> {lineupData?.opponent}
               </div>
             </div>
 
-            {/* 라인업 */}
             <div>
-              {players.map((player, idx) => (
+              {lineupData?.players.map((player, idx) => (
                 <div key={idx} style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -776,7 +833,6 @@ const LineupTab = () => {
               ))}
             </div>
 
-            {/* 푸터 */}
             <div style={{
               textAlign: 'center',
               marginTop: '14px',
