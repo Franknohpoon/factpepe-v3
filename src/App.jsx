@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref as dbRef, onValue, set, push, remove } from 'firebase/database';
+import { getDatabase, ref as dbRef, onValue, set, push, remove, runTransaction } from 'firebase/database';
 import html2canvas from 'html2canvas';
 
 const firebaseConfig = {
@@ -157,6 +157,24 @@ function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const tapTimer = useRef(null);
+
+  // 세션 시작 트래킹 (하루 한번)
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const sessionKey = `factpepe_session_${today}`;
+    if (!sessionStorage.getItem(sessionKey)) {
+      sessionStorage.setItem(sessionKey, '1');
+      runTransaction(dbRef(database, `analytics/daily/${today}/sessions`), v => (v || 0) + 1).catch(() => {});
+      runTransaction(dbRef(database, `analytics/daily/${today}/firstVisit`), v => v || Date.now()).catch(() => {});
+    }
+    runTransaction(dbRef(database, `analytics/daily/${today}/pageviews`), v => (v || 0) + 1).catch(() => {});
+  }, []);
+
+  // 탭 전환 트래킹
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    runTransaction(dbRef(database, `analytics/daily/${today}/tabs/${activeTab}`), v => (v || 0) + 1).catch(() => {});
+  }, [activeTab]);
 
   const handleLogoTap = () => {
     const next = tapCount + 1;
