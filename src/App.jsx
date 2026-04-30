@@ -47,15 +47,33 @@ const KBO_TEAMS = ['KIA', '두산', '롯데', '삼성', 'LG', 'NC', 'KT', '한�
 const POSITIONS = ['투수', '포수', '1루수', '2루수', '3루수', '유격수', '좌익수', '중견수', '우익수', '지명타자'];
 
 const LANDERS_ZONES = [
-  { id: 'infield_1b', label: '1루 내야' },
-  { id: 'infield_3b', label: '3루 내야' },
-  { id: 'outfield_1b', label: '1루 외야' },
-  { id: 'outfield_3b', label: '3루 외야' },
-  { id: 'outfield_center', label: '중앙 외야' },
-  { id: 'cheer', label: '응원석' },
-  { id: 'exciting', label: '익사이팅존' },
-  { id: 'table', label: '테이블석' },
-  { id: 'premium', label: '프리미엄' },
+  // 내야
+  { id: 'infield',        label: '내야 필드석',           category: '내야',   color: '#1a3c8f' },
+  { id: 'dugout',         label: '덕아웃 상단석',         category: '내야',   color: '#7b5ea7' },
+  { id: 'landers_live',   label: '랜더스 라이브존',       category: '내야',   color: '#e86faa' },
+  // 외야
+  { id: 'outfield',       label: '외야 필드석',           category: '외야',   color: '#c8a84b' },
+  { id: 'mollis',         label: '몰리스 그린존',         category: '외야',   color: '#5aaa3c' },
+  { id: 'rocket',         label: '로케트배터리 외야파티덱', category: '외야', color: '#2d6020' },
+  // 상단
+  { id: 'sky4f',          label: '4층 SKY뷰석',           category: '상단',   color: '#90d8e8' },
+  { id: 'sky_table',      label: 'SKY탁자석',             category: '상단',   color: '#2db5a0' },
+  // 테이블/특별석
+  { id: 'peacock_1f',     label: '피코크 테이블석(1층)',  category: '특별석', color: '#6b3fa0' },
+  { id: 'nobrand_2f',     label: '노브랜드 테이블석(2층)', category: '특별석', color: '#3f7fc8' },
+  { id: 'skybox',         label: '스카이박스',             category: '특별석', color: '#40b8e0' },
+  { id: 'mini_skybox',    label: '미니스카이박스',         category: '특별석', color: '#e06040' },
+  { id: 'homerun',        label: '홈런커플존',             category: '특별석', color: '#e84060' },
+  { id: 'chogangjeta',    label: '초가정자',               category: '특별석', color: '#60c060' },
+  { id: 'bbq_open',       label: '오픈 바비큐존',          category: '특별석', color: '#b06030' },
+  { id: 'bbq_emart',      label: '이마트 바비큐존',        category: '특별석', color: '#8b4020' },
+  // 가족석
+  { id: 'yogiyo_family',  label: '요기요 내야패밀리존',   category: '가족석', color: '#f0a030' },
+  { id: 'outfield_family',label: '외야패밀리존',           category: '가족석', color: '#b8d870' },
+  { id: 'emart_friendly', label: '이마트 프렌들리존',      category: '가족석', color: '#4080b0' },
+  // 응원
+  { id: 'sseugi',         label: '으쓱이존',              category: '응원',   color: '#c83040' },
+  { id: 'away',           label: '원정응원석',             category: '응원',   color: '#e87030' },
 ];
 
 const TEAM_CHANT_VIDEO_ID = 'zPGEpmBj4iw';
@@ -695,87 +713,129 @@ const ReportTab = () => {
   );
 };
 
+const ZONE_CATEGORIES = ['내야', '외야', '상단', '특별석', '가족석', '응원'];
+
 const SeatViewContent = () => {
-  const [views, setViews] = useState([]);
+  const [photos, setPhotos] = useState({});  // { zoneId: [{id, photoUrl, row, seat, note}] }
   const [loading, setLoading] = useState(true);
-  const [zone, setZone] = useState('all');
-  const [selected, setSelected] = useState(null);
+  const [category, setCategory] = useState('내야');
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [reportZone, setReportZone] = useState(null);
 
   useEffect(() => {
-    onValue(dbRef(database, 'seatViews/approved'), (snap) => {
-      const data = snap.val();
-      setViews(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
+    onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
+      const data = snap.val() || {};
+      const parsed = {};
+      Object.entries(data).forEach(([zoneId, items]) => {
+        parsed[zoneId] = Object.entries(items).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.uploadedAt - a.uploadedAt);
+      });
+      setPhotos(parsed);
       setLoading(false);
     });
   }, []);
 
-  const filtered = zone === 'all' ? views : views.filter(v => v.zoneId === zone);
+  const zonesInCategory = LANDERS_ZONES.filter(z => z.category === category);
+
+  if (selectedZone) {
+    const zonePhotos = photos[selectedZone.id] || [];
+    return (
+      <div>
+        <button onClick={() => setSelectedZone(null)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-5 transition-colors">
+          ← 뒤로
+        </button>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZone.color }} />
+            <h3 className="text-white font-black text-xl">{selectedZone.label}</h3>
+          </div>
+          <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
+            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all">
+            ✏️ 시야 제보
+          </button>
+        </div>
+        {zonePhotos.length === 0 ? (
+          <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
+            <p className="text-5xl mb-4">📷</p>
+            <p className="text-gray-400 text-lg mb-2">아직 시야 사진이 없어요</p>
+            <p className="text-gray-600 text-sm mb-6">이 구역을 방문하셨다면 제보해 주세요!</p>
+            <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold text-sm">
+              📝 제보하기
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {zonePhotos.map(p => (
+              <button key={p.id} onClick={() => setSelectedPhoto(p)}
+                className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
+                <img src={p.photoUrl} alt={selectedZone.label} className="w-full h-full object-cover" />
+                {(p.row || p.seat) && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <p className="text-white text-xs">{p.row && `${p.row}열`}{p.seat && ` ${p.seat}번`}</p>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedPhoto && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedPhoto(null)}>
+            <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
+              <img src={selectedPhoto.photoUrl} alt="" className="w-full aspect-video object-cover" />
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+                  <span className="text-white font-bold text-sm">{selectedZone.label}</span>
+                  {(selectedPhoto.row || selectedPhoto.seat) && (
+                    <span className="text-gray-400 text-sm">{selectedPhoto.row && `${selectedPhoto.row}열`}{selectedPhoto.seat && ` ${selectedPhoto.seat}번`}</span>
+                  )}
+                </div>
+                {selectedPhoto.note && <p className="text-gray-300 text-sm">{selectedPhoto.note}</p>}
+              </div>
+              <button onClick={() => setSelectedPhoto(null)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-gray-400 font-bold transition-all">닫기</button>
+            </div>
+          </div>
+        )}
+        {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-gray-400 text-sm">팬들이 직접 찍은 좌석별 시야 사진</p>
-        <button onClick={() => setShowForm(true)}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all">
-          📷 제보하기
-        </button>
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
-        <button onClick={() => setZone('all')}
-          className={`px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${zone === 'all' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
-          전체
-        </button>
-        {LANDERS_ZONES.map(z => (
-          <button key={z.id} onClick={() => setZone(z.id)}
-            className={`px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${zone === z.id ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
-            {z.label}
+      <p className="text-gray-400 text-sm mb-4">구역을 선택해 시야 사진을 확인하세요</p>
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+        {ZONE_CATEGORIES.map(c => (
+          <button key={c} onClick={() => setCategory(c)}
+            className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${category === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+            {c}
           </button>
         ))}
       </div>
       {loading ? (
-        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
-          <p className="text-5xl mb-4">📷</p>
-          <p className="text-gray-400 text-lg mb-2">아직 시야 사진이 없습니다</p>
-          <p className="text-gray-600 text-sm mb-6">경기장 방문 시 직접 제보해 주세요!</p>
-          <button onClick={() => setShowForm(true)} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold text-sm">📷 첫 번째로 제보하기</button>
-        </div>
+        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-600 border-t-transparent" /></div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {filtered.map(v => (
-            <button key={v.id} onClick={() => setSelected(v)}
-              className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
-              <img src={v.photoUrl} alt={v.zone} className="w-full h-full object-cover" />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                <p className="text-white text-xs font-bold">{v.zone}</p>
-                <p className="text-gray-300 text-xs">{v.row} {v.seat}번</p>
-              </div>
-            </button>
-          ))}
+        <div className="space-y-2">
+          {zonesInCategory.map(z => {
+            const count = photos[z.id]?.length || 0;
+            return (
+              <button key={z.id} onClick={() => setSelectedZone(z)}
+                className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 transition-all text-left">
+                <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                <span className="text-white font-bold flex-1">{z.label}</span>
+                {count > 0
+                  ? <span className="text-red-400 text-xs font-bold bg-red-600/10 px-2 py-0.5 rounded-full">사진 {count}</span>
+                  : <span className="text-zinc-600 text-xs">사진 없음</span>
+                }
+                <span className="text-zinc-600 text-sm">›</span>
+              </button>
+            );
+          })}
         </div>
       )}
-      {selected && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
-            <img src={selected.photoUrl} alt={selected.zone} className="w-full aspect-video object-cover" />
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-red-600/20 border border-red-600/50 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold">{selected.zone}</span>
-                <span className="text-gray-400 text-sm">{selected.row} {selected.seat}번</span>
-              </div>
-              {selected.note && <p className="text-gray-300 text-sm mb-3">{selected.note}</p>}
-              <div className="flex items-center justify-between text-xs text-gray-600">
-                <span>by {selected.nickname || '익명'}</span>
-                <span>{selected.date}</span>
-              </div>
-            </div>
-            <button onClick={() => setSelected(null)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-gray-400 font-bold transition-all">닫기</button>
-          </div>
-        </div>
-      )}
-      {showForm && <SeatViewForm onClose={() => setShowForm(false)} />}
+      {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
     </div>
   );
 };
@@ -861,38 +921,27 @@ const GoodsContent = () => {
   );
 };
 
-const SeatViewForm = ({ onClose }) => {
-  const [form, setForm] = useState({ zoneId: '', zone: '', row: '', seat: '', note: '', nickname: '' });
-  const [photo, setPhoto] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [uploading, setUploading] = useState(false);
+const SeatViewForm = ({ zone, onClose }) => {
+  const [form, setForm] = useState({ row: '', seat: '', note: '', nickname: '' });
+  const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const handlePhoto = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPhoto(file);
-    setPreview(URL.createObjectURL(file));
-  };
-
   const handleSubmit = async () => {
-    if (!photo || !form.zoneId || !form.row || !form.seat) return;
-    setUploading(true);
+    if (!zone) return;
+    setSubmitting(true);
     try {
-      const compressed = await compressImage(photo);
-      const photoUrl = await uploadToCloudinary(compressed);
-
-      await push(dbRef(database, 'seatViews/pending'), {
+      await push(dbRef(database, 'seatViews/reports'), {
+        zoneId: zone.id,
+        zone: zone.label,
         ...form,
-        photoUrl,
         submittedAt: Date.now(),
         date: new Date().toLocaleDateString('ko-KR'),
       });
       setDone(true);
     } catch (err) {
-      alert('업로드에 실패했습니다. 다시 시도해 주세요.');
+      alert(`제보 실패: ${err.message}`);
     } finally {
-      setUploading(false);
+      setSubmitting(false);
     }
   };
 
@@ -900,86 +949,53 @@ const SeatViewForm = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-zinc-900 rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-4 border-b border-zinc-800">
-          <h3 className="text-white font-black text-lg">📷 시야 제보</h3>
+          <div>
+            <h3 className="text-white font-black text-lg">📝 시야 제보</h3>
+            {zone && <p className="text-red-400 text-xs font-bold">{zone.label}</p>}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
         </div>
-
         {done ? (
           <div className="p-8 text-center">
             <p className="text-5xl mb-4">🙏</p>
             <p className="text-white font-black text-xl mb-2">제보해 주셔서 감사해요!</p>
-            <p className="text-gray-400 text-sm mb-6">검토 후 공개됩니다</p>
+            <p className="text-gray-400 text-sm mb-6">확인 후 사진을 업로드할게요</p>
             <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold">확인</button>
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            {/* 사진 */}
-            <div>
-              <label className="text-gray-400 text-xs mb-2 block">좌석 시야 사진 *</label>
-              {preview ? (
-                <div className="relative">
-                  <img src={preview} alt="preview" className="w-full aspect-video object-cover rounded-xl" />
-                  <button onClick={() => { setPhoto(null); setPreview(null); }}
-                    className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">×</button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
-                  <p className="text-4xl mb-2">📷</p>
-                  <p className="text-gray-400 text-sm">사진 선택 / 카메라 촬영</p>
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
-                </label>
-              )}
+            <div className="bg-zinc-800/50 rounded-xl p-3 text-gray-400 text-sm">
+              💡 좌석 정보만 남겨주시면 팩트페페가 직접 확인 후 시야 사진을 업로드합니다
             </div>
-
-            {/* 구역 */}
-            <div>
-              <label className="text-gray-400 text-xs mb-2 block">구역 *</label>
-              <div className="flex flex-wrap gap-2">
-                {LANDERS_ZONES.map(z => (
-                  <button key={z.id} onClick={() => setForm({ ...form, zoneId: z.id, zone: z.label })}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${form.zoneId === z.id ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
-                    {z.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 열/번호 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">열 *</label>
+                <label className="text-gray-400 text-xs mb-1 block">열</label>
                 <input type="text" value={form.row} onChange={e => setForm({ ...form, row: e.target.value })}
                   placeholder="예) A열, 3열"
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
               </div>
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">좌석 번호 *</label>
+                <label className="text-gray-400 text-xs mb-1 block">좌석 번호</label>
                 <input type="text" value={form.seat} onChange={e => setForm({ ...form, seat: e.target.value })}
                   placeholder="예) 15"
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
               </div>
             </div>
-
-            {/* 코멘트 */}
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">한줄평 (선택)</label>
+              <label className="text-gray-400 text-xs mb-1 block">시야 한줄평 (선택)</label>
               <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
-                placeholder="시야 특이사항, 장단점 등..." rows={2}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600 resize-none" />
+                placeholder="시야가 어땠나요? 특이사항, 장단점 등..." rows={3}
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600 resize-none" />
             </div>
-
-            {/* 닉네임 */}
             <div>
               <label className="text-gray-400 text-xs mb-1 block">닉네임 (선택)</label>
               <input type="text" value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })}
-                placeholder="익명으로 올리려면 비워두세요"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                placeholder="익명으로 남기려면 비워두세요"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
             </div>
-
-            <button onClick={handleSubmit}
-              disabled={uploading || !photo || !form.zoneId || !form.row || !form.seat}
+            <button onClick={handleSubmit} disabled={submitting}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
-              {uploading ? '업로드 중...' : '제보하기 📷'}
+              {submitting ? '제출 중...' : '제보 완료 ✓'}
             </button>
           </div>
         )}
@@ -1201,9 +1217,10 @@ const AdminPage = () => {
   const [section, setSection] = useState('news');
 
   const tabs = [
-    { id: 'news',     label: '🐸 뉴스 작성' },
-    { id: 'lineup',   label: '📋 라인업 입력' },
-    { id: 'seatview', label: '📷 시야 승인' },
+    { id: 'news',       label: '🐸 뉴스 작성' },
+    { id: 'lineup',     label: '📋 라인업 입력' },
+    { id: 'seatphoto',  label: '📷 시야 사진' },
+    { id: 'seatview',   label: '💬 제보 목록' },
   ];
 
   return (
@@ -1217,9 +1234,10 @@ const AdminPage = () => {
           </button>
         ))}
       </div>
-      {section === 'news'     && <AdminNewsForm />}
-      {section === 'lineup'   && <AdminLineupForm />}
-      {section === 'seatview' && <AdminSeatApproval />}
+      {section === 'news'      && <AdminNewsForm />}
+      {section === 'lineup'    && <AdminLineupForm />}
+      {section === 'seatphoto' && <AdminSeatPhotoUpload />}
+      {section === 'seatview'  && <AdminSeatReports />}
     </div>
   );
 };
@@ -1478,6 +1496,190 @@ const AdminSeatApproval = () => {
         ? <PendingList items={seatPending} onApprove={approveSeat} onReject={rejectSeat} labelFn={i => `${i.zone} ${i.row} ${i.seat}번`} />
         : <PendingList items={goodsPending} onApprove={approveGoods} onReject={rejectGoods} labelFn={i => `${i.goodsType}${i.itemName ? ' · ' + i.itemName : ''}`} />
       }
+    </div>
+  );
+};
+
+// ─── 어드민: 시야 사진 업로드 ────────────────────────────────────────
+const AdminSeatPhotoUpload = () => {
+  const [zoneId, setZoneId] = useState('');
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [row, setRow] = useState('');
+  const [seat, setSeat] = useState('');
+  const [note, setNote] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [zonePhotos, setZonePhotos] = useState([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  const selectedZone = LANDERS_ZONES.find(z => z.id === zoneId);
+
+  useEffect(() => {
+    if (!zoneId) { setZonePhotos([]); return; }
+    setLoadingPhotos(true);
+    const unsub = onValue(dbRef(database, `seatViews/zonePhotos/${zoneId}`), (snap) => {
+      const data = snap.val();
+      setZonePhotos(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.uploadedAt - a.uploadedAt) : []);
+      setLoadingPhotos(false);
+    });
+    return unsub;
+  }, [zoneId]);
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhoto(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const handleUpload = async () => {
+    if (!photo || !zoneId) return;
+    setUploading(true);
+    try {
+      const compressed = await compressImage(photo);
+      const photoUrl = await uploadToCloudinary(compressed);
+      await push(dbRef(database, `seatViews/zonePhotos/${zoneId}`), {
+        photoUrl, row, seat, note,
+        uploadedAt: Date.now(),
+      });
+      setPhoto(null); setPreview(null); setRow(''); setSeat(''); setNote('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert(`업로드 실패: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (photoId) => {
+    if (!window.confirm('이 사진을 삭제하시겠습니까?')) return;
+    await remove(dbRef(database, `seatViews/zonePhotos/${zoneId}/${photoId}`));
+  };
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <label className="text-gray-400 text-xs mb-2 block">구역 선택</label>
+        <select value={zoneId} onChange={e => setZoneId(e.target.value)}
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm">
+          <option value="">구역을 선택하세요</option>
+          {ZONE_CATEGORIES.map(cat => (
+            <optgroup key={cat} label={cat}>
+              {LANDERS_ZONES.filter(z => z.category === cat).map(z => (
+                <option key={z.id} value={z.id}>{z.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      {zoneId && (
+        <>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone?.color }} />
+              <p className="text-white font-bold text-sm">{selectedZone?.label} 사진 업로드</p>
+            </div>
+            {preview ? (
+              <div className="relative">
+                <img src={preview} alt="preview" className="w-full aspect-video object-cover rounded-xl" />
+                <button onClick={() => { setPhoto(null); setPreview(null); }}
+                  className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">×</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
+                <p className="text-3xl mb-2">📷</p>
+                <p className="text-gray-400 text-sm">사진 선택</p>
+                <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+              </label>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" value={row} onChange={e => setRow(e.target.value)} placeholder="열 (예: A열)"
+                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              <input type="text" value={seat} onChange={e => setSeat(e.target.value)} placeholder="번호 (예: 15)"
+                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            </div>
+            <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="설명 (선택)"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            <button onClick={handleUpload} disabled={uploading || !photo}
+              className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 rounded-xl font-black transition-all">
+              {uploading ? '업로드 중...' : saved ? '✓ 업로드 완료!' : '📷 업로드'}
+            </button>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <p className="text-gray-400 text-xs mb-3">등록된 사진 ({zonePhotos.length})</p>
+            {loadingPhotos ? (
+              <div className="text-center py-4"><div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent" /></div>
+            ) : zonePhotos.length === 0 ? (
+              <p className="text-zinc-600 text-sm text-center py-4">사진 없음</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {zonePhotos.map(p => (
+                  <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden group">
+                    <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
+                    {(p.row || p.seat) && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 text-center">
+                        <p className="text-white text-xs">{p.row} {p.seat}</p>
+                      </div>
+                    )}
+                    <button onClick={() => handleDelete(p.id)}
+                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ─── 어드민: 시야 텍스트 제보 목록 ──────────────────────────────────
+const AdminSeatReports = () => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'seatViews/reports'), (snap) => {
+      const data = snap.val();
+      setReports(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
+      setLoading(false);
+    });
+  }, []);
+
+  const deleteReport = async (id) => {
+    await remove(dbRef(database, `seatViews/reports/${id}`));
+  };
+
+  if (loading) return <div className="text-center py-8"><div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-red-600 border-t-transparent" /></div>;
+
+  if (reports.length === 0) return (
+    <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
+      <p className="text-4xl mb-3">💬</p>
+      <p className="text-gray-400">접수된 제보가 없습니다</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3 max-w-lg">
+      <p className="text-gray-400 text-sm">{reports.length}건</p>
+      {reports.map(r => (
+        <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-red-400 font-bold text-sm">{r.zone}</span>
+              {(r.row || r.seat) && <span className="text-gray-400 text-sm ml-2">{r.row} {r.seat}번</span>}
+            </div>
+            <button onClick={() => deleteReport(r.id)} className="text-zinc-600 hover:text-red-500 text-lg transition-colors">×</button>
+          </div>
+          {r.note && <p className="text-gray-300 text-sm mt-2">{r.note}</p>}
+          <p className="text-zinc-600 text-xs mt-2">by {r.nickname || '익명'} · {r.date}</p>
+        </div>
+      ))}
     </div>
   );
 };
