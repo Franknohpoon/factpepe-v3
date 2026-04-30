@@ -140,7 +140,7 @@ function App() {
     { id: 'news',     name: '팩트 뉴스', emoji: '🐸', component: FactNewsTab },
     { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
     { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
-    { id: 'seatview', name: '시야',      emoji: '🏟️', component: SeatViewTab },
+    { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
     { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
     { id: 'comic',    name: '4컷',       emoji: '🎨', component: ComicTab },
   ];
@@ -306,8 +306,24 @@ const FactNewsTab = () => {
   );
 };
 
-// ─── 2. 승요체크 ─────────────────────────────────────────────────────
-const ScheduleTab = () => {
+// ─── 2. 승요체크 (준비중) ─────────────────────────────────────────────
+const ScheduleTab = () => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+    <div className="text-7xl mb-6">📅</div>
+    <h2 className="text-3xl font-black text-white mb-3">승요체크</h2>
+    <div className="inline-block bg-red-600/20 border border-red-500/50 text-red-400 text-xs font-bold px-3 py-1 rounded-full mb-6 tracking-widest uppercase">Coming Soon</div>
+    <p className="text-gray-400 text-lg mb-2">나만의 직관 기록장</p>
+    <p className="text-gray-600 text-sm max-w-sm">직관 날짜, 결과, 착장, 코멘트를 기록하는 나만의 승요체크 기능이 곧 오픈됩니다! 🐸</p>
+    <div className="mt-8 flex gap-2">
+      {[0, 150, 300].map(d => (
+        <span key={d} className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+      ))}
+    </div>
+  </div>
+);
+
+// ─── (구) 승요체크 로직 (보관) ─────────────────────────────────────────
+const _ScheduleTabFull = () => {
   const [records, setRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], opponent: '', result: '', outfit: '', comment: '' });
@@ -426,7 +442,7 @@ const ScheduleTab = () => {
       )}
     </div>
   );
-};
+}; // end _ScheduleTabFull
 
 // ─── 3. 라인업 ───────────────────────────────────────────────────────
 const LineupTab = () => {
@@ -638,8 +654,32 @@ const LineupTab = () => {
   );
 };
 
-// ─── 4. 시야 제보 ────────────────────────────────────────────────────
-const SeatViewTab = () => {
+// ─── 4. 제보 탭 ──────────────────────────────────────────────────────
+const GOODS_TYPES = ['유니폼/자켓', '모자', '응원도구', '키링/뱃지', '기타'];
+
+const ReportTab = () => {
+  const [category, setCategory] = useState('seatview');
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-2xl font-black text-white">📬 제보</h2>
+      </div>
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setCategory('seatview')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${category === 'seatview' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          🏟️ 좌석 시야
+        </button>
+        <button onClick={() => setCategory('goods')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${category === 'goods' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          🛍️ 굿즈 후기
+        </button>
+      </div>
+      {category === 'seatview' ? <SeatViewContent /> : <GoodsContent />}
+    </div>
+  );
+};
+
+const SeatViewContent = () => {
   const [views, setViews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [zone, setZone] = useState('all');
@@ -659,14 +699,12 @@ const SeatViewTab = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-black text-white">🏟️ 좌석 시야</h2>
+        <p className="text-gray-400 text-sm">팬들이 직접 찍은 좌석별 시야 사진</p>
         <button onClick={() => setShowForm(true)}
           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all">
-          📷 시야 제보
+          📷 제보하기
         </button>
       </div>
-
-      {/* 구역 필터 */}
       <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
         <button onClick={() => setZone('all')}
           className={`px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${zone === 'all' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
@@ -679,7 +717,6 @@ const SeatViewTab = () => {
           </button>
         ))}
       </div>
-
       {loading ? (
         <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>
       ) : filtered.length === 0 ? (
@@ -703,8 +740,6 @@ const SeatViewTab = () => {
           ))}
         </div>
       )}
-
-      {/* 상세 모달 */}
       {selected && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
           <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
@@ -724,9 +759,88 @@ const SeatViewTab = () => {
           </div>
         </div>
       )}
-
-      {/* 제보 폼 */}
       {showForm && <SeatViewForm onClose={() => setShowForm(false)} />}
+    </div>
+  );
+};
+
+const GoodsContent = () => {
+  const [goods, setGoods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('전체');
+  const [selected, setSelected] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'goods/approved'), (snap) => {
+      const data = snap.val();
+      setGoods(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
+      setLoading(false);
+    });
+  }, []);
+
+  const filtered = filter === '전체' ? goods : goods.filter(g => g.goodsType === filter);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-400 text-sm">팬들의 실제 굿즈 사진 & 후기</p>
+        <button onClick={() => setShowForm(true)}
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all">
+          🛍️ 후기 남기기
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
+        {['전체', ...GOODS_TYPES].map(t => (
+          <button key={t} onClick={() => setFilter(t)}
+            className={`px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${filter === t ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+      {loading ? (
+        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
+          <p className="text-5xl mb-4">🛍️</p>
+          <p className="text-gray-400 text-lg mb-2">아직 굿즈 후기가 없습니다</p>
+          <p className="text-gray-600 text-sm mb-6">가지고 있는 굿즈를 자랑해보세요!</p>
+          <button onClick={() => setShowForm(true)} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold text-sm">🛍️ 첫 번째 후기 남기기</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {filtered.map(g => (
+            <button key={g.id} onClick={() => setSelected(g)}
+              className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
+              <img src={g.photoUrl} alt={g.goodsType} className="w-full h-full object-cover" />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                <p className="text-white text-xs font-bold">{g.goodsType}</p>
+                {g.itemName && <p className="text-gray-300 text-xs">{g.itemName}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {selected && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <img src={selected.photoUrl} alt={selected.goodsType} className="w-full aspect-video object-cover" />
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-red-600/20 border border-red-600/50 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold">{selected.goodsType}</span>
+                {selected.itemName && <span className="text-white text-sm font-bold">{selected.itemName}</span>}
+              </div>
+              {selected.review && <p className="text-gray-300 text-sm mb-3">{selected.review}</p>}
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>by {selected.nickname || '익명'}</span>
+                <span>{selected.date}</span>
+              </div>
+            </div>
+            <button onClick={() => setSelected(null)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-gray-400 font-bold transition-all">닫기</button>
+          </div>
+        </div>
+      )}
+      {showForm && <GoodsForm onClose={() => setShowForm(false)} />}
     </div>
   );
 };
@@ -850,6 +964,113 @@ const SeatViewForm = ({ onClose }) => {
               disabled={uploading || !photo || !form.zoneId || !form.row || !form.seat}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
               {uploading ? '업로드 중...' : '제보하기 📷'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const GoodsForm = ({ onClose }) => {
+  const [form, setForm] = useState({ goodsType: '', itemName: '', review: '', nickname: '' });
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhoto(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async () => {
+    if (!photo || !form.goodsType) return;
+    setUploading(true);
+    try {
+      const compressed = await compressImage(photo);
+      const photoUrl = await uploadToCloudinary(compressed);
+      await push(dbRef(database, 'goods/pending'), {
+        ...form,
+        photoUrl,
+        submittedAt: Date.now(),
+        date: new Date().toLocaleDateString('ko-KR'),
+      });
+      setDone(true);
+    } catch (err) {
+      alert(`업로드 실패: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-zinc-900 rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-4 border-b border-zinc-800">
+          <h3 className="text-white font-black text-lg">🛍️ 굿즈 후기 제보</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+        {done ? (
+          <div className="p-8 text-center">
+            <p className="text-5xl mb-4">🙏</p>
+            <p className="text-white font-black text-xl mb-2">후기 감사해요!</p>
+            <p className="text-gray-400 text-sm mb-6">검토 후 공개됩니다</p>
+            <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold">확인</button>
+          </div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="text-gray-400 text-xs mb-2 block">굿즈 사진 *</label>
+              {preview ? (
+                <div className="relative">
+                  <img src={preview} alt="preview" className="w-full aspect-video object-cover rounded-xl" />
+                  <button onClick={() => { setPhoto(null); setPreview(null); }}
+                    className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">×</button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
+                  <p className="text-4xl mb-2">🛍️</p>
+                  <p className="text-gray-400 text-sm">사진 선택 / 카메라 촬영</p>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
+                </label>
+              )}
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-2 block">굿즈 종류 *</label>
+              <div className="flex flex-wrap gap-2">
+                {GOODS_TYPES.map(t => (
+                  <button key={t} onClick={() => setForm({ ...form, goodsType: t })}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${form.goodsType === t ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">상품명 (선택)</label>
+              <input type="text" value={form.itemName} onChange={e => setForm({ ...form, itemName: e.target.value })}
+                placeholder="예) 2026 홈 유니폼, 최정 키링..."
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">한줄 후기 (선택)</label>
+              <textarea value={form.review} onChange={e => setForm({ ...form, review: e.target.value })}
+                placeholder="품질, 착용감, 추천 여부 등..." rows={2}
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600 resize-none" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">닉네임 (선택)</label>
+              <input type="text" value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })}
+                placeholder="익명으로 올리려면 비워두세요"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            </div>
+            <button onClick={handleSubmit}
+              disabled={uploading || !photo || !form.goodsType}
+              className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
+              {uploading ? '업로드 중...' : '후기 제보하기 🛍️'}
             </button>
           </div>
         )}
@@ -1163,62 +1384,84 @@ const AdminLineupForm = () => {
 };
 
 const AdminSeatApproval = () => {
-  const [pending, setPending] = useState([]);
+  const [subTab, setSubTab] = useState('seat');
+  const [seatPending, setSeatPending] = useState([]);
+  const [goodsPending, setGoodsPending] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let seatLoaded = false, goodsLoaded = false;
     onValue(dbRef(database, 'seatViews/pending'), (snap) => {
       const data = snap.val();
-      setPending(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
-      setLoading(false);
+      setSeatPending(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
+      seatLoaded = true;
+      if (goodsLoaded) setLoading(false);
+    });
+    onValue(dbRef(database, 'goods/pending'), (snap) => {
+      const data = snap.val();
+      setGoodsPending(data ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt) : []);
+      goodsLoaded = true;
+      if (seatLoaded) setLoading(false);
     });
   }, []);
 
-  const approve = async (item) => {
+  const approveSeat = async (item) => {
     const { id, ...data } = item;
     await set(dbRef(database, `seatViews/approved/${id}`), { ...data, approvedAt: Date.now() });
     await remove(dbRef(database, `seatViews/pending/${id}`));
   };
+  const rejectSeat = async (id) => { await remove(dbRef(database, `seatViews/pending/${id}`)); };
 
-  const reject = async (id) => {
-    await remove(dbRef(database, `seatViews/pending/${id}`));
+  const approveGoods = async (item) => {
+    const { id, ...data } = item;
+    await set(dbRef(database, `goods/approved/${id}`), { ...data, approvedAt: Date.now() });
+    await remove(dbRef(database, `goods/pending/${id}`));
   };
+  const rejectGoods = async (id) => { await remove(dbRef(database, `goods/pending/${id}`)); };
 
   if (loading) return <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-600 border-t-transparent" /></div>;
 
-  if (pending.length === 0) return (
+  const PendingList = ({ items, onApprove, onReject, labelFn }) => items.length === 0 ? (
     <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
       <p className="text-4xl mb-3">✅</p>
       <p className="text-gray-400">검토 대기 중인 제보가 없습니다</p>
     </div>
-  );
-
-  return (
+  ) : (
     <div className="space-y-4">
-      <p className="text-gray-400 text-sm">{pending.length}건 대기 중</p>
-      {pending.map(item => (
+      <p className="text-gray-400 text-sm">{items.length}건 대기 중</p>
+      {items.map(item => (
         <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <img src={item.photoUrl} alt={item.zone} className="w-full aspect-video object-cover" />
+          <img src={item.photoUrl} alt="" className="w-full aspect-video object-cover" />
           <div className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-red-400 font-bold text-sm">{item.zone}</span>
-              <span className="text-gray-400 text-sm">{item.row} {item.seat}번</span>
-            </div>
-            {item.note && <p className="text-gray-300 text-sm mb-2">{item.note}</p>}
+            <p className="text-red-400 font-bold text-sm mb-1">{labelFn(item)}</p>
+            {(item.note || item.review) && <p className="text-gray-300 text-sm mb-2">{item.note || item.review}</p>}
             <p className="text-gray-600 text-xs mb-3">by {item.nickname || '익명'} · {item.date}</p>
             <div className="flex gap-3">
-              <button onClick={() => reject(item.id)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-2 rounded-lg font-bold text-sm transition-all">
-                ✕ 거절
-              </button>
-              <button onClick={() => approve(item)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold text-sm transition-all">
-                ✓ 승인
-              </button>
+              <button onClick={() => onReject(item.id)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-2 rounded-lg font-bold text-sm transition-all">✕ 거절</button>
+              <button onClick={() => onApprove(item)} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold text-sm transition-all">✓ 승인</button>
             </div>
           </div>
         </div>
       ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setSubTab('seat')}
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${subTab === 'seat' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400'}`}>
+          🏟️ 시야 ({seatPending.length})
+        </button>
+        <button onClick={() => setSubTab('goods')}
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${subTab === 'goods' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400'}`}>
+          🛍️ 굿즈 ({goodsPending.length})
+        </button>
+      </div>
+      {subTab === 'seat'
+        ? <PendingList items={seatPending} onApprove={approveSeat} onReject={rejectSeat} labelFn={i => `${i.zone} ${i.row} ${i.seat}번`} />
+        : <PendingList items={goodsPending} onApprove={approveGoods} onReject={rejectGoods} labelFn={i => `${i.goodsType}${i.itemName ? ' · ' + i.itemName : ''}`} />
+      }
     </div>
   );
 };
