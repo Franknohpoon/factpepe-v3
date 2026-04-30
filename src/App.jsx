@@ -189,7 +189,7 @@ function App() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left cursor-pointer select-none" onClick={handleLogoTap}>
               <h1 className="text-3xl lg:text-4xl font-black text-white mb-1">🐸 팩트페페</h1>
-              <p className="text-red-200 text-sm">SSG 랜더스 팩트폭격 서비스</p>
+              <p className="text-red-200 text-sm">으쓱이들의 놀이터</p>
             </div>
             <nav className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide justify-center md:justify-end">
               {tabs.map(tab => (
