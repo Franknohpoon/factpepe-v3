@@ -49,16 +49,31 @@ const TEAM_CHANTS = [
   { id: 'team2', title: '랜더스 파이팅', youtubeId: '', lyrics: '' },
 ];
 
+const CHANT_VIDEO_ID = 'k9mKPD1j4Mk';
+
 const PLAYER_CHANTS = [
-  { id: 'p01', name: '최정', number: 10, position: '3루수', youtubeId: '', lyrics: '' },
-  { id: 'p02', name: '박성한', number: 1, position: '유격수', youtubeId: '', lyrics: '' },
-  { id: 'p03', name: '에레디아', number: 53, position: '좌익수', youtubeId: '', lyrics: '' },
-  { id: 'p04', name: '한유섬', number: 51, position: '중견수', youtubeId: '', lyrics: '' },
-  { id: 'p05', name: '정준재', number: 3, position: '2루수', youtubeId: '', lyrics: '' },
-  { id: 'p06', name: '최지훈', number: 46, position: '포수', youtubeId: '', lyrics: '' },
-  { id: 'p07', name: '오태곤', number: 27, position: '1루수', youtubeId: '', lyrics: '' },
-  { id: 'p08', name: '고종욱', number: 6, position: '우익수', youtubeId: '', lyrics: '' },
-  { id: 'p09', name: '류효승', number: 99, position: '지명타자', youtubeId: '', lyrics: '' },
+  { id: 'p01', name: '박성한',  number: 2,  position: '유격수',   youtubeId: CHANT_VIDEO_ID, start: 0,   end: 28,  lyrics: '' },
+  { id: 'p02', name: '정준재',  number: 3,  position: '2루수',    youtubeId: CHANT_VIDEO_ID, start: 28,  end: 62,  lyrics: '' },
+  { id: 'p03', name: '김성현',  number: 6,  position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 62,  end: 91,  lyrics: '' },
+  { id: 'p04', name: '최준우',  number: 7,  position: '외야수',   youtubeId: CHANT_VIDEO_ID, start: 91,  end: 123, lyrics: '' },
+  { id: 'p05', name: '안상현',  number: 10, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 123, end: 152, lyrics: '' },
+  { id: 'p06', name: '하재훈',  number: 13, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 152, end: 191, lyrics: '' },
+  { id: 'p07', name: '최정',    number: 14, position: '3루수',    youtubeId: CHANT_VIDEO_ID, start: 191, end: 281, lyrics: '' },
+  { id: 'p08', name: '고명준',  number: 18, position: '투수',     youtubeId: CHANT_VIDEO_ID, start: 281, end: 314, lyrics: '' },
+  { id: 'p09', name: '조형우',  number: 20, position: '포수',     youtubeId: CHANT_VIDEO_ID, start: 314, end: 349, lyrics: '' },
+  { id: 'p10', name: '김민식',  number: 24, position: '포수',     youtubeId: CHANT_VIDEO_ID, start: 349, end: 381, lyrics: '' },
+  { id: 'p11', name: '신범수',  number: 25, position: '외야수',   youtubeId: CHANT_VIDEO_ID, start: 381, end: 418, lyrics: '' },
+  { id: 'p12', name: '에레디아',number: 27, position: '외야수',   youtubeId: CHANT_VIDEO_ID, start: 418, end: 447, lyrics: '' },
+  { id: 'p13', name: '김성욱',  number: 31, position: '외야수',   youtubeId: CHANT_VIDEO_ID, start: 447, end: 477, lyrics: '' },
+  { id: 'p14', name: '김재환',  number: 32, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 477, end: 513, lyrics: '' },
+  { id: 'p15', name: '이정범',  number: 33, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 513, end: 553, lyrics: '' },
+  { id: 'p16', name: '한유섬',  number: 35, position: '중견수',   youtubeId: CHANT_VIDEO_ID, start: 553, end: 584, lyrics: '' },
+  { id: 'p17', name: '오태곤',  number: 37, position: '1루수',    youtubeId: CHANT_VIDEO_ID, start: 584, end: 616, lyrics: '' },
+  { id: 'p18', name: '류효승',  number: 45, position: '지명타자', youtubeId: CHANT_VIDEO_ID, start: 616, end: 648, lyrics: '' },
+  { id: 'p19', name: '최지훈',  number: 54, position: '포수',     youtubeId: CHANT_VIDEO_ID, start: 648, end: 679, lyrics: '' },
+  { id: 'p20', name: '이지영',  number: 56, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 679, end: 713, lyrics: '' },
+  { id: 'p21', name: '김창평',  number: 64, position: '외야수',   youtubeId: CHANT_VIDEO_ID, start: 713, end: 745, lyrics: '' },
+  { id: 'p22', name: '박지환',  number: 93, position: '내야수',   youtubeId: CHANT_VIDEO_ID, start: 745, end: 0,   lyrics: '' },
 ];
 
 const STYLE_PRESETS = {
@@ -821,16 +836,17 @@ const SeatViewForm = ({ onClose }) => {
 };
 
 // ─── 5. 응원가 ───────────────────────────────────────────────────────
-const YoutubeEmbed = ({ videoId, title }) => {
+const YoutubeEmbed = ({ videoId, title, start = 0, end = 0 }) => {
   if (!videoId) return (
     <div className="bg-zinc-800 rounded-xl flex items-center justify-center h-40 mb-4">
       <div className="text-center"><p className="text-4xl mb-2">▶️</p><p className="text-gray-500 text-sm">영상 준비 중</p></div>
     </div>
   );
+  const params = new URLSearchParams({ start, ...(end > 0 && { end }) });
   return (
     <div className="relative w-full mb-4" style={{ paddingTop: '56.25%' }}>
       <iframe className="absolute inset-0 w-full h-full rounded-xl"
-        src={`https://www.youtube.com/embed/${videoId}`} title={title}
+        src={`https://www.youtube.com/embed/${videoId}?${params}`} title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
     </div>
   );
@@ -888,7 +904,7 @@ const ChantTab = () => {
               <h3 className="text-white font-black text-2xl">{selected.name}</h3>
               <span className="text-gray-500 text-sm">{selected.position}</span>
             </div>
-            <YoutubeEmbed videoId={selected.youtubeId} title={`${selected.name} 응원가`} />
+            <YoutubeEmbed videoId={selected.youtubeId} title={`${selected.name} 응원가`} start={selected.start} end={selected.end} />
             {selected.lyrics ? (
               <>
                 <button onClick={() => toggle(selected.id)} className="text-red-500 hover:text-red-400 text-sm font-bold">
