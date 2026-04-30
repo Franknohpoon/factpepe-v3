@@ -58,9 +58,25 @@ const LANDERS_ZONES = [
   { id: 'premium', label: '프리미엄' },
 ];
 
+const TEAM_CHANT_VIDEO_ID = 'zPGEpmBj4iw';
 const TEAM_CHANTS = [
-  { id: 'team1', title: 'SSG 랜더스 팀 응원가', youtubeId: '', lyrics: '' },
-  { id: 'team2', title: '랜더스 파이팅', youtubeId: '', lyrics: '' },
+  { id: 'team01',  title: '불꽃투혼 랜더스',          youtubeId: TEAM_CHANT_VIDEO_ID, start: 0,    end: 149  },
+  { id: 'team02',  title: '되고송',                   youtubeId: TEAM_CHANT_VIDEO_ID, start: 149,  end: 255  },
+  { id: 'team03',  title: '라인업송',                 youtubeId: TEAM_CHANT_VIDEO_ID, start: 255,  end: 337  },
+  { id: 'team04',  title: 'Landing High Together',    youtubeId: TEAM_CHANT_VIDEO_ID, start: 337,  end: 453  },
+  { id: 'team05',  title: '랜더스여',                 youtubeId: TEAM_CHANT_VIDEO_ID, start: 453,  end: 539  },
+  { id: 'team06',  title: '승리의 깃발',              youtubeId: TEAM_CHANT_VIDEO_ID, start: 539,  end: 656  },
+  { id: 'team07',  title: '승리를 외쳐라',            youtubeId: TEAM_CHANT_VIDEO_ID, start: 656,  end: 743  },
+  { id: 'team08',  title: '랜더스의 승리를 위해',     youtubeId: TEAM_CHANT_VIDEO_ID, start: 743,  end: 831  },
+  { id: 'team09',  title: '투혼의 랜더스',            youtubeId: TEAM_CHANT_VIDEO_ID, start: 831,  end: 923  },
+  { id: 'team10',  title: '외쳐라 랜더스',            youtubeId: TEAM_CHANT_VIDEO_ID, start: 923,  end: 1004 },
+  { id: 'team11',  title: '우린 랜더스',              youtubeId: TEAM_CHANT_VIDEO_ID, start: 1004, end: 1092 },
+  { id: 'team12',  title: 'We are the Landers!',      youtubeId: TEAM_CHANT_VIDEO_ID, start: 1092, end: 1197 },
+  { id: 'team13',  title: '프론티어 랜더스',          youtubeId: TEAM_CHANT_VIDEO_ID, start: 1197, end: 1307 },
+  { id: 'team14',  title: '항해하라 랜더스',          youtubeId: TEAM_CHANT_VIDEO_ID, start: 1307, end: 1432 },
+  { id: 'team15',  title: 'J에게',                   youtubeId: TEAM_CHANT_VIDEO_ID, start: 1432, end: 1534 },
+  { id: 'team16',  title: '불티',                    youtubeId: TEAM_CHANT_VIDEO_ID, start: 1534, end: 1662 },
+  { id: 'team17',  title: '연안부두',                youtubeId: TEAM_CHANT_VIDEO_ID, start: 1662, end: 0    },
 ];
 
 const CHANT_VIDEO_ID = 'k9mKPD1j4Mk';
@@ -1116,7 +1132,7 @@ const ChantTab = () => {
           {TEAM_CHANTS.map(c => (
             <div key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
               <h3 className="text-white font-black text-lg mb-3">{c.title}</h3>
-              <YoutubeEmbed videoId={c.youtubeId} title={c.title} />
+              <YoutubeEmbed videoId={c.youtubeId} title={c.title} start={c.start} end={c.end} />
               {c.lyrics && <>
                 <button onClick={() => toggle(c.id)} className="text-red-500 hover:text-red-400 text-sm font-bold">
                   {expanded[c.id] ? '▲ 가사 접기' : '▼ 가사 보기'}
