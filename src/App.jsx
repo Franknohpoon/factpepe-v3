@@ -1009,14 +1009,19 @@ const AdminLineupForm = () => {
     return SSG_PLAYERS.filter(p => p.includes(q) && p !== players[idx].name).slice(0, 5);
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     try {
       const playersObj = players.reduce((acc, p, i) => ({ ...acc, [i]: p }), {});
       await set(dbRef(database, 'lineup/latest'), { date, opponent, pitcher, players: playersObj, updatedAt: Date.now() });
       setSaved(true);
       setConfirm(false);
       setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setSaveError(`저장 실패: ${err.message}`);
     } finally { setSaving(false); }
   };
 
@@ -1128,6 +1133,12 @@ const AdminLineupForm = () => {
               {saving ? '저장 중...' : '확인 저장'}
             </button>
           </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="bg-red-900/30 border border-red-600 text-red-400 rounded-xl p-3 text-center text-sm font-bold">
+          ❌ {saveError}
         </div>
       )}
 
