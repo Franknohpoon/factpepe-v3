@@ -434,6 +434,7 @@ const LineupTab = () => {
         setLineupData({
           date: data.date,
           opponent: data.opponent,
+          pitcher: data.pitcher || '',
           players: Object.values(data.players || {}),
         });
       }
@@ -508,6 +509,12 @@ const LineupTab = () => {
               <p className="text-red-500 font-bold text-xs uppercase tracking-wider">👥 오늘의 라인업</p>
               <span className="text-gray-500 text-xs">{lineupData.date} · SSG vs {lineupData.opponent}</span>
             </div>
+            {lineupData.pitcher && (
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-zinc-800">
+                <span className="text-yellow-500 text-xs font-bold">⚾ 선발</span>
+                <span className="text-white text-sm font-bold">{lineupData.pitcher}</span>
+              </div>
+            )}
             <div className="space-y-1">
               {lineupData.players.map((p, i) => (
                 <div key={i} className="flex items-center gap-2 py-1 border-b border-zinc-800 last:border-0">
@@ -591,6 +598,11 @@ const LineupTab = () => {
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px', marginBottom: '3px' }}>{lineupData.date}</div>
               <div style={{ color: 'white', fontWeight: 900, fontSize: '17px' }}>SSG <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px' }}>VS</span> {lineupData.opponent}</div>
+              {lineupData.pitcher && (
+                <div style={{ marginTop: '6px', color: 'rgba(255,220,100,0.9)', fontSize: '11px', fontWeight: 700 }}>
+                  ⚾ 선발 {lineupData.pitcher}
+                </div>
+              )}
             </div>
             <div>
               {lineupData.players.map((p, i) => (
@@ -970,6 +982,8 @@ const AdminLineupForm = () => {
 
   const [date, setDate] = useState(todayStr);
   const [opponent, setOpponent] = useState('');
+  const [pitcher, setPitcher] = useState('');
+  const [pitcherQuery, setPitcherQuery] = useState('');
   const [players, setPlayers] = useState(
     Array.from({ length: 9 }, () => ({ name: '', pos: '' }))
   );
@@ -999,7 +1013,7 @@ const AdminLineupForm = () => {
     setSaving(true);
     try {
       const playersObj = players.reduce((acc, p, i) => ({ ...acc, [i]: p }), {});
-      await set(dbRef(database, 'lineup/latest'), { date, opponent, players: playersObj, updatedAt: Date.now() });
+      await set(dbRef(database, 'lineup/latest'), { date, opponent, pitcher, players: playersObj, updatedAt: Date.now() });
       setSaved(true);
       setConfirm(false);
       setTimeout(() => setSaved(false), 3000);
@@ -1028,9 +1042,37 @@ const AdminLineupForm = () => {
         </div>
       </div>
 
+      {/* 선발투수 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">⚾ 선발투수</p>
+        <div className="relative">
+          <input
+            type="text"
+            value={pitcherQuery || pitcher}
+            onChange={e => {
+              setPitcherQuery(e.target.value);
+              if (!e.target.value) setPitcher('');
+            }}
+            onFocus={() => setPitcherQuery(pitcher)}
+            placeholder="투수명 검색"
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600"
+          />
+          {pitcherQuery.trim() && SSG_PLAYERS.filter(p => p.includes(pitcherQuery.trim()) && p !== pitcher).slice(0, 5).length > 0 && (
+            <div className="absolute top-full left-0 right-0 bg-zinc-800 border border-zinc-600 rounded-lg mt-1 z-10 overflow-hidden">
+              {SSG_PLAYERS.filter(p => p.includes(pitcherQuery.trim()) && p !== pitcher).slice(0, 5).map(name => (
+                <button key={name} onClick={() => { setPitcher(name); setPitcherQuery(''); }}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-zinc-700 text-base font-bold border-b border-zinc-700 last:border-0">
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 라인업 입력 */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">👥 라인업</p>
+        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">👥 타순</p>
         <div className="space-y-3">
           {players.map((player, idx) => (
             <div key={idx} className="flex items-start gap-2">
@@ -1070,13 +1112,14 @@ const AdminLineupForm = () => {
 
       {/* 저장 버튼 */}
       {!confirm ? (
-        <button onClick={() => setConfirm(true)} disabled={!opponent || players.some(p => !p.name || !p.pos)}
+        <button onClick={() => setConfirm(true)} disabled={!opponent || !pitcher || players.some(p => !p.name || !p.pos)}
           className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
           저장하기
         </button>
       ) : (
         <div className="bg-zinc-900 border-2 border-red-600 rounded-xl p-4">
           <p className="text-white font-bold text-center mb-1">{date} · SSG vs {opponent}</p>
+          <p className="text-gray-400 text-sm text-center mb-1">선발투수: <span className="text-red-400 font-bold">{pitcher}</span></p>
           <p className="text-gray-400 text-sm text-center mb-4">위 라인업을 저장하시겠습니까?</p>
           <div className="flex gap-3">
             <button onClick={() => setConfirm(false)} className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-lg font-bold">취소</button>
