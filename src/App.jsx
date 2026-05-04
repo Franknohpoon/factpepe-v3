@@ -808,6 +808,8 @@ const SeatViewContent = () => {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [reportZone, setReportZone] = useState(null);
+  const [stadiumMap, setStadiumMap] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -818,6 +820,12 @@ const SeatViewContent = () => {
       });
       setPhotos(parsed);
       setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'seatViews/stadiumMap'), (snap) => {
+      setStadiumMap(snap.val());
     });
   }, []);
 
@@ -890,6 +898,23 @@ const SeatViewContent = () => {
 
   return (
     <div>
+      {/* 구장 좌석 배치도 */}
+      {stadiumMap?.url && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
+            <button onClick={() => setShowMapModal(true)}
+              className="text-xs text-red-400 hover:text-red-300 font-bold transition-colors">
+              크게 보기 ›
+            </button>
+          </div>
+          <button onClick={() => setShowMapModal(true)}
+            className="w-full rounded-2xl overflow-hidden border border-zinc-700 hover:border-red-500 transition-all hover:scale-[1.01] active:scale-[0.99]">
+            <img src={stadiumMap.url} alt="구장 좌석 배치도" className="w-full object-contain bg-zinc-900" />
+          </button>
+        </div>
+      )}
+
       <p className="text-gray-400 text-sm mb-4">구역을 선택해 시야 사진을 확인하세요</p>
       <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
         {ZONE_CATEGORIES.map(c => (
@@ -921,6 +946,26 @@ const SeatViewContent = () => {
         </div>
       )}
       {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
+
+      {/* 배치도 전체화면 모달 */}
+      {showMapModal && stadiumMap?.url && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col" onClick={() => setShowMapModal(false)}>
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+            <p className="text-white font-bold">🏟️ 구장 좌석 배치도</p>
+            <button onClick={() => setShowMapModal(false)}
+              className="text-gray-400 hover:text-white text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
+          </div>
+          <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+            <img src={stadiumMap.url} alt="구장 좌석 배치도"
+              className="max-w-full max-h-full object-contain rounded-xl" style={{ touchAction: 'pinch-zoom' }} />
+          </div>
+          {stadiumMap.updatedAt && (
+            <p className="text-center text-zinc-600 text-xs pb-4">
+              업데이트: {new Date(stadiumMap.updatedAt).toLocaleDateString('ko-KR')}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -1697,6 +1742,79 @@ const AdminFactPepe = () => {
 };
 
 // ─── 어드민: 시야 사진 업로드 ────────────────────────────────────────
+const AdminStadiumMapUpload = () => {
+  const [currentMap, setCurrentMap] = useState(null);
+  const [mapFile, setMapFile] = useState(null);
+  const [mapPreview, setMapPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, 'seatViews/stadiumMap'), (snap) => {
+      setCurrentMap(snap.val());
+    });
+    return unsub;
+  }, []);
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setMapFile(file);
+    setMapPreview(URL.createObjectURL(file));
+  };
+
+  const handleUpload = async () => {
+    if (!mapFile) return;
+    setUploading(true);
+    try {
+      const compressed = await compressImage(mapFile);
+      const url = await uploadToCloudinary(compressed);
+      await set(dbRef(database, 'seatViews/stadiumMap'), { url, updatedAt: Date.now() });
+      setMapFile(null); setMapPreview(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert(`업로드 실패: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6 space-y-3">
+      <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
+      {currentMap?.url && !mapPreview && (
+        <div>
+          <p className="text-gray-500 text-xs mb-1">현재 배치도</p>
+          <img src={currentMap.url} alt="현재 배치도" className="w-full rounded-xl object-contain bg-zinc-800 max-h-48" />
+          {currentMap.updatedAt && (
+            <p className="text-zinc-600 text-xs mt-1">업데이트: {new Date(currentMap.updatedAt).toLocaleDateString('ko-KR')}</p>
+          )}
+        </div>
+      )}
+      {mapPreview ? (
+        <div className="relative">
+          <img src={mapPreview} alt="미리보기" className="w-full rounded-xl object-contain bg-zinc-800 max-h-48" />
+          <button onClick={() => { setMapFile(null); setMapPreview(null); }}
+            className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">×</button>
+        </div>
+      ) : (
+        <label className="flex flex-col items-center justify-center w-full py-8 bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
+          <p className="text-2xl mb-1">🗺️</p>
+          <p className="text-gray-400 text-sm">{currentMap?.url ? '배치도 교체하기' : '배치도 업로드'}</p>
+          <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+        </label>
+      )}
+      {mapFile && (
+        <button onClick={handleUpload} disabled={uploading}
+          className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2.5 rounded-xl font-black text-sm transition-all">
+          {uploading ? '업로드 중...' : saved ? '✓ 저장 완료!' : '📤 배치도 저장'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const AdminSeatPhotoUpload = () => {
   const [zoneId, setZoneId] = useState('');
   const [photo, setPhoto] = useState(null);
@@ -1756,6 +1874,7 @@ const AdminSeatPhotoUpload = () => {
 
   return (
     <div className="max-w-lg space-y-4">
+      <AdminStadiumMapUpload />
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <label className="text-gray-400 text-xs mb-2 block">구역 선택</label>
         <select value={zoneId} onChange={e => setZoneId(e.target.value)}
