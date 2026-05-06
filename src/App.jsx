@@ -809,7 +809,9 @@ const SeatViewContent = () => {
   const [showForm, setShowForm] = useState(false);
   const [reportZone, setReportZone] = useState(null);
   const [stadiumMap, setStadiumMap] = useState(null);
-  const [showMapModal, setShowMapModal] = useState(false);
+  const [showMapExplorer, setShowMapExplorer] = useState(false);
+  const [explorerCategory, setExplorerCategory] = useState('내야');
+  const [explorerZone, setExplorerZone] = useState(null);
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -902,19 +904,21 @@ const SeatViewContent = () => {
 
   return (
     <div>
-      {/* 구장 좌석 배치도 */}
+      {/* 구장 좌석 배치도 - 탭하면 구역 탐색기 오픈 */}
       {stadiumMap?.url && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
-            <button onClick={() => setShowMapModal(true)}
-              className="text-xs text-red-400 hover:text-red-300 font-bold transition-colors">
-              크게 보기 ›
-            </button>
+            <p className="text-xs text-zinc-500">구역을 눌러 사진 확인 · 제보</p>
           </div>
-          <button onClick={() => setShowMapModal(true)}
-            className="w-full rounded-2xl overflow-hidden border border-zinc-700 hover:border-red-500 transition-all hover:scale-[1.01] active:scale-[0.99]">
+          <button onClick={() => setShowMapExplorer(true)}
+            className="w-full rounded-2xl overflow-hidden border border-zinc-700 hover:border-red-500 transition-all active:scale-[0.99] relative group">
             <img src={stadiumMap.url} alt="구장 좌석 배치도" className="w-full object-contain bg-zinc-900" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-all rounded-2xl flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-all">
+                🔍 구역 선택하기
+              </span>
+            </div>
           </button>
         </div>
       )}
@@ -951,22 +955,91 @@ const SeatViewContent = () => {
       )}
       {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
 
-      {/* 배치도 전체화면 모달 */}
-      {showMapModal && stadiumMap?.url && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col" onClick={() => setShowMapModal(false)}>
-          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
-            <p className="text-white font-bold">🏟️ 구장 좌석 배치도</p>
-            <button onClick={() => setShowMapModal(false)}
+      {/* 구장 배치도 탐색기 */}
+      {showMapExplorer && stadiumMap?.url && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-zinc-800">
+            <p className="text-white font-bold text-sm">🏟️ 구역 선택</p>
+            <button onClick={() => { setShowMapExplorer(false); setExplorerZone(null); }}
               className="text-gray-400 hover:text-white text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
           </div>
-          <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-            <img src={stadiumMap.url} alt="구장 좌석 배치도"
-              className="max-w-full max-h-full object-contain rounded-xl" style={{ touchAction: 'pinch-zoom' }} />
+
+          {/* 배치도 이미지 (참고용) */}
+          <div className="flex-shrink-0 px-4 pt-3 pb-2">
+            <img src={stadiumMap.url} alt="구장 배치도"
+              className="w-full object-contain bg-zinc-900 rounded-xl max-h-44" style={{ touchAction: 'pinch-zoom' }} />
           </div>
-          {stadiumMap.updatedAt && (
-            <p className="text-center text-zinc-600 text-xs pb-4">
-              업데이트: {new Date(stadiumMap.updatedAt).toLocaleDateString('ko-KR')}
-            </p>
+
+          {/* 카테고리 탭 */}
+          <div className="flex gap-2 px-4 py-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
+            {ZONE_CATEGORIES.map(c => (
+              <button key={c} onClick={() => { setExplorerCategory(c); setExplorerZone(null); }}
+                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${explorerCategory === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* 구역 리스트 */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 mt-1">
+            {LANDERS_ZONES.filter(z => z.category === explorerCategory).map(z => {
+              const count = photos[z.id]?.length || 0;
+              return (
+                <button key={z.id} onClick={() => setExplorerZone(z)}
+                  className={`w-full flex items-center gap-3 rounded-xl p-4 transition-all text-left border ${explorerZone?.id === z.id ? 'border-red-500 bg-red-600/10' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'}`}>
+                  <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                  <span className="text-white font-bold flex-1 text-sm">{z.label}</span>
+                  {count > 0
+                    ? <span className="text-red-400 text-xs font-bold bg-red-600/10 px-2 py-0.5 rounded-full">📷 {count}</span>
+                    : <span className="text-zinc-600 text-xs">사진 없음</span>
+                  }
+                  <span className="text-zinc-600 text-sm">›</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 선택된 구역 액션 시트 */}
+          {explorerZone && (
+            <div className="fixed inset-0 z-10 flex items-end" onClick={() => setExplorerZone(null)}>
+              <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-3xl w-full p-5 pb-8"
+                onClick={e => e.stopPropagation()}>
+                <div className="w-10 h-1 bg-zinc-600 rounded-full mx-auto mb-4" />
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: explorerZone.color }} />
+                  <div>
+                    <p className="text-white font-black text-lg leading-tight">{explorerZone.label}</p>
+                    <p className="text-gray-500 text-xs">{explorerZone.category} · {photos[explorerZone.id]?.length || 0}장의 시야 사진</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setShowMapExplorer(false);
+                      setExplorerZone(null);
+                      setSelectedZone(explorerZone);
+                    }}
+                    className="bg-zinc-800 hover:bg-zinc-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
+                    <span className="text-2xl">📷</span>
+                    <span>사진 보기</span>
+                    <span className="text-zinc-500 text-xs font-normal">{photos[explorerZone.id]?.length || 0}장</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMapExplorer(false);
+                      setExplorerZone(null);
+                      setReportZone(explorerZone);
+                      setShowForm(true);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
+                    <span className="text-2xl">✏️</span>
+                    <span>제보하기</span>
+                    <span className="text-red-300 text-xs font-normal">구역 자동 입력됨</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
