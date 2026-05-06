@@ -937,17 +937,30 @@ const SeatViewContent = () => {
       ) : (
         <div className="space-y-2">
           {zonesInCategory.map(z => {
-            const count = photos[z.id]?.length || 0;
+            const zonePhotos = photos[z.id] || [];
+            const thumb = zonePhotos[0]?.photoUrl;
             return (
               <button key={z.id} onClick={() => setSelectedZone(z)}
-                className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 transition-all text-left">
-                <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
-                <span className="text-white font-bold flex-1">{z.label}</span>
-                {count > 0
-                  ? <span className="text-red-400 text-xs font-bold bg-red-600/10 px-2 py-0.5 rounded-full">사진 {count}</span>
-                  : <span className="text-zinc-600 text-xs">사진 없음</span>
-                }
-                <span className="text-zinc-600 text-sm">›</span>
+                className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl overflow-hidden transition-all text-left hover:scale-[1.01] active:scale-[0.99]">
+                {/* 텍스트 영역 */}
+                <div className="flex items-center gap-3 flex-1 p-4">
+                  <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-sm">{z.label}</p>
+                    {thumb
+                      ? <p className="text-zinc-500 text-xs mt-0.5">시야 사진 {zonePhotos.length}장</p>
+                      : <p className="text-zinc-600 text-xs mt-0.5">사진 없음</p>
+                    }
+                  </div>
+                  <span className="text-zinc-600 text-sm flex-shrink-0">›</span>
+                </div>
+                {/* 썸네일 */}
+                <div className="w-20 h-16 flex-shrink-0 bg-zinc-800">
+                  {thumb
+                    ? <img src={thumb} alt={z.label} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xl">📷</div>
+                  }
+                </div>
               </button>
             );
           })}
@@ -984,17 +997,29 @@ const SeatViewContent = () => {
           {/* 구역 리스트 */}
           <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 mt-1">
             {LANDERS_ZONES.filter(z => z.category === explorerCategory).map(z => {
-              const count = photos[z.id]?.length || 0;
+              const zonePhotos = photos[z.id] || [];
+              const thumb = zonePhotos[0]?.photoUrl;
+              const isSelected = explorerZone?.id === z.id;
               return (
                 <button key={z.id} onClick={() => setExplorerZone(z)}
-                  className={`w-full flex items-center gap-3 rounded-xl p-4 transition-all text-left border ${explorerZone?.id === z.id ? 'border-red-500 bg-red-600/10' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'}`}>
-                  <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
-                  <span className="text-white font-bold flex-1 text-sm">{z.label}</span>
-                  {count > 0
-                    ? <span className="text-red-400 text-xs font-bold bg-red-600/10 px-2 py-0.5 rounded-full">📷 {count}</span>
-                    : <span className="text-zinc-600 text-xs">사진 없음</span>
-                  }
-                  <span className="text-zinc-600 text-sm">›</span>
+                  className={`w-full flex items-center gap-3 rounded-xl overflow-hidden transition-all text-left border ${isSelected ? 'border-red-500 bg-red-600/10' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'}`}>
+                  <div className="flex items-center gap-3 flex-1 p-3">
+                    <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold text-sm">{z.label}</p>
+                      {thumb
+                        ? <p className="text-zinc-500 text-xs mt-0.5">사진 {zonePhotos.length}장</p>
+                        : <p className="text-zinc-600 text-xs mt-0.5">사진 없음</p>
+                      }
+                    </div>
+                    <span className="text-zinc-600 text-sm flex-shrink-0">›</span>
+                  </div>
+                  <div className="w-16 h-14 flex-shrink-0 bg-zinc-800">
+                    {thumb
+                      ? <img src={thumb} alt={z.label} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-zinc-700 text-lg">📷</div>
+                    }
+                  </div>
                 </button>
               );
             })}
