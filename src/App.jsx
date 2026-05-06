@@ -835,12 +835,27 @@ const SeatViewContent = () => {
 
   if (selectedZone) {
     const zonePhotos = photos[selectedZone.id] || [];
+
+    // 블럭별 그룹핑: { '101블럭': [...], '102블럭': [...], '블럭 미지정': [...] }
+    const blockGroups = zonePhotos.reduce((acc, p) => {
+      const key = p.block ? p.block : '블럭 미지정';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(p);
+      return acc;
+    }, {});
+    // 블럭 미지정을 맨 뒤로
+    const blockKeys = Object.keys(blockGroups).sort((a, b) => {
+      if (a === '블럭 미지정') return 1;
+      if (b === '블럭 미지정') return -1;
+      return a.localeCompare(b, 'ko');
+    });
+
     return (
       <div>
         <button onClick={() => setSelectedZone(null)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-5 transition-colors">
           ← 뒤로
         </button>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZone.color }} />
             <h3 className="text-white font-black text-xl">{selectedZone.label}</h3>
@@ -850,6 +865,7 @@ const SeatViewContent = () => {
             ✏️ 시야 제보
           </button>
         </div>
+
         {zonePhotos.length === 0 ? (
           <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
             <p className="text-5xl mb-4">📷</p>
@@ -861,37 +877,49 @@ const SeatViewContent = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {zonePhotos.map(p => (
-              <button key={p.id} onClick={() => setSelectedPhoto(p)}
-                className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
-                <img src={p.photoUrl} alt={selectedZone.label} className="w-full h-full object-cover" />
-                {(p.block || p.row || p.seat) && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                    <p className="text-white text-xs">
-                      {p.block && `${p.block}블럭 `}{p.row && `${p.row}열`}{p.seat && ` ${p.seat}번`}
-                    </p>
-                  </div>
-                )}
-              </button>
+          <div className="space-y-6">
+            {blockKeys.map(blockKey => (
+              <div key={blockKey}>
+                {/* 블럭 헤더 */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-white font-black text-sm">{blockKey}</span>
+                  <span className="text-zinc-600 text-xs">{blockGroups[blockKey].length}장</span>
+                  <div className="flex-1 h-px bg-zinc-800" />
+                </div>
+                {/* 해당 블럭의 사진 그리드 */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {blockGroups[blockKey].map(p => (
+                    <button key={p.id} onClick={() => setSelectedPhoto(p)}
+                      className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
+                      <img src={p.photoUrl} alt={selectedZone.label} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                        <p className="text-white text-xs">
+                          {[p.row && `${p.row}열`, p.seat && `${p.seat}번`].filter(Boolean).join(' ') || '위치 미상'}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
+
         {selectedPhoto && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedPhoto(null)}>
             <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
               <img src={selectedPhoto.photoUrl} alt="" className="w-full aspect-video object-cover" />
               <div className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZone.color }} />
                   <span className="text-white font-bold text-sm">{selectedZone.label}</span>
-                  {(selectedPhoto.block || selectedPhoto.row || selectedPhoto.seat) && (
-                    <span className="text-gray-400 text-sm">
-                      {selectedPhoto.block && `${selectedPhoto.block}블럭 `}{selectedPhoto.row && `${selectedPhoto.row}열`}{selectedPhoto.seat && ` ${selectedPhoto.seat}번`}
-                    </span>
-                  )}
                 </div>
-                {selectedPhoto.note && <p className="text-gray-300 text-sm">{selectedPhoto.note}</p>}
+                {(selectedPhoto.block || selectedPhoto.row || selectedPhoto.seat) && (
+                  <p className="text-gray-400 text-sm mb-1">
+                    {[selectedPhoto.block && `${selectedPhoto.block}블럭`, selectedPhoto.row && `${selectedPhoto.row}열`, selectedPhoto.seat && `${selectedPhoto.seat}번`].filter(Boolean).join(' ')}
+                  </p>
+                )}
+                {selectedPhoto.note && <p className="text-gray-300 text-sm mt-1">"{selectedPhoto.note}"</p>}
               </div>
               <button onClick={() => setSelectedPhoto(null)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-gray-400 font-bold transition-all">닫기</button>
             </div>
