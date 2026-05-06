@@ -1129,86 +1129,170 @@ const GoodsContent = () => {
 };
 
 const SeatViewForm = ({ zone, onClose }) => {
+  const [mode, setMode] = useState(null); // 'upload' | 'request'
   const [form, setForm] = useState({ block: '', row: '', seat: '', note: '', nickname: '' });
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhoto(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async () => {
-    if (!zone) return;
+    if (!zone || !mode) return;
     setSubmitting(true);
     try {
-      await push(dbRef(database, 'seatViews/reports'), {
-        zoneId: zone.id,
-        zone: zone.label,
-        ...form,
-        submittedAt: Date.now(),
-        date: new Date().toLocaleDateString('ko-KR'),
-      });
+      if (mode === 'upload') {
+        // 직접 제보: 사진 → Cloudinary → pending 대기열
+        if (!photo) { alert('사진을 선택해주세요'); setSubmitting(false); return; }
+        const compressed = await compressImage(photo);
+        const photoUrl = await uploadToCloudinary(compressed);
+        await push(dbRef(database, 'seatViews/pendingPhotos'), {
+          photoUrl,
+          zoneId: zone.id,
+          zone: zone.label,
+          ...form,
+          submittedAt: Date.now(),
+        });
+      } else {
+        // 시야 요청: 텍스트만
+        await push(dbRef(database, 'seatViews/reports'), {
+          zoneId: zone.id,
+          zone: zone.label,
+          ...form,
+          submittedAt: Date.now(),
+          date: new Date().toLocaleDateString('ko-KR'),
+        });
+      }
       setDone(true);
     } catch (err) {
-      alert(`제보 실패: ${err.message}`);
+      alert(`제출 실패: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const sharedFields = (
+    <>
+      <div>
+        <label className="text-gray-400 text-xs mb-1 block">블럭</label>
+        <input type="text" value={form.block} onChange={e => setForm({ ...form, block: e.target.value })}
+          placeholder="예) 101, 102, A블럭"
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">열</label>
+          <input type="text" value={form.row} onChange={e => setForm({ ...form, row: e.target.value })}
+            placeholder="예) A열, 3열"
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+        </div>
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">좌석 번호</label>
+          <input type="text" value={form.seat} onChange={e => setForm({ ...form, seat: e.target.value })}
+            placeholder="예) 15"
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+        </div>
+      </div>
+      <div>
+        <label className="text-gray-400 text-xs mb-1 block">{mode === 'upload' ? '한줄평 (선택)' : '요청 메모 (선택)'}</label>
+        <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
+          placeholder={mode === 'upload' ? '시야가 어땠나요? 특이사항, 장단점 등...' : '어떤 시야가 궁금하신가요?'} rows={2}
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600 resize-none" />
+      </div>
+      <div>
+        <label className="text-gray-400 text-xs mb-1 block">닉네임 (선택)</label>
+        <input type="text" value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })}
+          placeholder="익명으로 남기려면 비워두세요"
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+      </div>
+    </>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-zinc-900 rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-zinc-900 flex items-center justify-between p-4 border-b border-zinc-800">
           <div>
-            <h3 className="text-white font-black text-lg">📝 시야 제보</h3>
+            <h3 className="text-white font-black text-lg">
+              {mode === 'upload' ? '📷 직접 제보' : mode === 'request' ? '🙋 시야 요청' : '📝 시야 제보'}
+            </h3>
             {zone && <p className="text-red-400 text-xs font-bold">{zone.label}</p>}
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
         </div>
+
         {done ? (
           <div className="p-8 text-center">
             <p className="text-5xl mb-4">🙏</p>
-            <p className="text-white font-black text-xl mb-2">제보해 주셔서 감사해요!</p>
-            <p className="text-gray-400 text-sm mb-6">확인 후 사진을 업로드할게요</p>
+            <p className="text-white font-black text-xl mb-2">
+              {mode === 'upload' ? '제보해 주셔서 감사해요!' : '요청이 접수됐어요!'}
+            </p>
+            <p className="text-gray-400 text-sm mb-6">
+              {mode === 'upload' ? '검토 후 시야 사진이 게시됩니다' : '가능한 경우 시야 사진을 업로드할게요'}
+            </p>
             <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold">확인</button>
           </div>
+        ) : !mode ? (
+          /* 모드 선택 화면 */
+          <div className="p-5 space-y-3">
+            <p className="text-gray-400 text-sm text-center mb-4">어떻게 제보하시겠어요?</p>
+            <button onClick={() => setMode('upload')}
+              className="w-full flex items-center gap-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-red-500 rounded-2xl p-5 transition-all text-left">
+              <span className="text-4xl">📷</span>
+              <div>
+                <p className="text-white font-black text-base">직접 제보</p>
+                <p className="text-gray-400 text-sm mt-0.5">내가 찍은 시야 사진을 직접 올려요</p>
+                <p className="text-zinc-600 text-xs mt-1">검토 후 시야 갤러리에 게시됩니다</p>
+              </div>
+            </button>
+            <button onClick={() => setMode('request')}
+              className="w-full flex items-center gap-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-blue-500 rounded-2xl p-5 transition-all text-left">
+              <span className="text-4xl">🙋</span>
+              <div>
+                <p className="text-white font-black text-base">시야 요청</p>
+                <p className="text-gray-400 text-sm mt-0.5">이 좌석 시야가 궁금해요</p>
+                <p className="text-zinc-600 text-xs mt-1">운영자가 확인 후 사진을 업로드할게요</p>
+              </div>
+            </button>
+          </div>
         ) : (
+          /* 모드별 폼 */
           <div className="p-4 space-y-4">
-            <div className="bg-zinc-800/50 rounded-xl p-3 text-gray-400 text-sm">
-              💡 좌석 정보만 남겨주시면 팩트페페가 직접 확인 후 시야 사진을 업로드합니다
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs mb-1 block">블럭</label>
-              <input type="text" value={form.block} onChange={e => setForm({ ...form, block: e.target.value })}
-                placeholder="예) 101, 102, A블럭"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setMode(null)} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-xs transition-colors">
+              ← 뒤로
+            </button>
+
+            {mode === 'upload' && (
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">열</label>
-                <input type="text" value={form.row} onChange={e => setForm({ ...form, row: e.target.value })}
-                  placeholder="예) A열, 3열"
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+                <label className="text-gray-400 text-xs mb-2 block">시야 사진 *</label>
+                {preview ? (
+                  <div className="relative">
+                    <img src={preview} alt="미리보기" className="w-full aspect-video object-cover rounded-xl" />
+                    <button onClick={() => { setPhoto(null); setPreview(null); }}
+                      className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg">×</button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-500 transition-all">
+                    <p className="text-3xl mb-2">📷</p>
+                    <p className="text-gray-400 text-sm">사진 선택</p>
+                    <p className="text-zinc-600 text-xs mt-1">실제 좌석에서 찍은 시야 사진</p>
+                    <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+                  </label>
+                )}
               </div>
-              <div>
-                <label className="text-gray-400 text-xs mb-1 block">좌석 번호</label>
-                <input type="text" value={form.seat} onChange={e => setForm({ ...form, seat: e.target.value })}
-                  placeholder="예) 15"
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
-              </div>
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs mb-1 block">시야 한줄평 (선택)</label>
-              <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
-                placeholder="시야가 어땠나요? 특이사항, 장단점 등..." rows={3}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600 resize-none" />
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs mb-1 block">닉네임 (선택)</label>
-              <input type="text" value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })}
-                placeholder="익명으로 남기려면 비워두세요"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
-            </div>
-            <button onClick={handleSubmit} disabled={submitting}
+            )}
+
+            {sharedFields}
+
+            <button onClick={handleSubmit} disabled={submitting || (mode === 'upload' && !photo)}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
-              {submitting ? '제출 중...' : '제보 완료 ✓'}
+              {submitting ? '제출 중...' : mode === 'upload' ? '📷 제보 완료' : '🙋 요청 완료'}
             </button>
           </div>
         )}
@@ -1434,6 +1518,7 @@ const AdminPage = () => {
     { id: 'news',       label: '📰 뉴스 작성' },
     { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
+    { id: 'pending',    label: '🔍 사진 검토' },
     { id: 'seatview',   label: '💬 제보 목록' },
   ];
 
@@ -1452,6 +1537,7 @@ const AdminPage = () => {
       {section === 'news'      && <AdminNewsForm />}
       {section === 'lineup'    && <AdminLineupForm />}
       {section === 'seatphoto' && <AdminSeatPhotoUpload />}
+      {section === 'pending'   && <AdminPendingPhotos />}
       {section === 'seatview'  && <AdminSeatReports />}
     </div>
   );
@@ -2034,6 +2120,126 @@ const AdminSeatPhotoUpload = () => {
             )}
           </div>
         </>
+      )}
+    </div>
+  );
+};
+
+// ─── 어드민: 시야 텍스트 제보 목록 ──────────────────────────────────
+// ─── 어드민: 유저 제보 사진 검토 (승인/거절) ─────────────────────────
+const AdminPendingPhotos = () => {
+  const [pending, setPending] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(null);
+  const [enlarged, setEnlarged] = useState(null);
+
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, 'seatViews/pendingPhotos'), (snap) => {
+      const data = snap.val();
+      setPending(data
+        ? Object.entries(data).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.submittedAt - a.submittedAt)
+        : []);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const handleApprove = async (item) => {
+    if (processing) return;
+    setProcessing(item.id);
+    try {
+      await push(dbRef(database, `seatViews/zonePhotos/${item.zoneId}`), {
+        photoUrl: item.photoUrl,
+        block: item.block || '',
+        row: item.row || '',
+        seat: item.seat || '',
+        note: item.note || '',
+        nickname: item.nickname || '',
+        uploadedAt: Date.now(),
+        byUser: true,
+      });
+      await remove(dbRef(database, `seatViews/pendingPhotos/${item.id}`));
+    } catch (err) {
+      alert(`승인 실패: ${err.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleReject = async (item) => {
+    if (!window.confirm('이 제보를 거절하시겠습니까?')) return;
+    await remove(dbRef(database, `seatViews/pendingPhotos/${item.id}`));
+  };
+
+  if (loading) return <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-red-600 border-t-transparent" /></div>;
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-white font-bold">유저 제보 사진 검토</p>
+        {pending.length > 0 && (
+          <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{pending.length}</span>
+        )}
+      </div>
+
+      {pending.length === 0 ? (
+        <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
+          <p className="text-4xl mb-3">✅</p>
+          <p className="text-gray-400">검토할 사진이 없습니다</p>
+        </div>
+      ) : (
+        pending.map(item => {
+          const zone = LANDERS_ZONES.find(z => z.id === item.zoneId);
+          return (
+            <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+              {/* 사진 */}
+              <button onClick={() => setEnlarged(item)} className="w-full">
+                <img src={item.photoUrl} alt="" className="w-full aspect-video object-cover hover:opacity-90 transition-opacity" />
+              </button>
+              {/* 정보 */}
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {zone && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color }} />}
+                  <span className="text-white font-bold text-sm">{item.zone}</span>
+                  {(item.block || item.row || item.seat) && (
+                    <span className="text-gray-400 text-xs">
+                      {item.block && `${item.block}블럭`}{item.row && ` ${item.row}열`}{item.seat && ` ${item.seat}번`}
+                    </span>
+                  )}
+                </div>
+                {item.note && <p className="text-gray-400 text-sm mb-2 bg-zinc-800 rounded-lg p-2">"{item.note}"</p>}
+                <div className="flex items-center justify-between text-xs text-zinc-500 mb-3">
+                  <span>{item.nickname || '익명'}</span>
+                  <span>{new Date(item.submittedAt).toLocaleDateString('ko-KR')}</span>
+                </div>
+                {/* 액션 버튼 */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => handleReject(item)} disabled={processing === item.id}
+                    className="py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold text-sm transition-all disabled:opacity-40">
+                    ✗ 거절
+                  </button>
+                  <button onClick={() => handleApprove(item)} disabled={processing === item.id}
+                    className="py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-all disabled:opacity-40">
+                    {processing === item.id ? '처리 중...' : '✓ 승인'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      {/* 사진 크게 보기 */}
+      {enlarged && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col" onClick={() => setEnlarged(null)}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-white font-bold text-sm">{enlarged.zone}</span>
+            <button className="text-gray-400 text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <img src={enlarged.photoUrl} alt="" className="max-w-full max-h-full object-contain rounded-xl" />
+          </div>
+        </div>
       )}
     </div>
   );
