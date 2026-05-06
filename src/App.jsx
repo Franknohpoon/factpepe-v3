@@ -864,9 +864,11 @@ const SeatViewContent = () => {
               <button key={p.id} onClick={() => setSelectedPhoto(p)}
                 className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
                 <img src={p.photoUrl} alt={selectedZone.label} className="w-full h-full object-cover" />
-                {(p.row || p.seat) && (
+                {(p.block || p.row || p.seat) && (
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                    <p className="text-white text-xs">{p.row && `${p.row}열`}{p.seat && ` ${p.seat}번`}</p>
+                    <p className="text-white text-xs">
+                      {p.block && `${p.block}블럭 `}{p.row && `${p.row}열`}{p.seat && ` ${p.seat}번`}
+                    </p>
                   </div>
                 )}
               </button>
@@ -881,8 +883,10 @@ const SeatViewContent = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone.color }} />
                   <span className="text-white font-bold text-sm">{selectedZone.label}</span>
-                  {(selectedPhoto.row || selectedPhoto.seat) && (
-                    <span className="text-gray-400 text-sm">{selectedPhoto.row && `${selectedPhoto.row}열`}{selectedPhoto.seat && ` ${selectedPhoto.seat}번`}</span>
+                  {(selectedPhoto.block || selectedPhoto.row || selectedPhoto.seat) && (
+                    <span className="text-gray-400 text-sm">
+                      {selectedPhoto.block && `${selectedPhoto.block}블럭 `}{selectedPhoto.row && `${selectedPhoto.row}열`}{selectedPhoto.seat && ` ${selectedPhoto.seat}번`}
+                    </span>
                   )}
                 </div>
                 {selectedPhoto.note && <p className="text-gray-300 text-sm">{selectedPhoto.note}</p>}
@@ -1052,7 +1056,7 @@ const GoodsContent = () => {
 };
 
 const SeatViewForm = ({ zone, onClose }) => {
-  const [form, setForm] = useState({ row: '', seat: '', note: '', nickname: '' });
+  const [form, setForm] = useState({ block: '', row: '', seat: '', note: '', nickname: '' });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -1096,6 +1100,12 @@ const SeatViewForm = ({ zone, onClose }) => {
           <div className="p-4 space-y-4">
             <div className="bg-zinc-800/50 rounded-xl p-3 text-gray-400 text-sm">
               💡 좌석 정보만 남겨주시면 팩트페페가 직접 확인 후 시야 사진을 업로드합니다
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">블럭</label>
+              <input type="text" value={form.block} onChange={e => setForm({ ...form, block: e.target.value })}
+                placeholder="예) 101, 102, A블럭"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -1819,6 +1829,7 @@ const AdminSeatPhotoUpload = () => {
   const [zoneId, setZoneId] = useState('');
   const [photo, setPhoto] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [block, setBlock] = useState('');
   const [row, setRow] = useState('');
   const [seat, setSeat] = useState('');
   const [note, setNote] = useState('');
@@ -1854,10 +1865,10 @@ const AdminSeatPhotoUpload = () => {
       const compressed = await compressImage(photo);
       const photoUrl = await uploadToCloudinary(compressed);
       await push(dbRef(database, `seatViews/zonePhotos/${zoneId}`), {
-        photoUrl, row, seat, note,
+        photoUrl, block, row, seat, note,
         uploadedAt: Date.now(),
       });
-      setPhoto(null); setPreview(null); setRow(''); setSeat(''); setNote('');
+      setPhoto(null); setPreview(null); setBlock(''); setRow(''); setSeat(''); setNote('');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -1910,6 +1921,8 @@ const AdminSeatPhotoUpload = () => {
                 <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
               </label>
             )}
+            <input type="text" value={block} onChange={e => setBlock(e.target.value)} placeholder="블럭 (예: 101, A블럭)"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
             <div className="grid grid-cols-2 gap-2">
               <input type="text" value={row} onChange={e => setRow(e.target.value)} placeholder="열 (예: A열)"
                 className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
@@ -1935,9 +1948,9 @@ const AdminSeatPhotoUpload = () => {
                 {zonePhotos.map(p => (
                   <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden group">
                     <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
-                    {(p.row || p.seat) && (
+                    {(p.block || p.row || p.seat) && (
                       <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 text-center">
-                        <p className="text-white text-xs">{p.row} {p.seat}</p>
+                        <p className="text-white text-xs">{p.block && `${p.block}`}{p.row && ` ${p.row}`}{p.seat && ` ${p.seat}`}</p>
                       </div>
                     )}
                     <button onClick={() => handleDelete(p.id)}
