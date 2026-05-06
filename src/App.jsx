@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref as dbRef, onValue, set, push, remove, runTransaction } from 'firebase/database';
+import { getDatabase, ref as dbRef, onValue, set, push, remove, update, runTransaction } from 'firebase/database';
 import html2canvas from 'html2canvas';
 
 const firebaseConfig = {
@@ -2042,6 +2042,27 @@ const AdminSeatPhotoUpload = () => {
     await remove(dbRef(database, `seatViews/zonePhotos/${zoneId}/${photoId}`));
   };
 
+  const [editingPhoto, setEditingPhoto] = useState(null); // { id, block, row, seat, note }
+  const [editSaving, setEditSaving] = useState(false);
+
+  const handleEditSave = async () => {
+    if (!editingPhoto) return;
+    setEditSaving(true);
+    try {
+      await update(dbRef(database, `seatViews/zonePhotos/${zoneId}/${editingPhoto.id}`), {
+        block: editingPhoto.block || '',
+        row: editingPhoto.row || '',
+        seat: editingPhoto.seat || '',
+        note: editingPhoto.note || '',
+      });
+      setEditingPhoto(null);
+    } catch (err) {
+      alert(`수정 실패: ${err.message}`);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-lg space-y-4">
       <AdminStadiumMapUpload />
@@ -2103,22 +2124,77 @@ const AdminSeatPhotoUpload = () => {
             ) : zonePhotos.length === 0 ? (
               <p className="text-zinc-600 text-sm text-center py-4">사진 없음</p>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-3">
                 {zonePhotos.map(p => (
-                  <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden group">
-                    <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
-                    {(p.block || p.row || p.seat) && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 text-center">
-                        <p className="text-white text-xs">{p.block && `${p.block}`}{p.row && ` ${p.row}`}{p.seat && ` ${p.seat}`}</p>
+                  <div key={p.id} className="flex gap-3 bg-zinc-800 rounded-xl overflow-hidden">
+                    {/* 썸네일 */}
+                    <img src={p.photoUrl} alt="" className="w-24 h-24 object-cover flex-shrink-0" />
+                    {/* 텍스트 정보 */}
+                    <div className="flex-1 py-2 pr-2 min-w-0">
+                      <p className="text-white text-sm font-bold truncate">
+                        {[p.block && `${p.block}블럭`, p.row && `${p.row}열`, p.seat && `${p.seat}번`].filter(Boolean).join(' ') || '위치 정보 없음'}
+                      </p>
+                      {p.note && <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">"{p.note}"</p>}
+                      {p.byUser && <span className="inline-block mt-1 text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">유저제보</span>}
+                      {/* 액션 버튼 */}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => setEditingPhoto({ id: p.id, block: p.block || '', row: p.row || '', seat: p.seat || '', note: p.note || '', photoUrl: p.photoUrl })}
+                          className="text-xs text-zinc-400 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded-lg transition-all font-bold">
+                          ✏️ 수정
+                        </button>
+                        <button onClick={() => handleDelete(p.id)}
+                          className="text-xs text-red-400 hover:text-white bg-red-600/10 hover:bg-red-600 px-2 py-1 rounded-lg transition-all font-bold">
+                          🗑 삭제
+                        </button>
                       </div>
-                    )}
-                    <button onClick={() => handleDelete(p.id)}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* 편집 모달 */}
+          {editingPhoto && (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditingPhoto(null)}>
+              <div className="bg-zinc-900 rounded-t-3xl sm:rounded-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+                  <p className="text-white font-black">✏️ 정보 수정</p>
+                  <button onClick={() => setEditingPhoto(null)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+                </div>
+                <div className="p-4 space-y-3">
+                  <img src={editingPhoto.photoUrl} alt="" className="w-full aspect-video object-cover rounded-xl" />
+                  <input
+                    type="text" value={editingPhoto.block}
+                    onChange={e => setEditingPhoto(p => ({ ...p, block: e.target.value }))}
+                    placeholder="블럭 (예: 101, A블럭)"
+                    className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text" value={editingPhoto.row}
+                      onChange={e => setEditingPhoto(p => ({ ...p, row: e.target.value }))}
+                      placeholder="열 (예: A열, 3열)"
+                      className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+                    <input
+                      type="text" value={editingPhoto.seat}
+                      onChange={e => setEditingPhoto(p => ({ ...p, seat: e.target.value }))}
+                      placeholder="번호 (예: 15)"
+                      className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+                  </div>
+                  <input
+                    type="text" value={editingPhoto.note}
+                    onChange={e => setEditingPhoto(p => ({ ...p, note: e.target.value }))}
+                    placeholder="설명 (선택)"
+                    className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+                  <button onClick={handleEditSave} disabled={editSaving}
+                    className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 rounded-xl font-black transition-all">
+                    {editSaving ? '저장 중...' : '✓ 저장'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
