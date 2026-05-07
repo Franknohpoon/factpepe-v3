@@ -800,10 +800,8 @@ const LineupTab = () => {
         <div className="flex justify-center lg:sticky lg:top-24 lg:self-start">
           <div ref={cardRef} style={{
             background: bgPlayerImage
-              ? `${currentStyle.overlay}, url(${bgPlayerImage})`
+              ? `${currentStyle.overlay}, url(${bgPlayerImage}) center top / cover no-repeat`
               : currentStyle.gradient,
-            backgroundSize: bgPlayerImage ? 'cover' : undefined,
-            backgroundPosition: bgPlayerImage ? 'center top' : undefined,
             boxShadow: currentStyle.shadow,
             width: '340px',
             borderRadius: '20px',
