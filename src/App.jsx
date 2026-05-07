@@ -2267,7 +2267,19 @@ const HomerunGame = () => {
         <div style={{ position: 'absolute', top: '72%', left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.08)', fontSize: '9px', fontWeight: 700, letterSpacing: '2px' }}>STRIKE ZONE</div>
 
         {/* 타자 실루엣 */}
-        <div style={{ position: 'absolute', bottom: '8%', left: '50%', transform: 'translateX(-50%)', fontSize: '40px', opacity: 0.3 }}>🏏</div>
+        {/* 야구 배트 SVG */}
+        <div style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%) rotate(-30deg)', opacity: 0.25 }}>
+          <svg width="28" height="110" viewBox="0 0 28 110" fill="none">
+            {/* 손잡이 */}
+            <rect x="11" y="0" width="6" height="55" rx="3" fill="white"/>
+            {/* 손잡이→배럴 연결부 */}
+            <path d="M11 52 Q8 62 6 72 L22 72 Q20 62 17 52 Z" fill="white"/>
+            {/* 배럴 */}
+            <ellipse cx="14" cy="90" rx="13" ry="20" fill="white"/>
+            {/* 배럴 하이라이트 */}
+            <ellipse cx="10" cy="82" rx="4" ry="8" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+        </div>
 
         {/* 공 */}
         {(phase === 'pitching' || phase === 'countdown') && (
