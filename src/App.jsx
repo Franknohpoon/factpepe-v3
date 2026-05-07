@@ -812,6 +812,10 @@ const SeatViewContent = () => {
   const [showMapExplorer, setShowMapExplorer] = useState(false);
   const [explorerCategory, setExplorerCategory] = useState('내야');
   const [explorerZone, setExplorerZone] = useState(null);
+  const [pinActionZone, setPinActionZone] = useState(null);
+  // 같은 좌석 슬라이드
+  const [carousel, setCarousel] = useState(null); // { photos: [...], idx: number }
+  const touchStartX = useRef(null);
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -878,30 +882,52 @@ const SeatViewContent = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {blockKeys.map(blockKey => (
-              <div key={blockKey}>
-                {/* 블럭 헤더 */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-white font-black text-sm">{blockKey}</span>
-                  <span className="text-zinc-600 text-xs">{blockGroups[blockKey].length}장</span>
-                  <div className="flex-1 h-px bg-zinc-800" />
+            {blockKeys.map(blockKey => {
+              // 블럭 내에서 같은 열+번호끼리 묶기
+              const seatMap = {};
+              blockGroups[blockKey].forEach(p => {
+                const key = (p.row || p.seat) ? `${p.row || '?'}_${p.seat || '?'}` : `__solo_${p.id}`;
+                if (!seatMap[key]) seatMap[key] = { photos: [], row: p.row, seat: p.seat };
+                seatMap[key].photos.push(p);
+              });
+              const seatEntries = Object.entries(seatMap);
+
+              return (
+                <div key={blockKey}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-white font-black text-sm">{blockKey}</span>
+                    <span className="text-zinc-600 text-xs">{seatEntries.length}좌석 · {blockGroups[blockKey].length}장</span>
+                    <div className="flex-1 h-px bg-zinc-800" />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {seatEntries.map(([seatKey, group]) => {
+                      const rep = group.photos[0];
+                      const count = group.photos.length;
+                      const label = [group.row && `${group.row}열`, group.seat && `${group.seat}번`].filter(Boolean).join(' ') || '위치 미상';
+                      return (
+                        <button key={seatKey}
+                          onClick={() => count > 1
+                            ? setCarousel({ photos: group.photos, idx: 0, block: blockKey, row: group.row, seat: group.seat })
+                            : setSelectedPhoto({ ...rep, _block: blockKey })}
+                          className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500 active:scale-95">
+                          <img src={rep.photoUrl} alt={label} className="w-full h-full object-cover" />
+                          {/* 위치 라벨 */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                            <p className="text-white text-xs">{label}</p>
+                          </div>
+                          {/* 여러 장 뱃지 */}
+                          {count > 1 && (
+                            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                              +{count - 1}장
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                {/* 해당 블럭의 사진 그리드 */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {blockGroups[blockKey].map(p => (
-                    <button key={p.id} onClick={() => setSelectedPhoto(p)}
-                      className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500">
-                      <img src={p.photoUrl} alt={selectedZone.label} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                        <p className="text-white text-xs">
-                          {[p.row && `${p.row}열`, p.seat && `${p.seat}번`].filter(Boolean).join(' ') || '위치 미상'}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -925,6 +951,62 @@ const SeatViewContent = () => {
             </div>
           </div>
         )}
+        {/* 같은 좌석 슬라이드 모달 */}
+        {carousel && (
+          <div className="fixed inset-0 bg-black z-50 flex flex-col"
+            onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              if (touchStartX.current === null) return;
+              const diff = touchStartX.current - e.changedTouches[0].clientX;
+              if (diff > 50 && carousel.idx < carousel.photos.length - 1)
+                setCarousel(c => ({ ...c, idx: c.idx + 1 }));
+              else if (diff < -50 && carousel.idx > 0)
+                setCarousel(c => ({ ...c, idx: c.idx - 1 }));
+              touchStartX.current = null;
+            }}>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+              <div>
+                <p className="text-white font-bold text-sm">
+                  {[carousel.block, carousel.row && `${carousel.row}열`, carousel.seat && `${carousel.seat}번`].filter(Boolean).join(' ')}
+                </p>
+                <p className="text-zinc-500 text-xs">{carousel.idx + 1} / {carousel.photos.length}장</p>
+              </div>
+              <button onClick={() => setCarousel(null)} className="text-gray-400 text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
+            </div>
+            {/* 사진 */}
+            <div className="flex-1 flex items-center justify-center px-4 pb-4 relative">
+              <img src={carousel.photos[carousel.idx].photoUrl} alt=""
+                className="max-w-full max-h-full object-contain rounded-xl" />
+              {/* 이전/다음 버튼 */}
+              {carousel.idx > 0 && (
+                <button onClick={() => setCarousel(c => ({ ...c, idx: c.idx - 1 }))}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all">
+                  ‹
+                </button>
+              )}
+              {carousel.idx < carousel.photos.length - 1 && (
+                <button onClick={() => setCarousel(c => ({ ...c, idx: c.idx + 1 }))}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all">
+                  ›
+                </button>
+              )}
+            </div>
+            {/* 인디케이터 + 메모 */}
+            <div className="flex-shrink-0 px-4 pb-6">
+              {carousel.photos[carousel.idx].note && (
+                <p className="text-gray-300 text-sm text-center mb-3">"{carousel.photos[carousel.idx].note}"</p>
+              )}
+              <div className="flex justify-center gap-1.5">
+                {carousel.photos.map((_, i) => (
+                  <button key={i} onClick={() => setCarousel(c => ({ ...c, idx: i }))}
+                    className={`rounded-full transition-all ${i === carousel.idx ? 'w-5 h-2 bg-red-500' : 'w-2 h-2 bg-zinc-600'}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
       </div>
     );
@@ -932,22 +1014,83 @@ const SeatViewContent = () => {
 
   return (
     <div>
-      {/* 구장 좌석 배치도 - 탭하면 구역 탐색기 오픈 */}
+      {/* 구장 좌석 배치도 + 핀 오버레이 */}
       {stadiumMap?.url && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
-            <p className="text-xs text-zinc-500">구역을 눌러 사진 확인 · 제보</p>
+            <button onClick={() => setShowMapExplorer(true)} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+              전체 구역 보기 ›
+            </button>
           </div>
-          <button onClick={() => setShowMapExplorer(true)}
-            className="w-full rounded-2xl overflow-hidden border border-zinc-700 hover:border-red-500 transition-all active:scale-[0.99] relative group">
-            <img src={stadiumMap.url} alt="구장 좌석 배치도" className="w-full object-contain bg-zinc-900" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/30 transition-all rounded-2xl flex items-center justify-center">
-              <span className="opacity-0 group-hover:opacity-100 bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-all">
-                🔍 구역 선택하기
-              </span>
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-700">
+            {/* 배경 이미지 - 핀 없는 곳 탭 시 탐색기 오픈 */}
+            <img
+              src={stadiumMap.url} alt="구장 좌석 배치도"
+              className="w-full block"
+              onClick={() => setShowMapExplorer(true)}
+            />
+            {/* 구역 핀들 */}
+            {Object.entries(stadiumMap.hotspots || {}).map(([zoneId, pin]) => {
+              const zone = LANDERS_ZONES.find(z => z.id === zoneId);
+              if (!zone) return null;
+              const hasPhotos = (photos[zoneId] || []).length > 0;
+              return (
+                <button
+                  key={zoneId}
+                  onClick={(e) => { e.stopPropagation(); setPinActionZone(zone); }}
+                  style={{ position: 'absolute', left: `${pin.x}%`, top: `${pin.y}%`, transform: 'translate(-50%, -50%)' }}
+                  className="group">
+                  {/* 사진 있는 구역 펄스 효과 */}
+                  {hasPhotos && (
+                    <span className="absolute inset-0 rounded-full animate-ping opacity-50"
+                      style={{ backgroundColor: zone.color }} />
+                  )}
+                  <span className="relative w-5 h-5 rounded-full border-2 border-white shadow-lg block active:scale-110 transition-transform"
+                    style={{ backgroundColor: zone.color }} />
+                  {/* 호버/포커스 라벨 */}
+                  <span className="absolute left-1/2 -translate-x-1/2 -bottom-7 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity pointer-events-none z-10">
+                    {zone.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {Object.keys(stadiumMap.hotspots || {}).length === 0 && (
+            <p className="text-zinc-600 text-xs text-center mt-1">구역을 탭해 시야 사진을 확인하세요</p>
+          )}
+        </div>
+      )}
+
+      {/* 핀 탭 시 바로 액션시트 */}
+      {pinActionZone && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={() => setPinActionZone(null)}>
+          <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-3xl w-full p-5 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-zinc-600 rounded-full mx-auto mb-4" />
+            <div className="flex items-center gap-3 mb-5">
+              <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: pinActionZone.color }} />
+              <div>
+                <p className="text-white font-black text-lg leading-tight">{pinActionZone.label}</p>
+                <p className="text-gray-500 text-xs">{pinActionZone.category} · {photos[pinActionZone.id]?.length || 0}장의 시야 사진</p>
+              </div>
             </div>
-          </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setPinActionZone(null); setSelectedZone(pinActionZone); }}
+                className="bg-zinc-800 hover:bg-zinc-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
+                <span className="text-2xl">📷</span>
+                <span>사진 보기</span>
+                <span className="text-zinc-500 text-xs font-normal">{photos[pinActionZone.id]?.length || 0}장</span>
+              </button>
+              <button
+                onClick={() => { setPinActionZone(null); setReportZone(pinActionZone); setShowForm(true); }}
+                className="bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
+                <span className="text-2xl">✏️</span>
+                <span>제보하기</span>
+                <span className="text-red-300 text-xs font-normal">구역 자동 입력</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1970,6 +2113,11 @@ const AdminStadiumMapUpload = () => {
   const [mapPreview, setMapPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
+  // 핀 설정
+  const [pinMode, setPinMode] = useState(false);
+  const [pendingPin, setPendingPin] = useState(null); // { x, y } 퍼센트
+  const [pickerCategory, setPickerCategory] = useState('내야');
+  const imgContainerRef = useRef(null);
 
   useEffect(() => {
     const unsub = onValue(dbRef(database, 'seatViews/stadiumMap'), (snap) => {
@@ -1991,7 +2139,8 @@ const AdminStadiumMapUpload = () => {
     try {
       const compressed = await compressImage(mapFile);
       const url = await uploadToCloudinary(compressed);
-      await set(dbRef(database, 'seatViews/stadiumMap'), { url, updatedAt: Date.now() });
+      // hotspots는 유지하고 url/updatedAt만 업데이트
+      await update(dbRef(database, 'seatViews/stadiumMap'), { url, updatedAt: Date.now() });
       setMapFile(null); setMapPreview(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -2002,26 +2151,96 @@ const AdminStadiumMapUpload = () => {
     }
   };
 
+  const handleImageClick = (e) => {
+    if (!pinMode || !imgContainerRef.current) return;
+    const rect = imgContainerRef.current.getBoundingClientRect();
+    const x = parseFloat(((e.clientX - rect.left) / rect.width * 100).toFixed(1));
+    const y = parseFloat(((e.clientY - rect.top) / rect.height * 100).toFixed(1));
+    setPendingPin({ x, y });
+  };
+
+  const handleSavePin = async (zone) => {
+    if (!pendingPin) return;
+    await set(dbRef(database, `seatViews/stadiumMap/hotspots/${zone.id}`), {
+      x: pendingPin.x, y: pendingPin.y,
+    });
+    setPendingPin(null);
+  };
+
+  const handleDeletePin = async (zoneId) => {
+    await remove(dbRef(database, `seatViews/stadiumMap/hotspots/${zoneId}`));
+  };
+
+  const hotspots = currentMap?.hotspots || {};
+  const placedCount = Object.keys(hotspots).length;
+
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6 space-y-3">
-      <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
+      <div className="flex items-center justify-between">
+        <p className="text-white font-bold text-sm">🏟️ 구장 좌석 배치도</p>
+        {currentMap?.url && !mapPreview && (
+          <button onClick={() => { setPinMode(!pinMode); setPendingPin(null); }}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${pinMode ? 'bg-yellow-400 text-black' : 'bg-zinc-700 text-gray-300 hover:bg-zinc-600'}`}>
+            {pinMode ? '📍 핀 설정 중 (완료)' : `📍 구역 핀 설정 ${placedCount > 0 ? `(${placedCount})` : ''}`}
+          </button>
+        )}
+      </div>
+
+      {/* 현재 배치도 + 핀 오버레이 */}
       {currentMap?.url && !mapPreview && (
-        <div>
-          <p className="text-gray-500 text-xs mb-1">현재 배치도</p>
-          <img src={currentMap.url} alt="현재 배치도" className="w-full rounded-xl object-contain bg-zinc-800 max-h-48" />
-          {currentMap.updatedAt && (
-            <p className="text-zinc-600 text-xs mt-1">업데이트: {new Date(currentMap.updatedAt).toLocaleDateString('ko-KR')}</p>
+        <div className="space-y-2">
+          {pinMode && (
+            <p className="text-yellow-400 text-xs bg-yellow-400/10 rounded-lg px-3 py-2">
+              📍 이미지를 탭해 핀을 찍고, 구역을 선택하세요. 핀은 드래그 없이 탭 위치에 저장됩니다.
+            </p>
+          )}
+          <div
+            ref={imgContainerRef}
+            onClick={handleImageClick}
+            className={`relative rounded-xl overflow-hidden ${pinMode ? 'cursor-crosshair ring-2 ring-yellow-400' : ''}`}>
+            <img src={currentMap.url} alt="배치도" className="w-full block" />
+            {/* 기존 핀들 */}
+            {Object.entries(hotspots).map(([zoneId, pin]) => {
+              const zone = LANDERS_ZONES.find(z => z.id === zoneId);
+              if (!zone) return null;
+              return (
+                <div key={zoneId} style={{ position: 'absolute', left: `${pin.x}%`, top: `${pin.y}%`, transform: 'translate(-50%, -50%)' }} className="group">
+                  <div className="w-5 h-5 rounded-full border-2 border-white shadow-lg"
+                    style={{ backgroundColor: zone.color }} />
+                  {/* 호버 툴팁 */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-6 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    {zone.label}
+                  </div>
+                  {/* 핀 삭제 버튼 */}
+                  {pinMode && (
+                    <button onClick={(e) => { e.stopPropagation(); handleDeletePin(zoneId); }}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full text-xs font-bold flex items-center justify-center leading-none z-10">
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 핀 현황 */}
+          {placedCount > 0 && (
+            <p className="text-zinc-500 text-xs">
+              {placedCount}개 구역 핀 설정됨 · 미설정: {LANDERS_ZONES.length - placedCount}개
+            </p>
           )}
         </div>
       )}
+
+      {/* 배치도 업로드/교체 */}
       {mapPreview ? (
         <div className="relative">
-          <img src={mapPreview} alt="미리보기" className="w-full rounded-xl object-contain bg-zinc-800 max-h-48" />
+          <img src={mapPreview} alt="미리보기" className="w-full rounded-xl bg-zinc-800" />
           <button onClick={() => { setMapFile(null); setMapPreview(null); }}
             className="absolute top-2 right-2 bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">×</button>
         </div>
       ) : (
-        <label className="flex flex-col items-center justify-center w-full py-8 bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
+        <label className="flex flex-col items-center justify-center w-full py-6 bg-zinc-800 rounded-xl border-2 border-dashed border-zinc-600 cursor-pointer hover:border-red-600 transition-all">
           <p className="text-2xl mb-1">🗺️</p>
           <p className="text-gray-400 text-sm">{currentMap?.url ? '배치도 교체하기' : '배치도 업로드'}</p>
           <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
@@ -2032,6 +2251,39 @@ const AdminStadiumMapUpload = () => {
           className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2.5 rounded-xl font-black text-sm transition-all">
           {uploading ? '업로드 중...' : saved ? '✓ 저장 완료!' : '📤 배치도 저장'}
         </button>
+      )}
+
+      {/* 구역 선택 피커 (핀 찍은 후) */}
+      {pendingPin && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end" onClick={() => setPendingPin(null)}>
+          <div className="bg-zinc-900 rounded-t-2xl w-full max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800 flex-shrink-0">
+              <p className="text-white font-bold text-sm">이 위치의 구역을 선택하세요</p>
+              <button onClick={() => setPendingPin(null)} className="text-gray-400 text-xl">×</button>
+            </div>
+            <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto flex-shrink-0">
+              {ZONE_CATEGORIES.map(c => (
+                <button key={c} onClick={() => setPickerCategory(c)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${pickerCategory === c ? 'bg-red-600 text-white' : 'bg-zinc-700 text-gray-400'}`}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-1">
+              {LANDERS_ZONES.filter(z => z.category === pickerCategory).map(z => {
+                const alreadyPlaced = !!hotspots[z.id];
+                return (
+                  <button key={z.id} onClick={() => handleSavePin(z)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-all text-left">
+                    <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                    <span className="text-white text-sm flex-1">{z.label}</span>
+                    {alreadyPlaced && <span className="text-yellow-400 text-xs">기존 핀 교체됨</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
