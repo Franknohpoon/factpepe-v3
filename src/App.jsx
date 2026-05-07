@@ -131,30 +131,18 @@ const STYLE_PRESETS = {
     overlay:  'linear-gradient(160deg, rgba(206,14,45,0.82) 0%, rgba(107,0,24,0.88) 50%, rgba(10,0,5,0.94) 100%)',
     shadow: '0 20px 60px rgba(206,14,45,0.5)',
   },
-  fire: {
-    label: '🔥 파이어',
-    gradient: 'linear-gradient(160deg, #FF2200 0%, #CE0E2D 30%, #8B0000 65%, #000000 100%)',
-    overlay:  'linear-gradient(160deg, rgba(255,34,0,0.82) 0%, rgba(206,14,45,0.86) 45%, rgba(0,0,0,0.94) 100%)',
-    shadow: '0 20px 60px rgba(255,34,0,0.55)',
-  },
   field: {
     label: '🌿 그린필드',
     gradient: 'linear-gradient(160deg, #0f4023 0%, #0a2a18 40%, #061510 75%, #000000 100%)',
     overlay:  'linear-gradient(160deg, rgba(15,64,35,0.84) 0%, rgba(6,21,16,0.90) 55%, rgba(0,0,0,0.95) 100%)',
     shadow: '0 20px 60px rgba(15,64,35,0.55)',
   },
-  night: {
-    label: '🌙 나이트',
-    gradient: 'linear-gradient(160deg, #0b0e2e 0%, #161a50 30%, #0d1038 65%, #020208 100%)',
-    overlay:  'linear-gradient(160deg, rgba(11,14,46,0.84) 0%, rgba(22,26,80,0.87) 40%, rgba(2,2,8,0.95) 100%)',
-    shadow: '0 20px 60px rgba(22,26,80,0.7)',
-  },
   white: {
     label: '🤍 화이트',
     gradient: 'linear-gradient(160deg, #f0f0f0 0%, #d8d8d8 35%, #a0a0a0 70%, #505050 100%)',
     overlay:  'linear-gradient(160deg, rgba(240,240,240,0.82) 0%, rgba(160,160,160,0.87) 55%, rgba(50,50,50,0.94) 100%)',
     shadow: '0 20px 60px rgba(0,0,0,0.3)',
-    dark: true, // 텍스트 색상 반전
+    dark: true,
   },
 };
 
@@ -706,7 +694,7 @@ const LineupTab = () => {
           {/* 스타일 */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">⚡ 스타일</p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {Object.entries(STYLE_PRESETS).map(([k, v]) => (
                 <button key={k} onClick={() => setStylePreset(k)}
                   className={`py-2 px-1 rounded-lg text-xs font-bold transition-all ${stylePreset === k ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
@@ -719,10 +707,22 @@ const LineupTab = () => {
           {/* 로고 */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">🎭 로고</p>
-            <div className="flex gap-2">
-              {['🐸', '⚾', '🔥', '⚡', '👊'].map(e => (
-                <button key={e} onClick={() => setLogo(e)}
-                  className={`w-12 h-10 rounded-lg text-xl transition-all ${logo === e ? 'bg-red-600' : 'bg-zinc-800 hover:bg-zinc-700'}`}>{e}</button>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { val: '🐸',  label: '팩트페페' },
+                { val: '⚾',  label: '야구공' },
+                { val: '으쓱', label: '으쓱이' },
+                { val: 'SSG', label: 'SSG' },
+                { val: 'L',   label: 'L마크' },
+                { val: '🏆',  label: '우승' },
+                { val: '🔴',  label: '레드' },
+                { val: '👊',  label: '파이팅' },
+              ].map(({ val, label }) => (
+                <button key={val} onClick={() => setLogo(val)}
+                  className={`py-2 rounded-lg text-sm font-black transition-all flex flex-col items-center gap-0.5 ${logo === val ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-300 hover:bg-zinc-700'}`}>
+                  <span className="text-lg leading-tight">{val}</span>
+                  <span className="text-[9px] opacity-60 font-normal">{label}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -817,7 +817,7 @@ const LineupTab = () => {
               </div>
             )}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <div style={{ fontSize: '36px', marginBottom: '6px' }}>{logo}</div>
+              <div style={{ fontSize: logo.length > 1 ? '22px' : '36px', fontWeight: 900, letterSpacing: logo.length > 1 ? '2px' : 'normal', marginBottom: '6px', color: currentStyle.dark ? '#111' : 'white' }}>{logo}</div>
               <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.65)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700 }}>{displaySubtitle}</div>
             </div>
             {displayMsg && (
