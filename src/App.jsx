@@ -207,7 +207,7 @@ function App() {
     { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
     { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
     { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
-    { id: 'roulette', name: '뭐먹지',    emoji: '🍔', component: RouletteTab },
+    { id: 'game',     name: '미니게임',   emoji: '🎮', component: GameTab },
     { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
     { id: 'comic',    name: '4컷',       emoji: '🎨', component: ComicTab },
   ];
@@ -1865,10 +1865,9 @@ const RouletteTab = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-black text-white">🍔 오늘 뭐 먹지?</h2>
+        <p className="text-gray-400 text-sm font-bold">인천 SSG 랜더스필드 구장 먹거리 추천</p>
         {todayUsed && <span className="text-xs text-gray-500 bg-zinc-800 px-3 py-1 rounded-full">오늘 완료!</span>}
       </div>
-      <p className="text-gray-500 text-sm mb-6">인천 SSG 랜더스필드 구장 먹거리 추천 룰렛</p>
 
       {/* 룰렛 */}
       <div className="flex flex-col items-center mb-8">
@@ -2016,6 +2015,306 @@ const RouletteTab = () => {
           <p className="text-gray-600 text-xs">매일 1회 룰렛을 돌릴 수 있어요 · 결과를 저장해서 공유해보세요! 🐸</p>
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── 6-2. 홈런 더비 ──────────────────────────────────────────────────
+const HR_RESULTS = [
+  { min: 0,   max: 15,  label: '⚡ PERFECT 홈런!', emoji: '💥', type: 'homerun', pts: 4 },
+  { min: 15,  max: 30,  label: '2루타!', emoji: '✨', type: 'double', pts: 2 },
+  { min: 30,  max: 50,  label: '안타!', emoji: '👏', type: 'single', pts: 1 },
+  { min: 50,  max: 70,  label: '플라이 아웃', emoji: '🫧', type: 'flyout', pts: 0 },
+  { min: 70,  max: 100, label: '헛스윙!', emoji: '💨', type: 'miss', pts: 0 },
+];
+const HR_TITLES = [
+  { min: 30, title: '으쓱 홈런왕', emoji: '👑' },
+  { min: 20, title: '클린업 히터', emoji: '🔥' },
+  { min: 12, title: '교체 멤버', emoji: '⚾' },
+  { min: 0,  title: '관중석이 어울려요', emoji: '🍿' },
+];
+
+const HomerunGame = () => {
+  const resultRef = useRef(null);
+  const pitchStartRef = useRef(0);
+  const [phase, setPhase] = useState('ready'); // ready | countdown | pitching | swung | result | done
+  const [round, setRound] = useState(0);
+  const [results, setResults] = useState([]);
+  const [currentResult, setCurrentResult] = useState(null);
+  const [countdown, setCountdown] = useState(3);
+  const [ballTop, setBallTop] = useState(0);    // 0~100 (% from top)
+  const [busy, setBusy] = useState(false);
+  const animRef = useRef(null);
+
+  const totalRounds = 10;
+
+  const startGame = () => {
+    setPhase('ready');
+    setRound(0);
+    setResults([]);
+    setCurrentResult(null);
+    nextPitch(0);
+  };
+
+  const nextPitch = (r) => {
+    if (r >= totalRounds) {
+      setPhase('done');
+      return;
+    }
+    setRound(r + 1);
+    setCurrentResult(null);
+    setBallTop(0);
+    setPhase('countdown');
+    setCountdown(3);
+
+    let c = 3;
+    const cdInterval = setInterval(() => {
+      c--;
+      setCountdown(c);
+      if (c <= 0) {
+        clearInterval(cdInterval);
+        doPitch();
+      }
+    }, 600);
+  };
+
+  const doPitch = () => {
+    setPhase('pitching');
+    pitchStartRef.current = performance.now();
+    setBallTop(0);
+
+    const duration = 1200 + Math.random() * 400; // 1.2~1.6s
+    const start = performance.now();
+
+    const animate = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-in curve
+      const eased = progress * progress;
+      setBallTop(eased * 100);
+
+      if (progress < 1) {
+        animRef.current = requestAnimationFrame(animate);
+      } else {
+        // missed — didn't swing
+        setPhase('swung');
+        const miss = { label: '보고만 있었어요!', emoji: '😶', type: 'looking', pts: 0 };
+        setCurrentResult(miss);
+        setResults(prev => [...prev, miss]);
+        setTimeout(() => nextPitch(results.length + 1), 1500);
+      }
+    };
+    animRef.current = requestAnimationFrame(animate);
+  };
+
+  const handleSwing = () => {
+    if (phase !== 'pitching') return;
+    cancelAnimationFrame(animRef.current);
+    setPhase('swung');
+
+    // ballTop is 0~100, strike zone is around 65~80
+    // calculate distance from perfect (72)
+    const distance = Math.abs(ballTop - 72);
+    const result = HR_RESULTS.find(r => distance >= r.min && distance < r.max) || HR_RESULTS[HR_RESULTS.length - 1];
+
+    setCurrentResult(result);
+    setResults(prev => {
+      const updated = [...prev, result];
+      setTimeout(() => nextPitch(updated.length), 1600);
+      return updated;
+    });
+  };
+
+  const totalScore = results.reduce((s, r) => s + r.pts, 0);
+  const finalTitle = HR_TITLES.find(t => totalScore >= t.min) || HR_TITLES[HR_TITLES.length - 1];
+
+  const shareResult = async () => {
+    if (!resultRef.current || busy) return;
+    setBusy(true);
+    try {
+      const canvas = await html2canvas(resultRef.current, { scale: 2, backgroundColor: null, logging: false });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], 'homerun.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: '홈런 더비 결과' });
+      } else {
+        const link = document.createElement('a');
+        link.download = 'homerun-result.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    } finally { setBusy(false); }
+  };
+
+  // 게임 시작 전
+  if (phase === 'ready' && round === 0) return (
+    <div className="flex flex-col items-center py-8">
+      <div className="text-7xl mb-4">⚾</div>
+      <h3 className="text-white font-black text-2xl mb-2">홈런 더비</h3>
+      <p className="text-gray-400 text-sm mb-1">타이밍에 맞춰 화면을 터치!</p>
+      <p className="text-gray-600 text-xs mb-8">10번의 타석, 최고의 타자가 되어보세요</p>
+      <button onClick={startGame}
+        className="bg-red-600 hover:bg-red-500 text-white px-10 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all">
+        🏟️ 경기 시작!
+      </button>
+    </div>
+  );
+
+  // 게임 완료
+  if (phase === 'done') {
+    const hits = results.filter(r => r.pts > 0).length;
+    const homers = results.filter(r => r.type === 'homerun').length;
+    return (
+      <div className="flex flex-col items-center">
+        <div ref={resultRef} style={{ background: 'linear-gradient(160deg, #1a0008 0%, #CE0E2D 50%, #1a0008 100%)', width: '340px', borderRadius: '20px', padding: '28px 22px', boxShadow: '0 20px 50px rgba(206,14,45,0.4)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginBottom: '8px' }}>홈런 더비 결과</div>
+            <div style={{ fontSize: '48px', marginBottom: '4px' }}>{finalTitle.emoji}</div>
+            <div style={{ color: 'white', fontWeight: 900, fontSize: '22px' }}>{finalTitle.title}</div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '16px' }}>
+            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>타점</div>
+              <div style={{ color: 'white', fontWeight: 900, fontSize: '20px' }}>{totalScore}</div>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>안타</div>
+              <div style={{ color: 'white', fontWeight: 900, fontSize: '20px' }}>{hits}/{totalRounds}</div>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>홈런</div>
+              <div style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '20px' }}>{homers}</div>
+            </div>
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            {results.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', marginBottom: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', width: '28px', fontWeight: 900 }}>{i + 1}타석</span>
+                <span style={{ fontSize: '14px', marginRight: '6px' }}>{r.emoji}</span>
+                <span style={{ color: 'white', fontSize: '11px', fontWeight: 700, flex: 1 }}>{r.label}</span>
+                <span style={{ color: r.pts > 0 ? '#ff6b6b' : 'rgba(255,255,255,0.3)', fontSize: '11px', fontWeight: 900 }}>+{r.pts}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>팩트페페 홈런 더비</div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button onClick={shareResult} disabled={busy}
+            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
+            ⬇ 저장
+          </button>
+          <button onClick={() => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); }}
+            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
+            🔄 다시하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 게임 진행 중
+  return (
+    <div>
+      {/* 상태바 */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-gray-400 text-xs font-bold">{round} / {totalRounds} 타석</span>
+        <span className="text-white font-black text-sm">타점: {totalScore}</span>
+      </div>
+      <div className="flex gap-1 mb-4">
+        {Array.from({ length: totalRounds }, (_, i) => {
+          const r = results[i];
+          return (
+            <div key={i} className={`flex-1 h-1.5 rounded-full ${
+              r ? (r.pts >= 4 ? 'bg-red-500' : r.pts > 0 ? 'bg-green-500' : 'bg-zinc-600')
+                : i === round - 1 ? 'bg-white animate-pulse' : 'bg-zinc-800'
+            }`} />
+          );
+        })}
+      </div>
+
+      {/* 피칭 영역 */}
+      <div
+        className="relative mx-auto rounded-2xl overflow-hidden select-none"
+        style={{ width: '280px', height: '400px', background: 'linear-gradient(180deg, #0a1628 0%, #1a2a1a 60%, #2a1a0a 100%)', cursor: phase === 'pitching' ? 'pointer' : 'default', touchAction: 'manipulation' }}
+        onClick={handleSwing}
+        onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
+      >
+        {/* 마운드 라인 */}
+        <div style={{ position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%)', width: '30px', height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px' }} />
+
+        {/* 스트라이크 존 */}
+        <div style={{ position: 'absolute', top: '60%', left: '50%', transform: 'translate(-50%, -50%)', width: '100px', height: '60px', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: '4px' }} />
+        <div style={{ position: 'absolute', top: '72%', left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.08)', fontSize: '9px', fontWeight: 700, letterSpacing: '2px' }}>STRIKE ZONE</div>
+
+        {/* 타자 실루엣 */}
+        <div style={{ position: 'absolute', bottom: '8%', left: '50%', transform: 'translateX(-50%)', fontSize: '40px', opacity: 0.3 }}>🏏</div>
+
+        {/* 공 */}
+        {(phase === 'pitching' || phase === 'countdown') && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: `${phase === 'countdown' ? 5 : ballTop * 0.85 + 5}%`,
+            transform: 'translate(-50%, -50%)',
+            transition: 'none',
+          }}>
+            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #fff, #ddd, #bbb)', boxShadow: '0 0 15px rgba(255,255,255,0.6), 0 0 30px rgba(255,255,255,0.2)' }} />
+          </div>
+        )}
+
+        {/* 카운트다운 */}
+        {phase === 'countdown' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ color: 'white', fontSize: '64px', fontWeight: 900, textShadow: '0 0 30px rgba(255,255,255,0.5)', animation: 'pulse 0.6s ease-in-out' }}>
+              {countdown > 0 ? countdown : '⚾'}
+            </div>
+          </div>
+        )}
+
+        {/* 터치 안내 */}
+        {phase === 'pitching' && !currentResult && (
+          <div style={{ position: 'absolute', bottom: '2%', left: 0, right: 0, textAlign: 'center' }}>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 700, animation: 'pulse 1s infinite' }}>
+              👆 지금 터치!
+            </div>
+          </div>
+        )}
+
+        {/* 스윙 결과 */}
+        {phase === 'swung' && currentResult && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: currentResult.pts >= 4 ? 'rgba(206,14,45,0.3)' : currentResult.pts > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(0,0,0,0.4)' }}>
+            <div style={{ fontSize: '56px', marginBottom: '8px' }}>{currentResult.emoji}</div>
+            <div style={{ color: 'white', fontSize: '20px', fontWeight: 900, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>{currentResult.label}</div>
+            {currentResult.pts > 0 && <div style={{ color: '#ff6b6b', fontSize: '14px', fontWeight: 900, marginTop: '4px' }}>+{currentResult.pts} 타점</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── 6-3. 미니게임 탭 래퍼 ───────────────────────────────────────────
+const GameTab = () => {
+  const [game, setGame] = useState('food');
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-2xl font-black text-white">🎮 미니게임</h2>
+      </div>
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setGame('food')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${game === 'food' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          🍔 뭐먹지
+        </button>
+        <button onClick={() => setGame('homerun')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${game === 'homerun' ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
+          ⚾ 홈런 더비
+        </button>
+      </div>
+      {game === 'food' ? <RouletteTab /> : <HomerunGame />}
     </div>
   );
 };
