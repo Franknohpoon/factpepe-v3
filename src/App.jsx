@@ -207,7 +207,7 @@ function App() {
     { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
     { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
     { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
-    { id: 'roulette', name: '으쓱룰렛',  emoji: '🎰', component: RouletteTab },
+    { id: 'roulette', name: '뭐먹지',    emoji: '🍔', component: RouletteTab },
     { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
     { id: 'comic',    name: '4컷',       emoji: '🎨', component: ComicTab },
   ];
@@ -1774,24 +1774,13 @@ const ChantTab = () => {
   );
 };
 
-// ─── 6. 으쓱 룰렛 ────────────────────────────────────────────────────
-const ROULETTE_ITEMS = [
-  { text: '오늘 SSG 승리 확률 99.9%', emoji: '🐸', color: '#CE0E2D', bg: 'from-red-600 to-red-800' },
-  { text: '으쓱이가 당신의 직관을 축복합니다', emoji: '🙏', color: '#0f4023', bg: 'from-green-700 to-green-900' },
-  { text: '인천 앞바다 바람에 홈런 날아감', emoji: '💨', color: '#1a3a5c', bg: 'from-blue-700 to-blue-900' },
-  { text: '오늘은 치킨 먹으면서 야구 보세요', emoji: '🍗', color: '#b45309', bg: 'from-amber-600 to-amber-800' },
-  { text: '당신은 전생에 랜더스 선수였습니다', emoji: '⚾', color: '#7c3aed', bg: 'from-violet-600 to-violet-800' },
-  { text: '파울볼이 당신에게 날아올 운명', emoji: '🧤', color: '#0369a1', bg: 'from-sky-700 to-sky-900' },
-  { text: '오늘 경기 끝내기 홈런 예감', emoji: '🔥', color: '#dc2626', bg: 'from-red-500 to-orange-700' },
-  { text: '핫도그 먹으면 SSG 승리', emoji: '🌭', color: '#a16207', bg: 'from-yellow-700 to-yellow-900' },
-  { text: '으쓱으쓱! 오늘 기분 최고!', emoji: '🎉', color: '#db2777', bg: 'from-pink-600 to-pink-800' },
-  { text: '3루석에서 기적이 일어납니다', emoji: '✨', color: '#4f46e5', bg: 'from-indigo-600 to-indigo-800' },
-  { text: '오늘의 MVP는 당신입니다', emoji: '🏆', color: '#ca8a04', bg: 'from-yellow-600 to-amber-800' },
-  { text: '페페가 랜더스 승리를 점쳤습니다', emoji: '🐸', color: '#15803d', bg: 'from-green-600 to-emerald-800' },
-];
+// ─── 6. 으쓱 룰렛 (구장 먹거리 추천) ──────────────────────────────────
+const WHEEL_COLORS = ['#CE0E2D', '#0f4023', '#1a3a5c', '#b45309', '#7c3aed', '#0369a1', '#dc2626', '#a16207', '#db2777', '#4f46e5', '#ca8a04', '#15803d', '#8b5cf6', '#0891b2', '#be123c', '#065f46'];
 
 const RouletteTab = () => {
   const resultRef = useRef(null);
+  const [foods, setFoods] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [angle, setAngle] = useState(0);
@@ -1799,6 +1788,18 @@ const RouletteTab = () => {
   const [busy, setBusy] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'roulette/foods'), snap => {
+      const data = snap.val();
+      if (data) {
+        setFoods(Object.entries(data).map(([id, v]) => ({ id, ...v })));
+      } else {
+        setFoods([]);
+      }
+      setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     const last = localStorage.getItem('roulette_last');
@@ -1809,27 +1810,26 @@ const RouletteTab = () => {
     }
   }, [today]);
 
-  const segAngle = 360 / ROULETTE_ITEMS.length;
+  const count = foods.length;
+  const segAngle = count > 0 ? 360 / count : 360;
 
   const spin = () => {
-    if (spinning || todayUsed) return;
+    if (spinning || todayUsed || count === 0) return;
     setSpinning(true);
     setResult(null);
 
-    const idx = Math.floor(Math.random() * ROULETTE_ITEMS.length);
-    // 5~8 full rotations + land on the chosen segment
+    const idx = Math.floor(Math.random() * count);
     const extra = (360 * (5 + Math.floor(Math.random() * 4))) + (segAngle * idx) + (segAngle * 0.5);
     const newAngle = angle + extra;
     setAngle(newAngle);
 
     setTimeout(() => {
-      const item = ROULETTE_ITEMS[idx];
+      const item = foods[idx];
       setResult(item);
       setSpinning(false);
       setTodayUsed(true);
       localStorage.setItem('roulette_last', today);
       localStorage.setItem('roulette_result', JSON.stringify(item));
-      // analytics
       runTransaction(dbRef(database, `analytics/roulette/${today}`), v => (v || 0) + 1).catch(() => {});
     }, 4200);
   };
@@ -1838,33 +1838,42 @@ const RouletteTab = () => {
     if (!resultRef.current || busy) return;
     setBusy(true);
     try {
-      const canvas = await html2canvas(resultRef.current, { scale: 2, backgroundColor: null, logging: false });
+      const canvas = await html2canvas(resultRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       const file = new File([blob], 'roulette.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: '으쓱 룰렛 결과', text: '오늘의 으쓱 룰렛 결과 🐸\n\n#SSG랜더스 #팩트페페 #으쓱룰렛' });
+        await navigator.share({ files: [file], title: '으쓱 먹거리 룰렛', text: '오늘의 구장 먹거리 추천 🍔\n\n#SSG랜더스 #팩트페페 #구장먹거리' });
       } else {
         const link = document.createElement('a');
-        link.download = `roulette-${today}.png`;
+        link.download = `food-roulette-${today}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       }
     } finally { setBusy(false); }
   };
 
+  if (loading) return <div className="text-center py-20"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>;
+
+  if (count === 0) return (
+    <div className="text-center py-20 bg-zinc-900 border border-zinc-800 rounded-2xl">
+      <p className="text-5xl mb-4">🍔</p>
+      <p className="text-gray-400 text-lg mb-2">먹거리 준비 중!</p>
+      <p className="text-gray-600 text-sm">곧 구장 먹거리 정보가 등록됩니다 🐸</p>
+    </div>
+  );
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-black text-white">🎰 으쓱 룰렛</h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-black text-white">🍔 오늘 뭐 먹지?</h2>
         {todayUsed && <span className="text-xs text-gray-500 bg-zinc-800 px-3 py-1 rounded-full">오늘 완료!</span>}
       </div>
+      <p className="text-gray-500 text-sm mb-6">인천 SSG 랜더스필드 구장 먹거리 추천 룰렛</p>
 
       {/* 룰렛 */}
       <div className="flex flex-col items-center mb-8">
-        {/* 화살표 */}
         <div className="text-2xl mb-1" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🔻</div>
 
-        {/* 휠 */}
         <div className="relative" style={{ width: '300px', height: '300px' }}>
           <svg
             viewBox="0 0 300 300"
@@ -1874,7 +1883,7 @@ const RouletteTab = () => {
               transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
             }}
           >
-            {ROULETTE_ITEMS.map((item, i) => {
+            {foods.map((item, i) => {
               const startA = (i * segAngle - 90) * Math.PI / 180;
               const endA = ((i + 1) * segAngle - 90) * Math.PI / 180;
               const x1 = 150 + 150 * Math.cos(startA);
@@ -1883,34 +1892,34 @@ const RouletteTab = () => {
               const y2 = 150 + 150 * Math.sin(endA);
               const largeArc = segAngle > 180 ? 1 : 0;
               const midA = ((i + 0.5) * segAngle - 90) * Math.PI / 180;
-              const tx = 150 + 90 * Math.cos(midA);
-              const ty = 150 + 90 * Math.sin(midA);
+              const tx = 150 + 85 * Math.cos(midA);
+              const ty = 150 + 85 * Math.sin(midA);
+              const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
               return (
-                <g key={i}>
+                <g key={item.id}>
                   <path
                     d={`M150,150 L${x1},${y1} A150,150 0 ${largeArc},1 ${x2},${y2} Z`}
-                    fill={item.color}
+                    fill={color}
                     stroke="rgba(0,0,0,0.3)"
                     strokeWidth="1"
                   />
                   <text
                     x={tx} y={ty}
                     textAnchor="middle" dominantBaseline="middle"
-                    fill="white" fontSize="20"
+                    fill="white" fontSize={item.emoji ? '18' : '9'} fontWeight="900"
                     transform={`rotate(${(i + 0.5) * segAngle}, ${tx}, ${ty})`}
                   >
-                    {item.emoji}
+                    {item.emoji || item.name}
                   </text>
                 </g>
               );
             })}
-            {/* 중앙 원 */}
             <circle cx="150" cy="150" r="28" fill="#1a1a2e" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-            <text x="150" y="150" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="16" fontWeight="900">SSG</text>
+            <text x="150" y="146" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="10" fontWeight="900">오늘의</text>
+            <text x="150" y="159" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="10" fontWeight="900">먹거리</text>
           </svg>
         </div>
 
-        {/* 스핀 버튼 */}
         <button
           onClick={spin}
           disabled={spinning || todayUsed}
@@ -1922,7 +1931,7 @@ const RouletteTab = () => {
                 : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 hover:shadow-red-500/40 active:scale-95'
           }`}
         >
-          {spinning ? '으쓱으쓱 돌아가는 중...' : todayUsed ? '내일 다시 도전!' : '🎰 룰렛 돌리기!'}
+          {spinning ? '으쓱으쓱 돌아가는 중...' : todayUsed ? '내일 다시 도전!' : '🍔 룰렛 돌리기!'}
         </button>
       </div>
 
@@ -1931,48 +1940,80 @@ const RouletteTab = () => {
         <div className="flex flex-col items-center">
           <div
             ref={resultRef}
-            className={`w-full max-w-sm rounded-2xl p-6 text-center bg-gradient-to-br ${result.bg}`}
-            style={{ boxShadow: `0 20px 50px ${result.color}44` }}
+            style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #0a0a14 100%)', width: '340px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
           >
-            <div className="text-xs font-bold text-white/50 tracking-widest uppercase mb-4">오늘의 으쓱 운세</div>
-            <div className="text-6xl mb-4">{result.emoji}</div>
-            <div className="text-white font-black text-xl leading-snug mb-4">
-              {result.text}
+            {/* 음식 이미지 */}
+            {result.imageUrl && (
+              <div style={{ width: '100%', height: '200px', overflow: 'hidden', position: 'relative' }}>
+                <img src={result.imageUrl} alt={result.name} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(transparent, #1a1a2e)' }} />
+              </div>
+            )}
+            <div style={{ padding: '20px 24px 24px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginBottom: '8px' }}>오늘의 구장 먹거리 추천</div>
+                <div style={{ fontSize: '28px', marginBottom: '4px' }}>{result.emoji || '🍽️'}</div>
+                <div style={{ color: 'white', fontWeight: 900, fontSize: '24px', marginBottom: '12px' }}>{result.name}</div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ flex: 1, background: 'rgba(206,14,45,0.15)', border: '1px solid rgba(206,14,45,0.3)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px', marginBottom: '4px' }}>위치</div>
+                  <div style={{ color: 'white', fontSize: '13px', fontWeight: 800 }}>📍 {result.location || '-'}</div>
+                </div>
+                <div style={{ flex: 1, background: 'rgba(206,14,45,0.15)', border: '1px solid rgba(206,14,45,0.3)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px', marginBottom: '4px' }}>가게</div>
+                  <div style={{ color: 'white', fontSize: '13px', fontWeight: 800 }}>🏪 {result.store || '-'}</div>
+                </div>
+              </div>
+              {result.desc && (
+                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px' }}>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: '1.5' }}>{result.desc}</div>
+                </div>
+              )}
+              <div style={{ textAlign: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>{today} · 팩트페페 먹거리 룰렛</div>
+              </div>
             </div>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="w-8 h-px bg-white/30" />
-              <span className="text-white/40 text-xs">🐸</span>
-              <span className="w-8 h-px bg-white/30" />
-            </div>
-            <div className="text-white/40 text-xs">{today} · 팩트페페 으쓱 룰렛</div>
           </div>
 
           <div className="flex gap-2 mt-4">
-            <button
-              onClick={shareResult}
-              disabled={busy}
-              className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all"
-            >
+            <button onClick={shareResult} disabled={busy}
+              className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
               ⬇ 저장
             </button>
             <button
-              onClick={async () => {
-                const text = encodeURIComponent(`오늘의 으쓱 운세: ${result.emoji} ${result.text}\n\n#SSG랜더스 #팩트페페 #으쓱룰렛`);
+              onClick={() => {
+                const text = encodeURIComponent(`오늘의 구장 먹거리: ${result.emoji || '🍽️'} ${result.name}\n📍 ${result.location} · ${result.store}\n\n#SSG랜더스 #팩트페페 #구장먹거리`);
                 window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
               }}
-              className="bg-black hover:bg-zinc-900 text-white border border-zinc-600 px-4 py-2 rounded-xl font-bold text-sm transition-all"
-            >
+              className="bg-black hover:bg-zinc-900 text-white border border-zinc-600 px-4 py-2 rounded-xl font-bold text-sm transition-all">
               𝕏 공유
             </button>
           </div>
         </div>
       )}
 
-      {/* 안내 */}
+      {/* 전체 메뉴 보기 */}
+      {!spinning && (
+        <div className="mt-8">
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">📋 전체 구장 먹거리</p>
+          <div className="grid grid-cols-2 gap-2">
+            {foods.map(f => (
+              <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                {f.imageUrl && <img src={f.imageUrl} alt={f.name} className="w-full h-24 object-cover" />}
+                <div className="p-2.5">
+                  <div className="text-white font-bold text-sm">{f.emoji || '🍽️'} {f.name}</div>
+                  <div className="text-gray-500 text-xs mt-0.5">📍 {f.location} · {f.store}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!result && !spinning && (
-        <div className="text-center">
-          <p className="text-gray-500 text-sm">매일 1회 룰렛을 돌릴 수 있어요</p>
-          <p className="text-gray-600 text-xs mt-1">결과를 저장해서 친구에게 공유해보세요! 🐸</p>
+        <div className="text-center mt-6">
+          <p className="text-gray-600 text-xs">매일 1회 룰렛을 돌릴 수 있어요 · 결과를 저장해서 공유해보세요! 🐸</p>
         </div>
       )}
     </div>
@@ -2006,6 +2047,7 @@ const AdminPage = () => {
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'pending',    label: '🔍 사진 검토' },
     { id: 'seatview',   label: '💬 제보 목록' },
+    { id: 'food',       label: '🍔 먹거리' },
   ];
 
   return (
@@ -2025,6 +2067,7 @@ const AdminPage = () => {
       {section === 'seatphoto' && <AdminSeatPhotoUpload />}
       {section === 'pending'   && <AdminPendingPhotos />}
       {section === 'seatview'  && <AdminSeatReports />}
+      {section === 'food'      && <AdminFoodManager />}
     </div>
   );
 };
@@ -3001,6 +3044,157 @@ const AdminSeatReports = () => {
           <p className="text-zinc-600 text-xs mt-2">by {r.nickname || '익명'} · {r.date}</p>
         </div>
       ))}
+    </div>
+  );
+};
+
+// ─── 어드민: 먹거리 관리 ──────────────────────────────────────────────
+const AdminFoodManager = () => {
+  const [foods, setFoods] = useState([]);
+  const [form, setForm] = useState({ name: '', emoji: '', location: '', store: '', desc: '' });
+  const [preview, setPreview] = useState(null);
+  const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'roulette/foods'), snap => {
+      const data = snap.val();
+      if (data) setFoods(Object.entries(data).map(([id, v]) => ({ id, ...v })));
+      else setFoods([]);
+    });
+  }, []);
+
+  const uploadImage = async (f) => {
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('upload_preset', 'ml_default');
+    const res = await fetch('https://api.cloudinary.com/v1_1/doxa1dysw/image/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || (!file && !editingId)) return;
+    setSaving(true);
+    try {
+      let imageUrl = editingId ? foods.find(f => f.id === editingId)?.imageUrl : null;
+      if (file) {
+        const compressed = await compressImage(file);
+        imageUrl = await uploadImage(compressed);
+      }
+      const payload = {
+        name: form.name.trim(),
+        emoji: form.emoji.trim(),
+        location: form.location.trim(),
+        store: form.store.trim(),
+        desc: form.desc.trim(),
+        imageUrl: imageUrl || '',
+        updatedAt: Date.now(),
+      };
+      if (editingId) {
+        await update(dbRef(database, `roulette/foods/${editingId}`), payload);
+      } else {
+        await push(dbRef(database, 'roulette/foods'), payload);
+      }
+      setForm({ name: '', emoji: '', location: '', store: '', desc: '' });
+      setPreview(null);
+      setFile(null);
+      setEditingId(null);
+    } catch (e) { alert('저장 실패: ' + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('삭제하시겠습니까?')) return;
+    await remove(dbRef(database, `roulette/foods/${id}`));
+  };
+
+  const startEdit = (f) => {
+    setEditingId(f.id);
+    setForm({ name: f.name, emoji: f.emoji || '', location: f.location || '', store: f.store || '', desc: f.desc || '' });
+    setPreview(f.imageUrl || null);
+    setFile(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-4 uppercase tracking-wider">
+          {editingId ? '✏️ 먹거리 수정' : '➕ 먹거리 등록'}
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <input type="text" placeholder="음식 이름 *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            <input type="text" placeholder="이모지 (예: 🍤)" value={form.emoji} onChange={e => setForm(p => ({ ...p, emoji: e.target.value }))}
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input type="text" placeholder="위치 (예: 1루 외야)" value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))}
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            <input type="text" placeholder="가게 이름" value={form.store} onChange={e => setForm(p => ({ ...p, store: e.target.value }))}
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+          </div>
+          <input type="text" placeholder="한줄 설명 (선택)" value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))}
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+          <div>
+            <label className="block cursor-pointer">
+              <div className="bg-zinc-800 border border-dashed border-zinc-600 rounded-lg p-3 text-center text-sm text-gray-400 hover:bg-zinc-700 transition-all">
+                {preview ? '📸 사진 변경' : '📷 음식 사진 업로드 *'}
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={e => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setFile(f);
+                setPreview(URL.createObjectURL(f));
+                e.target.value = '';
+              }} />
+            </label>
+            {preview && <img src={preview} alt="미리보기" className="mt-2 w-full h-32 object-cover rounded-lg" />}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving || !form.name.trim()}
+              className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white py-2.5 rounded-lg font-bold text-sm transition-all">
+              {saving ? '저장 중...' : editingId ? '✏️ 수정 완료' : '➕ 등록'}
+            </button>
+            {editingId && (
+              <button onClick={() => { setEditingId(null); setForm({ name: '', emoji: '', location: '', store: '', desc: '' }); setPreview(null); setFile(null); }}
+                className="px-4 bg-zinc-700 hover:bg-zinc-600 text-gray-300 py-2.5 rounded-lg font-bold text-sm transition-all">
+                취소
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 등록된 먹거리 목록 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">📋 등록된 먹거리 ({foods.length})</p>
+        {foods.length === 0 ? (
+          <p className="text-gray-600 text-sm text-center py-6">등록된 먹거리가 없습니다</p>
+        ) : (
+          <div className="space-y-2">
+            {foods.map(f => (
+              <div key={f.id} className="flex items-center gap-3 bg-zinc-800 rounded-lg p-2">
+                {f.imageUrl ? (
+                  <img src={f.imageUrl} alt={f.name} className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
+                ) : (
+                  <div className="w-14 h-14 bg-zinc-700 rounded-lg flex items-center justify-center text-xl flex-shrink-0">{f.emoji || '🍽️'}</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-bold text-sm truncate">{f.emoji} {f.name}</div>
+                  <div className="text-gray-500 text-xs">📍 {f.location} · {f.store}</div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => startEdit(f)} className="text-xs bg-zinc-700 hover:bg-zinc-600 text-gray-300 px-2 py-1 rounded">✏️</button>
+                  <button onClick={() => handleDelete(f.id)} className="text-xs bg-zinc-700 hover:bg-red-600 text-gray-300 px-2 py-1 rounded">🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
