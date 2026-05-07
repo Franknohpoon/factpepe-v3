@@ -2061,29 +2061,34 @@ const HomerunGame = () => {
       setPhase('done');
       return;
     }
-    setRound(r + 1);
+    const currentRound = r + 1;
+    setRound(currentRound);
     setCurrentResult(null);
     setBallTop(0);
     setPhase('countdown');
     setCountdown(3);
 
+    // 후반 라운드일수록 카운트다운도 짧게 (1~5: 600ms, 6~8: 450ms, 9~10: 300ms)
+    const cdDelay = currentRound <= 5 ? 600 : currentRound <= 8 ? 450 : 300;
     let c = 3;
     const cdInterval = setInterval(() => {
       c--;
       setCountdown(c);
       if (c <= 0) {
         clearInterval(cdInterval);
-        doPitch();
+        doPitch(currentRound);
       }
-    }, 600);
+    }, cdDelay);
   };
 
-  const doPitch = () => {
+  const doPitch = (currentRound) => {
     setPhase('pitching');
     pitchStartRef.current = performance.now();
     setBallTop(0);
 
-    const duration = 1200 + Math.random() * 400; // 1.2~1.6s
+    // 1라운드 ~1400ms → 10라운드 ~720ms 로 점진적으로 가속
+    const baseDuration = 1400 - (currentRound - 1) * 75; // 1400, 1325, ..., 725
+    const duration = baseDuration + Math.random() * 120;
     const start = performance.now();
 
     const animate = (now) => {
@@ -2100,8 +2105,11 @@ const HomerunGame = () => {
         setPhase('swung');
         const miss = { label: '보고만 있었어요!', emoji: '😶', type: 'looking', pts: 0 };
         setCurrentResult(miss);
-        setResults(prev => [...prev, miss]);
-        setTimeout(() => nextPitch(results.length + 1), 1500);
+        setResults(prev => {
+          const updated = [...prev, miss];
+          setTimeout(() => nextPitch(updated.length), 1400);
+          return updated;
+        });
       }
     };
     animRef.current = requestAnimationFrame(animate);
@@ -2120,7 +2128,9 @@ const HomerunGame = () => {
     setCurrentResult(result);
     setResults(prev => {
       const updated = [...prev, result];
-      setTimeout(() => nextPitch(updated.length), 1600);
+      // 후반 라운드일수록 결과 표시 시간도 짧게
+      const delay = updated.length <= 5 ? 1500 : updated.length <= 8 ? 1100 : 800;
+      setTimeout(() => nextPitch(updated.length), delay);
       return updated;
     });
   };
@@ -2221,6 +2231,13 @@ const HomerunGame = () => {
       {/* 상태바 */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-gray-400 text-xs font-bold">{round} / {totalRounds} 타석</span>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+          round >= 9 ? 'bg-red-600/30 text-red-400' :
+          round >= 6 ? 'bg-orange-600/30 text-orange-400' :
+          'bg-zinc-700 text-gray-500'
+        }`}>
+          {round >= 9 ? '🔥 MAX 속도' : round >= 6 ? '⚡ 가속 중' : '🎯 준비'}
+        </span>
         <span className="text-white font-black text-sm">타점: {totalScore}</span>
       </div>
       <div className="flex gap-1 mb-4">
