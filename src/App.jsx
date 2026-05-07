@@ -817,9 +817,8 @@ const LineupTab = () => {
               </div>
             )}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <div style={{ fontSize: '36px', marginBottom: '4px' }}>{logo}</div>
-              <div style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 900, fontSize: '22px', letterSpacing: '2px' }}>팩트페페</div>
-              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.65)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginTop: '2px' }}>{displaySubtitle}</div>
+              <div style={{ fontSize: '36px', marginBottom: '6px' }}>{logo}</div>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.65)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700 }}>{displaySubtitle}</div>
             </div>
             {displayMsg && (
               <div style={{ background: currentStyle.dark ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)', border: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'}`, borderRadius: '8px', padding: '5px 10px', textAlign: 'center', color: currentStyle.dark ? '#111' : 'white', fontSize: '11px', fontWeight: 700, marginBottom: '14px', letterSpacing: '1px' }}>{displayMsg}</div>
@@ -842,9 +841,8 @@ const LineupTab = () => {
                 </div>
               ))}
             </div>
-            <div style={{ textAlign: 'center', marginTop: '14px', paddingTop: '10px', borderTop: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'}` }}>
-              <div style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 900, fontSize: '13px' }}>팩트페페</div>
-              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: '10px' }}>@pepe_noh</div>
+            <div style={{ textAlign: 'right', marginTop: '12px', paddingTop: '8px', borderTop: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'}` }}>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @pepe_noh</div>
             </div>
           </div>
         </div>
