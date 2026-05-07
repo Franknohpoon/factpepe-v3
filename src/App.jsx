@@ -207,6 +207,7 @@ function App() {
     { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
     { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
     { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
+    { id: 'roulette', name: '으쓱룰렛',  emoji: '🎰', component: RouletteTab },
     { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
     { id: 'comic',    name: '4컷',       emoji: '🎨', component: ComicTab },
   ];
@@ -1773,7 +1774,212 @@ const ChantTab = () => {
   );
 };
 
-// ─── 6. 4컷 ─────────────────────────────────────────────────────────
+// ─── 6. 으쓱 룰렛 ────────────────────────────────────────────────────
+const ROULETTE_ITEMS = [
+  { text: '오늘 SSG 승리 확률 99.9%', emoji: '🐸', color: '#CE0E2D', bg: 'from-red-600 to-red-800' },
+  { text: '으쓱이가 당신의 직관을 축복합니다', emoji: '🙏', color: '#0f4023', bg: 'from-green-700 to-green-900' },
+  { text: '인천 앞바다 바람에 홈런 날아감', emoji: '💨', color: '#1a3a5c', bg: 'from-blue-700 to-blue-900' },
+  { text: '오늘은 치킨 먹으면서 야구 보세요', emoji: '🍗', color: '#b45309', bg: 'from-amber-600 to-amber-800' },
+  { text: '당신은 전생에 랜더스 선수였습니다', emoji: '⚾', color: '#7c3aed', bg: 'from-violet-600 to-violet-800' },
+  { text: '파울볼이 당신에게 날아올 운명', emoji: '🧤', color: '#0369a1', bg: 'from-sky-700 to-sky-900' },
+  { text: '오늘 경기 끝내기 홈런 예감', emoji: '🔥', color: '#dc2626', bg: 'from-red-500 to-orange-700' },
+  { text: '핫도그 먹으면 SSG 승리', emoji: '🌭', color: '#a16207', bg: 'from-yellow-700 to-yellow-900' },
+  { text: '으쓱으쓱! 오늘 기분 최고!', emoji: '🎉', color: '#db2777', bg: 'from-pink-600 to-pink-800' },
+  { text: '3루석에서 기적이 일어납니다', emoji: '✨', color: '#4f46e5', bg: 'from-indigo-600 to-indigo-800' },
+  { text: '오늘의 MVP는 당신입니다', emoji: '🏆', color: '#ca8a04', bg: 'from-yellow-600 to-amber-800' },
+  { text: '페페가 랜더스 승리를 점쳤습니다', emoji: '🐸', color: '#15803d', bg: 'from-green-600 to-emerald-800' },
+];
+
+const RouletteTab = () => {
+  const resultRef = useRef(null);
+  const [spinning, setSpinning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [angle, setAngle] = useState(0);
+  const [todayUsed, setTodayUsed] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    const last = localStorage.getItem('roulette_last');
+    if (last === today) {
+      setTodayUsed(true);
+      const saved = localStorage.getItem('roulette_result');
+      if (saved) setResult(JSON.parse(saved));
+    }
+  }, [today]);
+
+  const segAngle = 360 / ROULETTE_ITEMS.length;
+
+  const spin = () => {
+    if (spinning || todayUsed) return;
+    setSpinning(true);
+    setResult(null);
+
+    const idx = Math.floor(Math.random() * ROULETTE_ITEMS.length);
+    // 5~8 full rotations + land on the chosen segment
+    const extra = (360 * (5 + Math.floor(Math.random() * 4))) + (segAngle * idx) + (segAngle * 0.5);
+    const newAngle = angle + extra;
+    setAngle(newAngle);
+
+    setTimeout(() => {
+      const item = ROULETTE_ITEMS[idx];
+      setResult(item);
+      setSpinning(false);
+      setTodayUsed(true);
+      localStorage.setItem('roulette_last', today);
+      localStorage.setItem('roulette_result', JSON.stringify(item));
+      // analytics
+      runTransaction(dbRef(database, `analytics/roulette/${today}`), v => (v || 0) + 1).catch(() => {});
+    }, 4200);
+  };
+
+  const shareResult = async () => {
+    if (!resultRef.current || busy) return;
+    setBusy(true);
+    try {
+      const canvas = await html2canvas(resultRef.current, { scale: 2, backgroundColor: null, logging: false });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], 'roulette.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: '으쓱 룰렛 결과', text: '오늘의 으쓱 룰렛 결과 🐸\n\n#SSG랜더스 #팩트페페 #으쓱룰렛' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `roulette-${today}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-black text-white">🎰 으쓱 룰렛</h2>
+        {todayUsed && <span className="text-xs text-gray-500 bg-zinc-800 px-3 py-1 rounded-full">오늘 완료!</span>}
+      </div>
+
+      {/* 룰렛 */}
+      <div className="flex flex-col items-center mb-8">
+        {/* 화살표 */}
+        <div className="text-2xl mb-1" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🔻</div>
+
+        {/* 휠 */}
+        <div className="relative" style={{ width: '300px', height: '300px' }}>
+          <svg
+            viewBox="0 0 300 300"
+            className="w-full h-full drop-shadow-2xl"
+            style={{
+              transform: `rotate(${angle}deg)`,
+              transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+            }}
+          >
+            {ROULETTE_ITEMS.map((item, i) => {
+              const startA = (i * segAngle - 90) * Math.PI / 180;
+              const endA = ((i + 1) * segAngle - 90) * Math.PI / 180;
+              const x1 = 150 + 150 * Math.cos(startA);
+              const y1 = 150 + 150 * Math.sin(startA);
+              const x2 = 150 + 150 * Math.cos(endA);
+              const y2 = 150 + 150 * Math.sin(endA);
+              const largeArc = segAngle > 180 ? 1 : 0;
+              const midA = ((i + 0.5) * segAngle - 90) * Math.PI / 180;
+              const tx = 150 + 90 * Math.cos(midA);
+              const ty = 150 + 90 * Math.sin(midA);
+              return (
+                <g key={i}>
+                  <path
+                    d={`M150,150 L${x1},${y1} A150,150 0 ${largeArc},1 ${x2},${y2} Z`}
+                    fill={item.color}
+                    stroke="rgba(0,0,0,0.3)"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={tx} y={ty}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="20"
+                    transform={`rotate(${(i + 0.5) * segAngle}, ${tx}, ${ty})`}
+                  >
+                    {item.emoji}
+                  </text>
+                </g>
+              );
+            })}
+            {/* 중앙 원 */}
+            <circle cx="150" cy="150" r="28" fill="#1a1a2e" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+            <text x="150" y="150" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="16" fontWeight="900">SSG</text>
+          </svg>
+        </div>
+
+        {/* 스핀 버튼 */}
+        <button
+          onClick={spin}
+          disabled={spinning || todayUsed}
+          className={`mt-6 px-8 py-3 rounded-2xl font-black text-lg transition-all ${
+            spinning
+              ? 'bg-zinc-700 text-gray-500 animate-pulse'
+              : todayUsed
+                ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 hover:shadow-red-500/40 active:scale-95'
+          }`}
+        >
+          {spinning ? '으쓱으쓱 돌아가는 중...' : todayUsed ? '내일 다시 도전!' : '🎰 룰렛 돌리기!'}
+        </button>
+      </div>
+
+      {/* 결과 카드 */}
+      {result && (
+        <div className="flex flex-col items-center">
+          <div
+            ref={resultRef}
+            className={`w-full max-w-sm rounded-2xl p-6 text-center bg-gradient-to-br ${result.bg}`}
+            style={{ boxShadow: `0 20px 50px ${result.color}44` }}
+          >
+            <div className="text-xs font-bold text-white/50 tracking-widest uppercase mb-4">오늘의 으쓱 운세</div>
+            <div className="text-6xl mb-4">{result.emoji}</div>
+            <div className="text-white font-black text-xl leading-snug mb-4">
+              {result.text}
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="w-8 h-px bg-white/30" />
+              <span className="text-white/40 text-xs">🐸</span>
+              <span className="w-8 h-px bg-white/30" />
+            </div>
+            <div className="text-white/40 text-xs">{today} · 팩트페페 으쓱 룰렛</div>
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={shareResult}
+              disabled={busy}
+              className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all"
+            >
+              ⬇ 저장
+            </button>
+            <button
+              onClick={async () => {
+                const text = encodeURIComponent(`오늘의 으쓱 운세: ${result.emoji} ${result.text}\n\n#SSG랜더스 #팩트페페 #으쓱룰렛`);
+                window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+              }}
+              className="bg-black hover:bg-zinc-900 text-white border border-zinc-600 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+            >
+              𝕏 공유
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 안내 */}
+      {!result && !spinning && (
+        <div className="text-center">
+          <p className="text-gray-500 text-sm">매일 1회 룰렛을 돌릴 수 있어요</p>
+          <p className="text-gray-600 text-xs mt-1">결과를 저장해서 친구에게 공유해보세요! 🐸</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── 7. 4컷 ─────────────────────────────────────────────────────────
 const ComicTab = () => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
     <div className="text-7xl mb-6">🎨</div>
