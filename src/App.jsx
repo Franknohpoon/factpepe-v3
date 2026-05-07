@@ -125,11 +125,37 @@ const PLAYER_CHANTS = [
 ];
 
 const STYLE_PRESETS = {
-  classic: { label: '클래식', gradient: 'linear-gradient(135deg, #CE0E2D 0%, #a00b24 35%, #8B0000 65%, #2a0000 100%)', shadow: '0 20px 60px rgba(206,14,45,0.5)' },
-  fire:    { label: '🔥 파이어', gradient: 'linear-gradient(135deg, #FF0000 0%, #CE0E2D 25%, #8B0000 60%, #000000 100%)', shadow: '0 20px 60px rgba(255,0,0,0.6)' },
-  dark:    { label: '다크', gradient: 'linear-gradient(135deg, #2a0000 0%, #1a0000 30%, #0a0a0a 70%, #000000 100%)', shadow: '0 20px 60px rgba(0,0,0,0.8)' },
-  field:   { label: '그린필드', gradient: 'linear-gradient(135deg, #1a472a 0%, #0d2818 40%, #1a1a1a 80%, #000000 100%)', shadow: '0 20px 60px rgba(26,71,42,0.5)' },
-  gold:    { label: '🏆 골드', gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 25%, #CE0E2D 60%, #1a0000 100%)', shadow: '0 20px 60px rgba(255,215,0,0.5)' },
+  classic: {
+    label: '❤️ 클래식',
+    gradient: 'linear-gradient(160deg, #CE0E2D 0%, #a00b24 40%, #6b0018 70%, #1a0008 100%)',
+    overlay:  'linear-gradient(160deg, rgba(206,14,45,0.82) 0%, rgba(107,0,24,0.88) 50%, rgba(10,0,5,0.94) 100%)',
+    shadow: '0 20px 60px rgba(206,14,45,0.5)',
+  },
+  fire: {
+    label: '🔥 파이어',
+    gradient: 'linear-gradient(160deg, #FF2200 0%, #CE0E2D 30%, #8B0000 65%, #000000 100%)',
+    overlay:  'linear-gradient(160deg, rgba(255,34,0,0.82) 0%, rgba(206,14,45,0.86) 45%, rgba(0,0,0,0.94) 100%)',
+    shadow: '0 20px 60px rgba(255,34,0,0.55)',
+  },
+  field: {
+    label: '🌿 그린필드',
+    gradient: 'linear-gradient(160deg, #0f4023 0%, #0a2a18 40%, #061510 75%, #000000 100%)',
+    overlay:  'linear-gradient(160deg, rgba(15,64,35,0.84) 0%, rgba(6,21,16,0.90) 55%, rgba(0,0,0,0.95) 100%)',
+    shadow: '0 20px 60px rgba(15,64,35,0.55)',
+  },
+  night: {
+    label: '🌙 나이트',
+    gradient: 'linear-gradient(160deg, #0b0e2e 0%, #161a50 30%, #0d1038 65%, #020208 100%)',
+    overlay:  'linear-gradient(160deg, rgba(11,14,46,0.84) 0%, rgba(22,26,80,0.87) 40%, rgba(2,2,8,0.95) 100%)',
+    shadow: '0 20px 60px rgba(22,26,80,0.7)',
+  },
+  white: {
+    label: '🤍 화이트',
+    gradient: 'linear-gradient(160deg, #f0f0f0 0%, #d8d8d8 35%, #a0a0a0 70%, #505050 100%)',
+    overlay:  'linear-gradient(160deg, rgba(240,240,240,0.82) 0%, rgba(160,160,160,0.87) 55%, rgba(50,50,50,0.94) 100%)',
+    shadow: '0 20px 60px rgba(0,0,0,0.3)',
+    dark: true, // 텍스트 색상 반전
+  },
 };
 
 // 사진 압축 (모바일 업로드 최적화)
@@ -574,6 +600,8 @@ const LineupTab = () => {
   const [customSubtitle, setCustomSubtitle] = useState('');
   const [specialMsg, setSpecialMsg] = useState('');
   const [customMsg, setCustomMsg] = useState('');
+  const [bgPlayerImage, setBgPlayerImage] = useState(null); // 선수 배경 이미지 (ObjectURL)
+  const [bgPlayerName, setBgPlayerName] = useState(''); // 오늘의 주인공 이름
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -731,40 +759,94 @@ const LineupTab = () => {
               )}
             </div>
           </div>
+
+          {/* 오늘의 주인공 */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">🌟 오늘의 주인공</p>
+            <p className="text-gray-600 text-xs mb-3">선수 사진을 배경으로 넣어 카드를 특별하게!</p>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={bgPlayerName}
+                onChange={e => setBgPlayerName(e.target.value)}
+                placeholder="선수 이름 (예: 정준재)"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600"
+              />
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div className={`flex-1 py-2 rounded-lg text-center text-xs font-bold border transition-all ${bgPlayerImage ? 'bg-yellow-600 border-yellow-500 text-white' : 'bg-zinc-800 border-zinc-700 text-gray-400 hover:bg-zinc-700'}`}>
+                  {bgPlayerImage ? `📸 ${bgPlayerName || '선수'} 사진 등록됨` : '📷 선수 사진 업로드'}
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (bgPlayerImage) URL.revokeObjectURL(bgPlayerImage);
+                  setBgPlayerImage(URL.createObjectURL(file));
+                  e.target.value = '';
+                }} />
+              </label>
+              {bgPlayerImage && (
+                <button
+                  onClick={() => { URL.revokeObjectURL(bgPlayerImage); setBgPlayerImage(null); setBgPlayerName(''); }}
+                  className="w-full py-1.5 rounded-lg text-xs font-bold bg-zinc-800 text-gray-500 hover:bg-zinc-700 hover:text-red-400 transition-all"
+                >
+                  ✕ 배경 사진 제거
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* 미리보기 카드 */}
         <div className="flex justify-center lg:sticky lg:top-24 lg:self-start">
-          <div ref={cardRef} style={{ background: currentStyle.gradient, boxShadow: currentStyle.shadow, width: '340px', borderRadius: '20px', padding: '28px 22px', fontFamily: 'sans-serif' }}>
-            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <div style={{ fontSize: '36px', marginBottom: '4px' }}>{logo}</div>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '22px', letterSpacing: '2px' }}>팩트페페</div>
-              <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginTop: '2px' }}>{displaySubtitle}</div>
-            </div>
-            {displayMsg && (
-              <div style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '5px 10px', textAlign: 'center', color: 'white', fontSize: '11px', fontWeight: 700, marginBottom: '14px', letterSpacing: '1px' }}>{displayMsg}</div>
+          <div ref={cardRef} style={{
+            background: bgPlayerImage
+              ? `${currentStyle.overlay}, url(${bgPlayerImage})`
+              : currentStyle.gradient,
+            backgroundSize: bgPlayerImage ? 'cover' : undefined,
+            backgroundPosition: bgPlayerImage ? 'center top' : undefined,
+            boxShadow: currentStyle.shadow,
+            width: '340px',
+            borderRadius: '20px',
+            padding: '28px 22px',
+            fontFamily: 'sans-serif',
+          }}>
+            {/* 오늘의 주인공 뱃지 */}
+            {bgPlayerName && (
+              <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                <span style={{ background: 'rgba(255,215,0,0.25)', border: '1px solid rgba(255,215,0,0.6)', borderRadius: '20px', padding: '3px 12px', color: 'rgba(255,215,0,1)', fontSize: '10px', fontWeight: 800, letterSpacing: '1px' }}>
+                  ⭐ 오늘의 주인공 · {bgPlayerName}
+                </span>
+              </div>
             )}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px', marginBottom: '3px' }}>{lineupData.date}</div>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '17px' }}>SSG <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px' }}>VS</span> {lineupData.opponent}</div>
+              <div style={{ fontSize: '36px', marginBottom: '4px' }}>{logo}</div>
+              <div style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 900, fontSize: '22px', letterSpacing: '2px' }}>팩트페페</div>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.65)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginTop: '2px' }}>{displaySubtitle}</div>
+            </div>
+            {displayMsg && (
+              <div style={{ background: currentStyle.dark ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)', border: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'}`, borderRadius: '8px', padding: '5px 10px', textAlign: 'center', color: currentStyle.dark ? '#111' : 'white', fontSize: '11px', fontWeight: 700, marginBottom: '14px', letterSpacing: '1px' }}>{displayMsg}</div>
+            )}
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.55)', fontSize: '10px', marginBottom: '3px' }}>{lineupData.date}</div>
+              <div style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 900, fontSize: '17px' }}>SSG <span style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.45)', fontSize: '13px' }}>VS</span> {lineupData.opponent}</div>
               {lineupData.pitcher && (
-                <div style={{ marginTop: '6px', color: 'rgba(255,220,100,0.9)', fontSize: '11px', fontWeight: 700 }}>
+                <div style={{ marginTop: '6px', color: currentStyle.dark ? '#7a5500' : 'rgba(255,220,100,0.9)', fontSize: '11px', fontWeight: 700 }}>
                   ⚾ 선발 {lineupData.pitcher}
                 </div>
               )}
             </div>
             <div>
               {lineupData.players.map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '3px', background: 'rgba(0,0,0,0.25)', borderRadius: '7px', borderLeft: '3px solid rgba(255,255,255,0.25)' }}>
-                  <span style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '13px', width: '20px' }}>{i + 1}</span>
-                  <span style={{ color: 'white', fontWeight: 700, fontSize: '13px', flex: 1 }}>{p.name}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px' }}>{p.pos}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '3px', background: currentStyle.dark ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.25)', borderRadius: '7px', borderLeft: `3px solid ${currentStyle.dark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.25)'}` }}>
+                  <span style={{ color: currentStyle.dark ? '#cc0022' : '#ff6b6b', fontWeight: 900, fontSize: '13px', width: '20px' }}>{i + 1}</span>
+                  <span style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 700, fontSize: '13px', flex: 1 }}>{p.name}</span>
+                  <span style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)', fontSize: '10px' }}>{p.pos}</span>
                 </div>
               ))}
             </div>
-            <div style={{ textAlign: 'center', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '13px' }}>팩트페페</div>
-              <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>@pepe_noh</div>
+            <div style={{ textAlign: 'center', marginTop: '14px', paddingTop: '10px', borderTop: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'}` }}>
+              <div style={{ color: currentStyle.dark ? '#111' : 'white', fontWeight: 900, fontSize: '13px' }}>팩트페페</div>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: '10px' }}>@pepe_noh</div>
             </div>
           </div>
         </div>
