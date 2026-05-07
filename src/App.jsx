@@ -808,11 +808,12 @@ const SeatViewContent = () => {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [reportZone, setReportZone] = useState(null);
+  const [reportBlock, setReportBlock] = useState('');
   const [stadiumMap, setStadiumMap] = useState(null);
   const [showMapExplorer, setShowMapExplorer] = useState(false);
   const [explorerCategory, setExplorerCategory] = useState('내야');
   const [explorerZone, setExplorerZone] = useState(null);
-  const [pinActionZone, setPinActionZone] = useState(null);
+  const [pinAction, setPinAction] = useState(null); // { zone, blockLabel }
   // 같은 좌석 슬라이드
   const [carousel, setCarousel] = useState(null); // { photos: [...], idx: number }
   const touchStartX = useRef(null);
@@ -1007,7 +1008,7 @@ const SeatViewContent = () => {
           </div>
         )}
 
-        {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
+        {showForm && <SeatViewForm zone={reportZone} initialBlock={reportBlock} onClose={() => { setShowForm(false); setReportBlock(''); }} />}
       </div>
     );
   }
@@ -1038,7 +1039,7 @@ const SeatViewContent = () => {
               return (
                 <button
                   key={zoneId}
-                  onClick={(e) => { e.stopPropagation(); setPinActionZone(zone); }}
+                  onClick={(e) => { e.stopPropagation(); setPinAction({ zone, blockLabel: pin.blockLabel || '' }); }}
                   style={{ position: 'absolute', left: `${pin.x}%`, top: `${pin.y}%`, transform: 'translate(-50%, -50%)' }}
                   className="group">
                   {/* 사진 있는 구역 펄스 효과 */}
@@ -1050,7 +1051,7 @@ const SeatViewContent = () => {
                     style={{ backgroundColor: zone.color }} />
                   {/* 호버/포커스 라벨 */}
                   <span className="absolute left-1/2 -translate-x-1/2 -bottom-7 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity pointer-events-none z-10">
-                    {zone.label}
+                    {pin.blockLabel ? `${pin.blockLabel}` : zone.label}
                   </span>
                 </button>
               );
@@ -1063,31 +1064,36 @@ const SeatViewContent = () => {
       )}
 
       {/* 핀 탭 시 바로 액션시트 */}
-      {pinActionZone && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={() => setPinActionZone(null)}>
+      {pinAction && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={() => setPinAction(null)}>
           <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-3xl w-full p-5 pb-8" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-zinc-600 rounded-full mx-auto mb-4" />
             <div className="flex items-center gap-3 mb-5">
-              <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: pinActionZone.color }} />
+              <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: pinAction.zone.color }} />
               <div>
-                <p className="text-white font-black text-lg leading-tight">{pinActionZone.label}</p>
-                <p className="text-gray-500 text-xs">{pinActionZone.category} · {photos[pinActionZone.id]?.length || 0}장의 시야 사진</p>
+                <p className="text-white font-black text-lg leading-tight">{pinAction.zone.label}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {pinAction.blockLabel && (
+                    <span className="text-red-400 text-xs font-bold bg-red-600/10 px-2 py-0.5 rounded-full">{pinAction.blockLabel}</span>
+                  )}
+                  <span className="text-gray-500 text-xs">{photos[pinAction.zone.id]?.length || 0}장의 시야 사진</span>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => { setPinActionZone(null); setSelectedZone(pinActionZone); }}
+                onClick={() => { setPinAction(null); setSelectedZone(pinAction.zone); }}
                 className="bg-zinc-800 hover:bg-zinc-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
                 <span className="text-2xl">📷</span>
                 <span>사진 보기</span>
-                <span className="text-zinc-500 text-xs font-normal">{photos[pinActionZone.id]?.length || 0}장</span>
+                <span className="text-zinc-500 text-xs font-normal">{photos[pinAction.zone.id]?.length || 0}장</span>
               </button>
               <button
-                onClick={() => { setPinActionZone(null); setReportZone(pinActionZone); setShowForm(true); }}
+                onClick={() => { setPinAction(null); setReportZone(pinAction.zone); setReportBlock(pinAction.blockLabel); setShowForm(true); }}
                 className="bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
                 <span className="text-2xl">✏️</span>
                 <span>제보하기</span>
-                <span className="text-red-300 text-xs font-normal">구역 자동 입력</span>
+                <span className="text-red-300 text-xs font-normal">{pinAction.blockLabel ? `${pinAction.blockLabel} 자동 입력` : '구역 자동 입력'}</span>
               </button>
             </div>
           </div>
@@ -1137,7 +1143,7 @@ const SeatViewContent = () => {
           })}
         </div>
       )}
-      {showForm && <SeatViewForm zone={reportZone} onClose={() => setShowForm(false)} />}
+      {showForm && <SeatViewForm zone={reportZone} initialBlock={reportBlock} onClose={() => { setShowForm(false); setReportBlock(''); }} />}
 
       {/* 구장 배치도 탐색기 */}
       {showMapExplorer && stadiumMap?.url && (
@@ -1324,9 +1330,9 @@ const GoodsContent = () => {
   );
 };
 
-const SeatViewForm = ({ zone, onClose }) => {
+const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
   const [mode, setMode] = useState(null); // 'upload' | 'request'
-  const [form, setForm] = useState({ block: '', row: '', seat: '', note: '', nickname: '' });
+  const [form, setForm] = useState({ block: initialBlock, row: '', seat: '', note: '', nickname: '' });
   const [photo, setPhoto] = useState(null);
   const [preview, setPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -2117,6 +2123,8 @@ const AdminStadiumMapUpload = () => {
   const [pinMode, setPinMode] = useState(false);
   const [pendingPin, setPendingPin] = useState(null); // { x, y } 퍼센트
   const [pickerCategory, setPickerCategory] = useState('내야');
+  const [selectedZoneForPin, setSelectedZoneForPin] = useState(null); // 구역 선택 후 블럭명 입력 단계
+  const [pendingBlockLabel, setPendingBlockLabel] = useState('');
   const imgContainerRef = useRef(null);
 
   useEffect(() => {
@@ -2159,12 +2167,15 @@ const AdminStadiumMapUpload = () => {
     setPendingPin({ x, y });
   };
 
-  const handleSavePin = async (zone) => {
-    if (!pendingPin) return;
-    await set(dbRef(database, `seatViews/stadiumMap/hotspots/${zone.id}`), {
+  const handleSavePin = async () => {
+    if (!pendingPin || !selectedZoneForPin) return;
+    await set(dbRef(database, `seatViews/stadiumMap/hotspots/${selectedZoneForPin.id}`), {
       x: pendingPin.x, y: pendingPin.y,
+      blockLabel: pendingBlockLabel.trim(),
     });
     setPendingPin(null);
+    setSelectedZoneForPin(null);
+    setPendingBlockLabel('');
   };
 
   const handleDeletePin = async (zoneId) => {
@@ -2253,12 +2264,12 @@ const AdminStadiumMapUpload = () => {
         </button>
       )}
 
-      {/* 구역 선택 피커 (핀 찍은 후) */}
-      {pendingPin && (
+      {/* 핀 피커 - Step 1: 구역 선택 */}
+      {pendingPin && !selectedZoneForPin && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-end" onClick={() => setPendingPin(null)}>
           <div className="bg-zinc-900 rounded-t-2xl w-full max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-zinc-800 flex-shrink-0">
-              <p className="text-white font-bold text-sm">이 위치의 구역을 선택하세요</p>
+              <p className="text-white font-bold text-sm">1 / 2 · 구역을 선택하세요</p>
               <button onClick={() => setPendingPin(null)} className="text-gray-400 text-xl">×</button>
             </div>
             <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto flex-shrink-0">
@@ -2271,17 +2282,55 @@ const AdminStadiumMapUpload = () => {
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-1">
               {LANDERS_ZONES.filter(z => z.category === pickerCategory).map(z => {
-                const alreadyPlaced = !!hotspots[z.id];
+                const existing = hotspots[z.id];
                 return (
-                  <button key={z.id} onClick={() => handleSavePin(z)}
+                  <button key={z.id} onClick={() => { setSelectedZoneForPin(z); setPendingBlockLabel(existing?.blockLabel || ''); }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800 transition-all text-left">
                     <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
                     <span className="text-white text-sm flex-1">{z.label}</span>
-                    {alreadyPlaced && <span className="text-yellow-400 text-xs">기존 핀 교체됨</span>}
+                    {existing && (
+                      <span className="text-yellow-400 text-xs">{existing.blockLabel ? existing.blockLabel : '핀 있음'} · 교체</span>
+                    )}
+                    <span className="text-zinc-600">›</span>
                   </button>
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 핀 피커 - Step 2: 블럭명 입력 */}
+      {pendingPin && selectedZoneForPin && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-end">
+          <div className="bg-zinc-900 rounded-t-2xl w-full p-5 pb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSelectedZoneForPin(null)} className="text-zinc-400 hover:text-white text-sm">← 뒤로</button>
+                <span className="text-zinc-600 text-sm">2 / 2</span>
+              </div>
+              <button onClick={() => { setPendingPin(null); setSelectedZoneForPin(null); setPendingBlockLabel(''); }}
+                className="text-gray-400 text-xl">×</button>
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZoneForPin.color }} />
+              <p className="text-white font-bold">{selectedZoneForPin.label}</p>
+            </div>
+            <label className="text-gray-400 text-xs mb-2 block">
+              블럭명 <span className="text-zinc-600">(유저 제보 시 자동 입력됨)</span>
+            </label>
+            <input
+              type="text"
+              value={pendingBlockLabel}
+              onChange={e => setPendingBlockLabel(e.target.value)}
+              placeholder="예) 102B, 103, A블럭 (없으면 비워두세요)"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-xl p-3 text-sm placeholder-zinc-600 mb-4"
+              autoFocus
+            />
+            <button onClick={handleSavePin}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-black transition-all">
+              📍 핀 저장
+            </button>
           </div>
         </div>
       )}
