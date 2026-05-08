@@ -2036,102 +2036,66 @@ const HR_TITLES = [
 
 const HomerunGame = () => {
   const resultRef = useRef(null);
-  const pitchStartRef = useRef(0);
-  const [phase, setPhase] = useState('ready'); // ready | countdown | pitching | swung | result | done
+  const animRef = useRef(null);
+  const [phase, setPhase] = useState('ready');
   const [round, setRound] = useState(0);
   const [results, setResults] = useState([]);
   const [currentResult, setCurrentResult] = useState(null);
   const [countdown, setCountdown] = useState(3);
-  const [ballTop, setBallTop] = useState(0);    // 0~100 (% from top)
+  const [ballProgress, setBallProgress] = useState(0); // 0→1
+  const [swinging, setSwinging] = useState(false);
   const [busy, setBusy] = useState(false);
-  const animRef = useRef(null);
-
   const totalRounds = 10;
 
-  const startGame = () => {
-    setPhase('ready');
-    setRound(0);
-    setResults([]);
-    setCurrentResult(null);
-    nextPitch(0);
-  };
+  // 공 크기·위치: 멀리서 점점 커지며 날아옴
+  const ballSize = 6 + ballProgress * 88;          // 6px → 94px
+  const ballX = 50 + ballProgress * 3;              // 중앙에서 살짝 우측으로 (투구 궤도)
+  const ballY = 34 - ballProgress * 2;              // 수직은 거의 고정 (타자 눈높이)
+  const ballBlur = ballProgress > 0.75 ? (ballProgress - 0.75) * 12 : 0; // 근접 시 모션블러
+
+  const startGame = () => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); nextPitch(0); };
 
   const nextPitch = (r) => {
-    if (r >= totalRounds) {
-      setPhase('done');
-      return;
-    }
-    const currentRound = r + 1;
-    setRound(currentRound);
-    setCurrentResult(null);
-    setBallTop(0);
-    setPhase('countdown');
-    setCountdown(3);
-
-    // 후반 라운드일수록 카운트다운도 짧게 (1~5: 600ms, 6~8: 450ms, 9~10: 300ms)
-    const cdDelay = currentRound <= 5 ? 600 : currentRound <= 8 ? 450 : 300;
+    if (r >= totalRounds) { setPhase('done'); return; }
+    const cur = r + 1;
+    setRound(cur); setCurrentResult(null); setBallProgress(0); setSwinging(false);
+    setPhase('countdown'); setCountdown(3);
+    const cdDelay = cur <= 5 ? 600 : cur <= 8 ? 450 : 300;
     let c = 3;
-    const cdInterval = setInterval(() => {
-      c--;
-      setCountdown(c);
-      if (c <= 0) {
-        clearInterval(cdInterval);
-        doPitch(currentRound);
-      }
-    }, cdDelay);
+    const id = setInterval(() => { c--; setCountdown(c); if (c <= 0) { clearInterval(id); doPitch(cur); } }, cdDelay);
   };
 
-  const doPitch = (currentRound) => {
-    setPhase('pitching');
-    pitchStartRef.current = performance.now();
-    setBallTop(0);
-
-    // 1라운드 ~1400ms → 10라운드 ~720ms 로 점진적으로 가속
-    const baseDuration = 1400 - (currentRound - 1) * 75; // 1400, 1325, ..., 725
-    const duration = baseDuration + Math.random() * 120;
-    const start = performance.now();
-
-    const animate = (now) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-in curve
-      const eased = progress * progress;
-      setBallTop(eased * 100);
-
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        // missed — didn't swing
+  const doPitch = (cur) => {
+    setPhase('pitching'); setBallProgress(0);
+    const dur = (1400 - (cur - 1) * 75) + Math.random() * 120;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - t0) / dur, 1);
+      setBallProgress(p * p); // ease-in: 처음엔 느리다가 가속
+      if (p < 1) { animRef.current = requestAnimationFrame(tick); }
+      else {
         setPhase('swung');
         const miss = { label: '보고만 있었어요!', emoji: '😶', type: 'looking', pts: 0 };
         setCurrentResult(miss);
-        setResults(prev => {
-          const updated = [...prev, miss];
-          setTimeout(() => nextPitch(updated.length), 1400);
-          return updated;
-        });
+        setResults(prev => { const u = [...prev, miss]; setTimeout(() => nextPitch(u.length), 1400); return u; });
       }
     };
-    animRef.current = requestAnimationFrame(animate);
+    animRef.current = requestAnimationFrame(tick);
   };
 
   const handleSwing = () => {
     if (phase !== 'pitching') return;
     cancelAnimationFrame(animRef.current);
-    setPhase('swung');
-
-    // ballTop is 0~100, strike zone is around 65~80
-    // calculate distance from perfect (72)
-    const distance = Math.abs(ballTop - 72);
-    const result = HR_RESULTS.find(r => distance >= r.min && distance < r.max) || HR_RESULTS[HR_RESULTS.length - 1];
-
+    setSwinging(true); setPhase('swung');
+    // ballProgress 기준: 0.72 근처가 perfect
+    const dist = Math.abs(ballProgress - 0.72) * 100;
+    const result = HR_RESULTS.find(r => dist >= r.min && dist < r.max) || HR_RESULTS[HR_RESULTS.length - 1];
     setCurrentResult(result);
     setResults(prev => {
-      const updated = [...prev, result];
-      // 후반 라운드일수록 결과 표시 시간도 짧게
-      const delay = updated.length <= 5 ? 1500 : updated.length <= 8 ? 1100 : 800;
-      setTimeout(() => nextPitch(updated.length), delay);
-      return updated;
+      const u = [...prev, result];
+      const delay = u.length <= 5 ? 1500 : u.length <= 8 ? 1100 : 800;
+      setTimeout(() => { setSwinging(false); nextPitch(u.length); }, delay);
+      return u;
     });
   };
 
@@ -2148,29 +2112,23 @@ const HomerunGame = () => {
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: '홈런 더비 결과' });
       } else {
-        const link = document.createElement('a');
-        link.download = 'homerun-result.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        const link = document.createElement('a'); link.download = 'homerun-result.png'; link.href = canvas.toDataURL('image/png'); link.click();
       }
     } finally { setBusy(false); }
   };
 
-  // 게임 시작 전
+  // ── 시작 화면 ──
   if (phase === 'ready' && round === 0) return (
     <div className="flex flex-col items-center py-8">
       <div className="text-7xl mb-4">⚾</div>
       <h3 className="text-white font-black text-2xl mb-2">홈런 더비</h3>
-      <p className="text-gray-400 text-sm mb-1">타이밍에 맞춰 화면을 터치!</p>
-      <p className="text-gray-600 text-xs mb-8">10번의 타석, 최고의 타자가 되어보세요</p>
-      <button onClick={startGame}
-        className="bg-red-600 hover:bg-red-500 text-white px-10 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all">
-        🏟️ 경기 시작!
-      </button>
+      <p className="text-gray-400 text-sm mb-1">공이 날아오면 화면을 터치!</p>
+      <p className="text-gray-600 text-xs mb-8">10번의 타석 · 타이밍이 전부입니다</p>
+      <button onClick={startGame} className="bg-red-600 hover:bg-red-500 text-white px-10 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all">🏟️ 경기 시작!</button>
     </div>
   );
 
-  // 게임 완료
+  // ── 결과 화면 ──
   if (phase === 'done') {
     const hits = results.filter(r => r.pts > 0).length;
     const homers = results.filter(r => r.type === 'homerun').length;
@@ -2183,18 +2141,12 @@ const HomerunGame = () => {
             <div style={{ color: 'white', fontWeight: 900, fontSize: '22px' }}>{finalTitle.title}</div>
           </div>
           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '16px' }}>
-            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>타점</div>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '20px' }}>{totalScore}</div>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>안타</div>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: '20px' }}>{hits}/{totalRounds}</div>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>홈런</div>
-              <div style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '20px' }}>{homers}</div>
-            </div>
+            {[['타점', totalScore, 'white'], ['안타', `${hits}/${totalRounds}`, 'white'], ['홈런', homers, '#ff6b6b']].map(([label, val, color]) => (
+              <div key={label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', padding: '10px 16px', textAlign: 'center' }}>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700 }}>{label}</div>
+                <div style={{ color, fontWeight: 900, fontSize: '20px' }}>{val}</div>
+              </div>
+            ))}
           </div>
           <div style={{ marginBottom: '12px' }}>
             {results.map((r, i) => (
@@ -2210,116 +2162,239 @@ const HomerunGame = () => {
             <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>팩트페페 홈런 더비</div>
           </div>
         </div>
-
         <div className="flex gap-2 mt-4">
-          <button onClick={shareResult} disabled={busy}
-            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
-            ⬇ 저장
-          </button>
-          <button onClick={() => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); }}
-            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
-            🔄 다시하기
-          </button>
+          <button onClick={shareResult} disabled={busy} className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">⬇ 저장</button>
+          <button onClick={() => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">🔄 다시하기</button>
         </div>
       </div>
     );
   }
 
-  // 게임 진행 중
+  // ── 게임 진행 중 ──
   return (
     <div>
       {/* 상태바 */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-gray-400 text-xs font-bold">{round} / {totalRounds} 타석</span>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-          round >= 9 ? 'bg-red-600/30 text-red-400' :
-          round >= 6 ? 'bg-orange-600/30 text-orange-400' :
-          'bg-zinc-700 text-gray-500'
-        }`}>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${round >= 9 ? 'bg-red-600/30 text-red-400' : round >= 6 ? 'bg-orange-600/30 text-orange-400' : 'bg-zinc-700 text-gray-500'}`}>
           {round >= 9 ? '🔥 MAX 속도' : round >= 6 ? '⚡ 가속 중' : '🎯 준비'}
         </span>
         <span className="text-white font-black text-sm">타점: {totalScore}</span>
       </div>
-      <div className="flex gap-1 mb-4">
+      <div className="flex gap-1 mb-3">
         {Array.from({ length: totalRounds }, (_, i) => {
           const r = results[i];
-          return (
-            <div key={i} className={`flex-1 h-1.5 rounded-full ${
-              r ? (r.pts >= 4 ? 'bg-red-500' : r.pts > 0 ? 'bg-green-500' : 'bg-zinc-600')
-                : i === round - 1 ? 'bg-white animate-pulse' : 'bg-zinc-800'
-            }`} />
-          );
+          return <div key={i} className={`flex-1 h-1.5 rounded-full ${r ? (r.pts >= 4 ? 'bg-red-500' : r.pts > 0 ? 'bg-green-500' : 'bg-zinc-600') : i === round - 1 ? 'bg-white animate-pulse' : 'bg-zinc-800'}`} />;
         })}
       </div>
 
-      {/* 피칭 영역 */}
+      {/* ── 타자 시점 야구장 ── */}
       <div
-        className="relative mx-auto rounded-2xl overflow-hidden select-none"
-        style={{ width: '280px', height: '400px', background: 'linear-gradient(180deg, #0a1628 0%, #1a2a1a 60%, #2a1a0a 100%)', cursor: phase === 'pitching' ? 'pointer' : 'default', touchAction: 'manipulation' }}
+        className="relative w-full overflow-hidden select-none"
+        style={{ height: '420px', borderRadius: '16px', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
         onClick={handleSwing}
         onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
       >
-        {/* 마운드 라인 */}
-        <div style={{ position: 'absolute', top: '8%', left: '50%', transform: 'translateX(-50%)', width: '30px', height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px' }} />
+        {/* 배경: 야구장 원근감 SVG */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 360 420" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="hrSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#04050f"/>
+              <stop offset="60%" stopColor="#080d1e"/>
+              <stop offset="100%" stopColor="#0a1228"/>
+            </linearGradient>
+            {/* 조명 */}
+            <radialGradient id="lamp1" cx="12%" cy="5%" r="28%">
+              <stop offset="0%" stopColor="rgba(255,245,200,0.18)"/>
+              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            </radialGradient>
+            <radialGradient id="lamp2" cx="88%" cy="5%" r="28%">
+              <stop offset="0%" stopColor="rgba(255,245,200,0.18)"/>
+              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            </radialGradient>
+            <radialGradient id="moundGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(180,140,80,0.3)"/>
+              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            </radialGradient>
+          </defs>
 
-        {/* 스트라이크 존 */}
-        <div style={{ position: 'absolute', top: '60%', left: '50%', transform: 'translate(-50%, -50%)', width: '100px', height: '60px', border: '2px dashed rgba(255,255,255,0.12)', borderRadius: '4px' }} />
-        <div style={{ position: 'absolute', top: '72%', left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.08)', fontSize: '9px', fontWeight: 700, letterSpacing: '2px' }}>STRIKE ZONE</div>
+          {/* 하늘 */}
+          <rect width="360" height="420" fill="url(#hrSky)"/>
+          <rect width="360" height="420" fill="url(#lamp1)"/>
+          <rect width="360" height="420" fill="url(#lamp2)"/>
 
-        {/* 타자 실루엣 */}
-        {/* 야구 배트 이미지 */}
+          {/* 관중석 실루엣 */}
+          <rect x="0" y="0" width="360" height="115" fill="rgba(6,7,18,0.85)"/>
+          {/* 관중석 열 */}
+          {[25,40,55,70,85,100].map(y => (
+            <line key={y} x1="0" y1={y} x2="360" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="8"/>
+          ))}
+
+          {/* 조명 기둥 */}
+          <rect x="22" y="0" width="4" height="120" fill="#18182e"/>
+          <rect x="334" y="0" width="4" height="120" fill="#18182e"/>
+          {/* 조명 등 */}
+          <rect x="8" y="0" width="32" height="9" rx="2" fill="#28284a"/>
+          <rect x="320" y="0" width="32" height="9" rx="2" fill="#28284a"/>
+          {/* 조명 빛줄기 */}
+          <polygon points="8,9 40,9 120,115 0,115" fill="rgba(255,245,180,0.025)"/>
+          <polygon points="320,9 352,9 360,115 240,115" fill="rgba(255,245,180,0.025)"/>
+
+          {/* 외야 펜스 */}
+          <rect x="0" y="110" width="360" height="16" fill="#1c1c35" rx="2"/>
+          <rect x="0" y="118" width="360" height="4" fill="#CE0E2D" opacity="0.7"/>
+
+          {/* 외야 잔디 */}
+          <rect x="0" y="126" width="360" height="100" fill="#0d3309"/>
+          {/* 잔디 무늬 */}
+          {[135,150,165,180,195,210,225].map((y, i) => (
+            <rect key={y} x="0" y={y} width="360" height="12" fill={i % 2 === 0 ? '#0f3a0a' : '#0b2e07'}/>
+          ))}
+
+          {/* 내야 잔디 다이아몬드 */}
+          <polygon points="180,175 60,295 180,415 300,295" fill="#165c0d"/>
+
+          {/* 내야 흙 */}
+          <ellipse cx="180" cy="295" rx="150" ry="130" fill="#6b3a18"/>
+          <ellipse cx="180" cy="295" rx="135" ry="115" fill="#7a4520"/>
+
+          {/* 내야 잔디 클로버 */}
+          <polygon points="180,185 75,280 180,375 285,280" fill="#1a6e10"/>
+
+          {/* 파울 라인 */}
+          <line x1="180" y1="420" x2="0" y2="126" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
+          <line x1="180" y1="420" x2="360" y2="126" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
+
+          {/* 베이스 */}
+          <g transform="rotate(45 180 200)">
+            <rect x="166" y="186" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
+          </g>
+          <rect x="262" y="272" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
+          <rect x="84" y="272" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
+
+          {/* 투수 마운드 */}
+          <ellipse cx="180" cy="248" rx="26" ry="11" fill="url(#moundGlow)"/>
+          <ellipse cx="180" cy="248" rx="22" ry="9" fill="#8a5520"/>
+          <ellipse cx="180" cy="246" rx="16" ry="6" fill="#9a6228"/>
+          {/* 마운드 고무판 */}
+          <rect x="173" y="242" width="14" height="5" rx="1.5" fill="white" opacity="0.9"/>
+
+          {/* 홈플레이트 앞 흙 */}
+          <ellipse cx="180" cy="390" rx="70" ry="30" fill="#6b3a18" opacity="0.6"/>
+
+          {/* 홈플레이트 */}
+          <polygon points="166,408 194,408 200,418 180,425 160,418" fill="white" opacity="0.7"/>
+
+          {/* 타석 박스 */}
+          <rect x="130" y="375" width="36" height="40" rx="2" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+          <rect x="194" y="375" width="36" height="40" rx="2" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+        </svg>
+
+        {/* 투수 실루엣 */}
+        {phase !== 'swung' && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: `translate(-50%, -50%) scale(${phase === 'pitching' ? 0.95 : 1})`,
+            fontSize: '22px',
+            filter: 'grayscale(1) brightness(0.5)',
+            transition: 'transform 0.15s',
+            pointerEvents: 'none',
+            lineHeight: 1,
+          }}>
+            {phase === 'countdown' ? '🧍' : '🤾'}
+          </div>
+        )}
+
+        {/* 날아오는 공 */}
+        {(phase === 'pitching' || phase === 'swung') && ballProgress > 0 && (
+          <div style={{
+            position: 'absolute',
+            left: `${ballX}%`,
+            top: `${ballY}%`,
+            transform: 'translate(-50%, -50%)',
+            width: `${ballSize}px`,
+            height: `${ballSize}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 38% 32%, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%)',
+            boxShadow: `0 0 ${ballSize * 0.25}px rgba(255,255,255,0.55), 0 ${ballSize * 0.06}px ${ballSize * 0.15}px rgba(0,0,0,0.5)`,
+            filter: ballBlur > 0 ? `blur(${ballBlur}px)` : 'none',
+            pointerEvents: 'none',
+            zIndex: 20,
+            overflow: 'hidden',
+          }}>
+            {/* 야구공 솔기 (일정 크기 이상일 때) */}
+            {ballSize > 28 && (
+              <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                <path d="M30,15 Q42,28 30,50 Q18,72 30,85" stroke="#cc1111" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.7"/>
+                <path d="M70,15 Q58,28 70,50 Q82,72 70,85" stroke="#cc1111" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.7"/>
+              </svg>
+            )}
+          </div>
+        )}
+
+        {/* 스트라이크존 테두리 (공이 가까워질 때 강조) */}
+        {phase === 'pitching' && ballProgress > 0.45 && (
+          <div style={{
+            position: 'absolute',
+            left: '50%', top: '34%',
+            transform: 'translate(-50%, -50%)',
+            width: '90px', height: '70px',
+            border: `1.5px solid rgba(255,255,255,${Math.min((ballProgress - 0.45) * 1.2, 0.4)})`,
+            borderRadius: '4px',
+            boxShadow: `0 0 12px rgba(255,255,255,${Math.min((ballProgress - 0.45) * 0.3, 0.12)})`,
+            pointerEvents: 'none',
+            zIndex: 15,
+          }}/>
+        )}
+
+        {/* 배트 이미지 — 스윙 애니메이션 */}
         <img
           src="/bat.png"
           alt="bat"
           style={{
             position: 'absolute',
-            bottom: '4%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '110px',
-            opacity: 0.35,
+            bottom: '-8%',
+            right: '-8%',
+            width: '200px',
+            opacity: 0.75,
             mixBlendMode: 'screen',
+            transformOrigin: '85% 90%',
+            transform: swinging ? 'rotate(-115deg)' : 'rotate(18deg)',
+            transition: swinging ? 'transform 0.22s cubic-bezier(0.4,0,0.2,1)' : 'transform 0.3s ease-out',
             pointerEvents: 'none',
+            zIndex: 30,
           }}
         />
 
-        {/* 공 */}
-        {(phase === 'pitching' || phase === 'countdown') && (
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: `${phase === 'countdown' ? 5 : ballTop * 0.85 + 5}%`,
-            transform: 'translate(-50%, -50%)',
-            transition: 'none',
-          }}>
-            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #fff, #ddd, #bbb)', boxShadow: '0 0 15px rgba(255,255,255,0.6), 0 0 30px rgba(255,255,255,0.2)' }} />
-          </div>
-        )}
-
         {/* 카운트다운 */}
         {phase === 'countdown' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ color: 'white', fontSize: '64px', fontWeight: 900, textShadow: '0 0 30px rgba(255,255,255,0.5)', animation: 'pulse 0.6s ease-in-out' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 40 }}>
+            <div style={{ color: 'white', fontSize: '80px', fontWeight: 900, textShadow: '0 0 40px rgba(255,255,255,0.4)', lineHeight: 1 }}>
               {countdown > 0 ? countdown : '⚾'}
             </div>
           </div>
         )}
 
-        {/* 터치 안내 */}
-        {phase === 'pitching' && !currentResult && (
-          <div style={{ position: 'absolute', bottom: '2%', left: 0, right: 0, textAlign: 'center' }}>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 700, animation: 'pulse 1s infinite' }}>
-              👆 지금 터치!
-            </div>
+        {/* 스윙 결과 오버레이 */}
+        {phase === 'swung' && currentResult && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 40,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: currentResult.pts >= 4 ? 'rgba(206,14,45,0.35)' : currentResult.pts > 0 ? 'rgba(20,160,20,0.2)' : 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(3px)',
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '10px', lineHeight: 1 }}>{currentResult.emoji}</div>
+            <div style={{ color: 'white', fontSize: '24px', fontWeight: 900, textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>{currentResult.label}</div>
+            {currentResult.pts > 0 && <div style={{ color: '#ff8080', fontSize: '15px', fontWeight: 900, marginTop: '6px' }}>+{currentResult.pts} 타점</div>}
           </div>
         )}
 
-        {/* 스윙 결과 */}
-        {phase === 'swung' && currentResult && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: currentResult.pts >= 4 ? 'rgba(206,14,45,0.3)' : currentResult.pts > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(0,0,0,0.4)' }}>
-            <div style={{ fontSize: '56px', marginBottom: '8px' }}>{currentResult.emoji}</div>
-            <div style={{ color: 'white', fontSize: '20px', fontWeight: 900, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>{currentResult.label}</div>
-            {currentResult.pts > 0 && <div style={{ color: '#ff6b6b', fontSize: '14px', fontWeight: 900, marginTop: '4px' }}>+{currentResult.pts} 타점</div>}
+        {/* 터치 안내 */}
+        {phase === 'pitching' && (
+          <div style={{ position: 'absolute', bottom: '4%', left: 0, right: 0, textAlign: 'center', zIndex: 35, pointerEvents: 'none' }}>
+            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '12px', fontWeight: 700 }}>👆 화면을 터치하세요!</span>
           </div>
         )}
       </div>
