@@ -1902,14 +1902,32 @@ const RouletteTab = () => {
                     stroke="rgba(0,0,0,0.3)"
                     strokeWidth="1"
                   />
-                  <text
-                    x={tx} y={ty}
-                    textAnchor="middle" dominantBaseline="middle"
-                    fill="white" fontSize={item.emoji ? '18' : '9'} fontWeight="900"
-                    transform={`rotate(${(i + 0.5) * segAngle}, ${tx}, ${ty})`}
-                  >
-                    {item.emoji || item.name}
-                  </text>
+                  {/* 음식 이름을 여러 줄로 분할해서 표시 */}
+                  {(() => {
+                    const name = item.name;
+                    const rot = (i + 0.5) * segAngle;
+                    // 4자 이하면 한 줄, 그 이상은 두 줄로 분할
+                    if (name.length <= 4) {
+                      return (
+                        <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle"
+                          fill="white" fontSize="10" fontWeight="900"
+                          transform={`rotate(${rot}, ${tx}, ${ty})`}>
+                          {name}
+                        </text>
+                      );
+                    }
+                    const mid = Math.ceil(name.length / 2);
+                    const line1 = name.slice(0, mid);
+                    const line2 = name.slice(mid);
+                    return (
+                      <g transform={`rotate(${rot}, ${tx}, ${ty})`}>
+                        <text x={tx} y={ty - 6} textAnchor="middle" dominantBaseline="middle"
+                          fill="white" fontSize="9" fontWeight="900">{line1}</text>
+                        <text x={tx} y={ty + 6} textAnchor="middle" dominantBaseline="middle"
+                          fill="white" fontSize="9" fontWeight="900">{line2}</text>
+                      </g>
+                    );
+                  })()}
                 </g>
               );
             })}
