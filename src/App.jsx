@@ -2211,7 +2211,7 @@ const HomerunGame = () => {
       {/* ── 타자 시점 야구장 ── */}
       <div
         className="relative w-full overflow-hidden select-none"
-        style={{ height: '420px', borderRadius: '16px', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
+        style={{ height: '480px', borderRadius: '16px', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
         onClick={handleSwing}
         onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
       >
@@ -2367,77 +2367,98 @@ const HomerunGame = () => {
           transition: 'border-color 0.15s',
         }}/>
 
-        {/* 야구 게임 카메라: 캐쳐 뒤에서 타자 전신 (우타자 뒷모습) */}
-        <div style={{ position: 'absolute', bottom: '2%', left: '50%', transform: 'translateX(-65%)', zIndex: 25, pointerEvents: 'none' }}>
-          <svg width="160" height="240" viewBox="0 0 160 240" fill="none" style={{ filter: 'drop-shadow(2px 4px 10px rgba(0,0,0,0.6))' }}>
+        {/* 야구 게임 카메라: 타자 뒷모습 (좌측 크게, 컴프야 스타일) */}
+        <div style={{ position: 'absolute', bottom: '-2%', left: '2%', zIndex: 25, pointerEvents: 'none' }}>
+          <svg width="180" height="400" viewBox="0 0 180 400" fill="none" style={{ filter: 'drop-shadow(3px 5px 14px rgba(0,0,0,0.7))' }}>
             <g opacity="0.95">
-              {/* 헬멧 */}
-              <ellipse cx="80" cy="28" rx="18" ry="20" fill="#1a1a1a"/>
-              <ellipse cx="74" cy="24" rx="20" ry="15" fill="#CE0E2D" opacity="0.9"/>
+              {/* ─── 헬멧 ─── */}
+              <ellipse cx="90" cy="38" rx="24" ry="26" fill="#111"/>
+              <ellipse cx="82" cy="32" rx="26" ry="19" fill="#CE0E2D" opacity="0.92"/>
+              {/* 헬멧 챙 */}
+              <path d="M62,36 Q58,46 64,52 L78,46 Q72,40 66,34 Z" fill="#0a0a0a"/>
               {/* 헬멧 귀보호대 */}
-              <path d="M58,30 Q55,40 58,48 L64,46 Q62,38 63,30 Z" fill="#CE0E2D" opacity="0.8"/>
+              <path d="M62,40 Q58,52 62,62 L70,60 Q67,50 68,40 Z" fill="#CE0E2D" opacity="0.85"/>
+              {/* 헬멧 하이라이트 */}
+              <ellipse cx="78" cy="26" rx="12" ry="6" fill="rgba(255,255,255,0.08)"/>
 
-              {/* 목 */}
-              <rect x="73" y="46" width="14" height="10" rx="4" fill="#c8956a"/>
+              {/* ─── 목 ─── */}
+              <rect x="80" y="60" width="18" height="14" rx="5" fill="#c8956a"/>
 
-              {/* 몸통 (유니폼 뒷면) */}
-              <path d="M52,56 Q48,60 50,68 L48,145 L112,145 L110,68 Q112,60 108,56 Z" fill="#f0f0f0"/>
-              {/* 유니폼 핀스트라이프 */}
-              <line x1="62" y1="60" x2="61" y2="145" stroke="rgba(206,14,45,0.15)" strokeWidth="1.5"/>
-              <line x1="74" y1="58" x2="73" y2="145" stroke="rgba(206,14,45,0.15)" strokeWidth="1.5"/>
-              <line x1="86" y1="58" x2="85" y2="145" stroke="rgba(206,14,45,0.15)" strokeWidth="1.5"/>
-              <line x1="98" y1="60" x2="97" y2="145" stroke="rgba(206,14,45,0.15)" strokeWidth="1.5"/>
+              {/* ─── 몸통 (빨간 유니폼 뒷면) ─── */}
+              <path d="M54,74 Q48,78 50,88 L46,200 L132,200 L128,88 Q130,78 124,74 Z" fill="#CE0E2D"/>
+              {/* 유니폼 어깨 솔기 */}
+              <line x1="54" y1="76" x2="124" y2="76" stroke="rgba(0,0,0,0.15)" strokeWidth="1"/>
+              {/* 유니폼 등 중심 솔기 */}
+              <line x1="89" y1="76" x2="89" y2="200" stroke="rgba(0,0,0,0.08)" strokeWidth="1"/>
+              {/* LANDERS 등 텍스트 */}
+              <text x="89" y="128" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="18" fontWeight="800" fontFamily="sans-serif" letterSpacing="3">LANDERS</text>
               {/* 등번호 */}
-              <text x="80" y="118" textAnchor="middle" fill="rgba(206,14,45,0.6)" fontSize="36" fontWeight="900" fontFamily="sans-serif">1</text>
-              {/* 어깨 라인 */}
-              <path d="M52,56 Q45,58 38,64 L42,68 Q48,62 52,60" fill="#f0f0f0"/>
-              <path d="M108,56 Q115,58 122,64 L118,68 Q112,62 108,60" fill="#f0f0f0"/>
+              <text x="89" y="172" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="44" fontWeight="900" fontFamily="sans-serif">1</text>
 
-              {/* 벨트 */}
-              <rect x="48" y="142" width="64" height="8" rx="2" fill="#222"/>
-              <rect x="74" y="142" width="12" height="8" rx="1" fill="#666"/>
+              {/* 어깨 (빨간 소매) */}
+              <path d="M54,74 Q42,78 34,86 L40,94 Q46,86 54,82" fill="#CE0E2D"/>
+              <path d="M124,74 Q136,78 144,86 L138,94 Q132,86 124,82" fill="#CE0E2D"/>
+              {/* 소매 끝 라인 */}
+              <path d="M34,86 L40,94" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
+              <path d="M144,86 L138,94" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
 
-              {/* 왼다리 (앞발 — 스텝 쪽) */}
-              <path d="M52,150 L40,210 L54,212 L64,150 Z" fill="#f0f0f0"/>
-              <line x1="48" y1="160" x2="46" y2="210" stroke="rgba(206,14,45,0.12)" strokeWidth="1.5"/>
-              {/* 왼발 스파이크 */}
-              <path d="M38,210 L30,216 L32,224 L56,220 L54,212 Z" fill="#1a1a1a"/>
+              {/* ─── 벨트 ─── */}
+              <rect x="46" y="197" width="86" height="10" rx="2" fill="#1a1a1a"/>
+              <rect x="82" y="197" width="14" height="10" rx="1" fill="#555"/>
 
+              {/* ─── 바지 (흰색) ─── */}
+              {/* 왼다리 (앞발 — 타격 스텝) */}
+              <path d="M54,207 L38,330 L58,332 L72,207 Z" fill="#f0f0f0"/>
+              {/* 바지 무릎 주름 */}
+              <path d="M42,290 Q48,286 56,290" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="1.5"/>
               {/* 오른다리 (축발) */}
-              <path d="M88,150 L96,210 L110,208 L100,150 Z" fill="#eee"/>
-              <line x1="94" y1="160" x2="100" y2="208" stroke="rgba(206,14,45,0.12)" strokeWidth="1.5"/>
-              {/* 오른발 스파이크 */}
-              <path d="M94,210 L92,220 L116,216 L112,208 Z" fill="#1a1a1a"/>
+              <path d="M100,207 L110,330 L130,328 L118,207 Z" fill="#e8e8e8"/>
+              <path d="M112,290 Q118,286 126,290" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="1.5"/>
 
-              {/* 팔 + 배트 스윙 그룹 */}
+              {/* 스타킹 (빨간색) */}
+              <path d="M38,320 L36,350 L60,348 L58,322 Z" fill="#CE0E2D" opacity="0.8"/>
+              <path d="M110,318 L112,348 L134,346 L130,320 Z" fill="#CE0E2D" opacity="0.8"/>
+
+              {/* ─── 스파이크 ─── */}
+              {/* 왼발 */}
+              <path d="M33,348 L24,356 L26,366 L62,360 L60,348 Z" fill="#111"/>
+              {/* 오른발 */}
+              <path d="M109,346 L108,358 L140,354 L136,344 Z" fill="#111"/>
+              {/* 스파이크 밑창 디테일 */}
+              <line x1="30" y1="360" x2="55" y2="356" stroke="#333" strokeWidth="1"/>
+              <line x1="112" y1="354" x2="134" y2="350" stroke="#333" strokeWidth="1"/>
+
+              {/* ─── 팔 + 배트 스윙 그룹 ─── */}
               <g style={{
-                transformOrigin: '80px 80px',
+                transformOrigin: '89px 105px',
                 transform: swinging ? 'rotate(-130deg)' : 'rotate(0deg)',
                 transition: swinging
                   ? 'transform 0.16s cubic-bezier(0.25,0,0.1,1)'
                   : 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
               }}>
-                {/* 오른팔 (뒷팔, 위쪽) */}
-                <path d="M108,62 Q118,55 124,44 L130,38" fill="none" stroke="#f0f0f0" strokeWidth="12" strokeLinecap="round"/>
-                <path d="M124,44 L130,38" fill="none" stroke="#c8956a" strokeWidth="10" strokeLinecap="round"/>
-                {/* 왼팔 (앞팔, 아래쪽) */}
-                <path d="M104,70 Q114,60 122,48 L128,42" fill="none" stroke="#f0f0f0" strokeWidth="11" strokeLinecap="round"/>
-                <path d="M122,48 L128,42" fill="none" stroke="#c8956a" strokeWidth="9" strokeLinecap="round"/>
+                {/* 오른팔 (뒤쪽 — 어깨에서 손으로) */}
+                <path d="M130,86 Q142,76 148,62 L154,50" fill="none" stroke="#CE0E2D" strokeWidth="14" strokeLinecap="round"/>
+                {/* 오른팔 피부 (팔꿈치~손목) */}
+                <path d="M148,62 L154,50" fill="none" stroke="#c8956a" strokeWidth="12" strokeLinecap="round"/>
 
-                {/* 배팅 글러브 (양손 겹침) */}
-                <ellipse cx="130" cy="37" rx="8" ry="7" fill="#222"/>
-                <ellipse cx="128" cy="40" rx="7" ry="6" fill="#333"/>
+                {/* 왼팔 (앞쪽) */}
+                <path d="M124,94 Q138,82 146,66 L152,56" fill="none" stroke="#CE0E2D" strokeWidth="13" strokeLinecap="round"/>
+                <path d="M146,66 L152,56" fill="none" stroke="#c8956a" strokeWidth="11" strokeLinecap="round"/>
+
+                {/* 배팅 글러브 */}
+                <ellipse cx="155" cy="48" rx="10" ry="9" fill="#1a1a1a"/>
+                <ellipse cx="153" cy="52" rx="9" ry="8" fill="#222"/>
 
                 {/* 배트 — 그립 */}
-                <line x1="130" y1="34" x2="134" y2="16" stroke="#3d2b10" strokeWidth="5" strokeLinecap="round"/>
+                <line x1="155" y1="44" x2="160" y2="22" stroke="#3d2b10" strokeWidth="6" strokeLinecap="round"/>
                 {/* 배트 — 테이핑 */}
-                <line x1="130" y1="34" x2="131" y2="26" stroke="#444" strokeWidth="6" strokeLinecap="round"/>
-                {/* 배트 — 배럴 */}
-                <line x1="134" y1="16" x2="138" y2="-6" stroke="#c09838" strokeWidth="7" strokeLinecap="round"/>
-                <line x1="138" y1="-6" x2="140" y2="-22" stroke="#c8a040" strokeWidth="8" strokeLinecap="round"/>
-                <line x1="140" y1="-22" x2="141" y2="-32" stroke="#d4aa48" strokeWidth="8.5" strokeLinecap="round"/>
+                <line x1="155" y1="44" x2="157" y2="34" stroke="#333" strokeWidth="7" strokeLinecap="round"/>
+                {/* 배트 — 배럴 (점점 두꺼워짐) */}
+                <line x1="160" y1="22" x2="164" y2="-4" stroke="#1a1a1a" strokeWidth="7.5" strokeLinecap="round"/>
+                <line x1="164" y1="-4" x2="167" y2="-24" stroke="#222" strokeWidth="8.5" strokeLinecap="round"/>
+                <line x1="167" y1="-24" x2="168" y2="-38" stroke="#2a2a2a" strokeWidth="9" strokeLinecap="round"/>
                 {/* 배트 끝 */}
-                <ellipse cx="141" cy="-33" rx="5" ry="3" fill="#b89030"/>
+                <ellipse cx="168" cy="-39" rx="5.5" ry="3.5" fill="#1a1a1a"/>
               </g>
             </g>
           </svg>
