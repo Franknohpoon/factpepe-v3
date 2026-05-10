@@ -2367,66 +2367,45 @@ const HomerunGame = () => {
           transition: 'border-color 0.15s',
         }}/>
 
-        {/* 타자 실루엣 (우타자, 3/4 후면 뷰) */}
-        <div style={{ position: 'absolute', bottom: '0%', right: '5%', zIndex: 25, pointerEvents: 'none' }}>
-          <svg width="130" height="190" viewBox="0 0 130 190" fill="none" style={{ filter: 'drop-shadow(2px 4px 8px rgba(0,0,0,0.6))' }}>
-            <g opacity="0.9">
-              {/* 헬멧 */}
-              <ellipse cx="60" cy="32" rx="15" ry="17" fill="#1a1a1a"/>
-              <ellipse cx="54" cy="29" rx="18" ry="13" fill="#CE0E2D" opacity="0.85"/>
-              {/* 헬멧 챙 */}
-              <path d="M38,30 Q36,38 42,40 L54,36 Q48,32 42,28 Z" fill="#111"/>
+        {/* 1인칭 타자 시점: 하단에 손 + 배트 */}
+        <div style={{ position: 'absolute', bottom: '-5%', left: '50%', transform: 'translateX(-50%)', zIndex: 25, pointerEvents: 'none' }}>
+          <svg width="280" height="160" viewBox="0 0 280 160" fill="none" style={{ filter: 'drop-shadow(0 -2px 12px rgba(0,0,0,0.5))' }}>
+            <g style={{
+              transformOrigin: '140px 180px',
+              transform: swinging ? 'rotate(-45deg) translateX(30px)' : 'rotate(0deg)',
+              transition: swinging
+                ? 'transform 0.15s cubic-bezier(0.2,0,0.1,1)'
+                : 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+              {/* 오른팔 (1인칭: 화면 오른쪽에서 올라옴) */}
+              <path d="M200,160 Q195,130 185,110 Q178,95 170,85" fill="none" stroke="#c8956a" strokeWidth="18" strokeLinecap="round"/>
+              {/* 오른팔 유니폼 소매 */}
+              <path d="M200,160 Q197,145 192,130" fill="none" stroke="#e8e8e8" strokeWidth="22" strokeLinecap="round"/>
+              <path d="M200,160 Q197,145 192,130" fill="none" stroke="rgba(206,14,45,0.15)" strokeWidth="22" strokeLinecap="round"/>
 
-              {/* 목 */}
-              <rect x="55" y="46" width="12" height="8" rx="3" fill="#c8956a"/>
+              {/* 왼팔 (1인칭: 화면 왼쪽에서 올라옴) */}
+              <path d="M80,160 Q85,130 95,110 Q102,95 110,85" fill="none" stroke="#c8956a" strokeWidth="16" strokeLinecap="round"/>
+              {/* 왼팔 유니폼 소매 */}
+              <path d="M80,160 Q83,145 88,130" fill="none" stroke="#e8e8e8" strokeWidth="20" strokeLinecap="round"/>
 
-              {/* 몸통 (유니폼) */}
-              <path d="M38,54 Q35,56 36,62 L34,115 L88,115 L86,62 Q87,56 84,54 Z" fill="#e8e8e8"/>
-              {/* 유니폼 줄무늬 */}
-              <line x1="50" y1="56" x2="49" y2="115" stroke="rgba(206,14,45,0.2)" strokeWidth="2"/>
-              <line x1="61" y1="56" x2="60" y2="115" stroke="rgba(206,14,45,0.2)" strokeWidth="2"/>
-              <line x1="72" y1="56" x2="71" y2="115" stroke="rgba(206,14,45,0.2)" strokeWidth="2"/>
-              {/* 등번호 */}
-              <text x="61" y="98" textAnchor="middle" fill="rgba(206,14,45,0.5)" fontSize="28" fontWeight="900" fontFamily="sans-serif">1</text>
+              {/* 배팅 글러브 (양손) */}
+              <ellipse cx="168" cy="82" rx="10" ry="9" fill="#222"/>
+              <ellipse cx="112" cy="82" rx="9" ry="8" fill="#222"/>
 
-              {/* 벨트 */}
-              <rect x="34" y="112" width="54" height="7" rx="2" fill="#222"/>
-              <rect x="56" y="112" width="10" height="7" rx="1" fill="#888"/>
+              {/* 배트 손잡이 (양손 그립 부분) */}
+              <line x1="140" y1="82" x2="140" y2="60" stroke="#3d2b10" strokeWidth="7" strokeLinecap="round"/>
+              {/* 배트 테이핑 */}
+              <line x1="140" y1="82" x2="140" y2="72" stroke="#444" strokeWidth="8" strokeLinecap="round"/>
+              {/* 배트 본체 — 원근감: 위로 갈수록 가늘어짐 */}
+              <line x1="140" y1="60" x2="138" y2="28" stroke="#c09838" strokeWidth="6" strokeLinecap="round"/>
+              <line x1="138" y1="28" x2="136" y2="8" stroke="#c8a040" strokeWidth="5" strokeLinecap="round"/>
+              <line x1="136" y1="8" x2="135" y2="-5" stroke="#d4aa48" strokeWidth="4.5" strokeLinecap="round"/>
+              {/* 배트 끝 */}
+              <ellipse cx="135" cy="-6" rx="3" ry="2" fill="#b89030"/>
 
-              {/* 왼다리 (앞다리 — 스텝) */}
-              <path d="M38,119 L26,168 L37,170 L48,119 Z" fill="#e0e0e0"/>
-              {/* 왼발 */}
-              <path d="M24,168 L15,172 L16,178 L38,174 L37,170 Z" fill="#222"/>
-
-              {/* 오른다리 (뒷다리 — 축) */}
-              <path d="M65,119 L72,168 L83,166 L76,119 Z" fill="#ddd"/>
-              {/* 오른발 */}
-              <path d="M70,168 L68,178 L90,175 L85,166 Z" fill="#222"/>
-
-              {/* 팔 + 배트 (스윙 그룹) */}
-              <g style={{
-                transformOrigin: '61px 65px',
-                transform: swinging ? 'rotate(-120deg)' : 'rotate(0deg)',
-                transition: swinging
-                  ? 'transform 0.18s cubic-bezier(0.3,0,0.1,1)'
-                  : 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-              }}>
-                {/* 오른팔 (뒤쪽, 위) */}
-                <path d="M82,58 Q92,50 96,38 L102,40 Q98,52 88,62 Z" fill="#e0e0e0"/>
-                {/* 왼팔 (앞쪽, 아래) */}
-                <path d="M78,64 Q88,54 94,42 L100,46 Q92,58 84,68 Z" fill="#ddd"/>
-                {/* 배팅 글러브 */}
-                <ellipse cx="99" cy="38" rx="6" ry="5" fill="#333"/>
-                {/* 배트 — 손잡이 */}
-                <line x1="99" y1="34" x2="106" y2="8" stroke="#8a6525" strokeWidth="4" strokeLinecap="round"/>
-                {/* 배트 — 테이핑 */}
-                <line x1="99" y1="34" x2="101" y2="26" stroke="#555" strokeWidth="5" strokeLinecap="round"/>
-                {/* 배트 — 배럴 */}
-                <line x1="106" y1="8" x2="112" y2="-16" stroke="#c09838" strokeWidth="6.5" strokeLinecap="round"/>
-                <line x1="112" y1="-16" x2="114" y2="-26" stroke="#c8a040" strokeWidth="7.5" strokeLinecap="round"/>
-                {/* 배트 끝 마감 */}
-                <ellipse cx="114" cy="-27" rx="4" ry="2.5" fill="#b89030"/>
-              </g>
+              {/* 손가락 디테일 */}
+              <path d="M160,80 Q164,76 168,78" fill="none" stroke="#a07050" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M120,80 Q116,76 112,78" fill="none" stroke="#a07050" strokeWidth="3" strokeLinecap="round"/>
             </g>
           </svg>
         </div>
