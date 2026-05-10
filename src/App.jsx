@@ -2065,11 +2065,13 @@ const HomerunGame = () => {
   const [busy, setBusy] = useState(false);
   const totalRounds = 10;
 
-  // 공 크기·위치: 멀리서 점점 커지며 날아옴
-  const ballSize = 6 + ballProgress * 88;          // 6px → 94px
-  const ballX = 50 + ballProgress * 3;              // 중앙에서 살짝 우측으로 (투구 궤도)
-  const ballY = 34 - ballProgress * 2;              // 수직은 거의 고정 (타자 눈높이)
-  const ballBlur = ballProgress > 0.75 ? (ballProgress - 0.75) * 12 : 0; // 근접 시 모션블러
+  // 공 궤적: 투수 마운드(작고 멀리) → 홈플레이트(크고 가까이)
+  // 원근감: 크기가 급격히 커지면서 약간 아래로 내려옴 (포물선 투구)
+  const bp = ballProgress;
+  const ballSize = 5 + bp * bp * 95;                 // 5px → 100px (후반에 급격히 커짐)
+  const ballX = 50 + bp * 1.5;                       // 아주 살짝만 우측으로
+  const ballY = 53 + bp * bp * 38;                   // 53% → 91% (마운드 위치 → 홈플레이트 앞)
+  const ballBlur = bp > 0.82 ? (bp - 0.82) * 15 : 0; // 아주 가까울 때만 모션블러
 
   const startGame = () => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); nextPitch(0); };
 
@@ -2308,16 +2310,16 @@ const HomerunGame = () => {
           <rect x="194" y="375" width="36" height="40" rx="2" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
         </svg>
 
-        {/* 투수 실루엣 */}
+        {/* 투수 실루엣 (마운드 위치에 고정) */}
         {phase !== 'swung' && (
           <div style={{
             position: 'absolute',
             left: '50%',
-            top: '50%',
-            transform: `translate(-50%, -50%) scale(${phase === 'pitching' ? 0.95 : 1})`,
-            fontSize: '22px',
-            filter: 'grayscale(1) brightness(0.5)',
-            transition: 'transform 0.15s',
+            top: '52%',
+            transform: `translate(-50%, -50%) scale(${phase === 'pitching' ? 0.9 : 1})`,
+            fontSize: '20px',
+            filter: 'grayscale(0.6) brightness(0.55)',
+            transition: 'transform 0.2s',
             pointerEvents: 'none',
             lineHeight: 1,
           }}>
@@ -2352,20 +2354,18 @@ const HomerunGame = () => {
           </div>
         )}
 
-        {/* 스트라이크존 테두리 (공이 가까워질 때 강조) */}
-        {phase === 'pitching' && ballProgress > 0.45 && (
-          <div style={{
-            position: 'absolute',
-            left: '50%', top: '34%',
-            transform: 'translate(-50%, -50%)',
-            width: '90px', height: '70px',
-            border: `1.5px solid rgba(255,255,255,${Math.min((ballProgress - 0.45) * 1.2, 0.4)})`,
-            borderRadius: '4px',
-            boxShadow: `0 0 12px rgba(255,255,255,${Math.min((ballProgress - 0.45) * 0.3, 0.12)})`,
-            pointerEvents: 'none',
-            zIndex: 15,
-          }}/>
-        )}
+        {/* 스트라이크존 (홈플레이트 앞, 포수 시야) */}
+        <div style={{
+          position: 'absolute',
+          left: '50%', top: '78%',
+          transform: 'translate(-50%, -50%)',
+          width: '110px', height: '85px',
+          border: `1.5px solid rgba(255,255,255,${phase === 'pitching' && bp > 0.4 ? Math.min((bp - 0.4) * 0.7, 0.35) : 0.08})`,
+          borderRadius: '3px',
+          pointerEvents: 'none',
+          zIndex: 15,
+          transition: 'border-color 0.15s',
+        }}/>
 
         {/* 배트 이미지 — 스윙 애니메이션 */}
         <img
@@ -2416,6 +2416,28 @@ const HomerunGame = () => {
           </div>
         )}
       </div>
+
+      {/* ── 타석별 실시간 기록 ── */}
+      {results.length > 0 && (
+        <div className="mt-3 bg-zinc-900/80 border border-zinc-800 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">타석 기록</span>
+            <span className="text-white text-xs font-black">총 {totalScore}타점</span>
+          </div>
+          <div className="space-y-1">
+            {results.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 py-1 px-2 rounded-lg" style={{ background: r.pts >= 4 ? 'rgba(206,14,45,0.15)' : r.pts > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)' }}>
+                <span className="text-gray-600 text-xs font-black w-6">{i + 1}</span>
+                <span className="text-base leading-none">{r.emoji}</span>
+                <span className={`text-xs font-bold flex-1 ${r.pts > 0 ? 'text-white' : 'text-gray-500'}`}>{r.label}</span>
+                <span className={`text-xs font-black ${r.pts >= 4 ? 'text-red-400' : r.pts > 0 ? 'text-green-400' : 'text-gray-600'}`}>
+                  {r.pts > 0 ? `+${r.pts}` : '-'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
