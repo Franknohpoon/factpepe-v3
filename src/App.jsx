@@ -2379,8 +2379,8 @@ const HomerunGame = () => {
         </div>
 
         {/* 야구 게임 카메라: 타자 뒷모습 (좌측 크게, 컴프야 스타일) */}
-        <div style={{ position: 'absolute', bottom: '-4%', left: '-3%', zIndex: 25, pointerEvents: 'none' }}>
-          <svg width="240" height="500" viewBox="0 0 240 500" fill="none" style={{ filter: 'drop-shadow(4px 6px 18px rgba(0,0,0,0.75))' }}>
+        <div style={{ position: 'absolute', bottom: '-4%', left: '-1%', zIndex: 25, pointerEvents: 'none', perspective: '600px' }}>
+          <svg width="240" height="500" viewBox="0 0 240 500" fill="none" style={{ filter: 'drop-shadow(4px 6px 18px rgba(0,0,0,0.75))', transform: 'rotateY(30deg)', transformOrigin: 'center center' }}>
             {/* 전체 몸통 — 스윙 시 살짝 회전 */}
             <g style={{
               transformOrigin: '120px 280px',
