@@ -1147,12 +1147,11 @@ const SeatViewContent = () => {
                   <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-bold text-sm">{z.label}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {z.priceWeekday && (
                         <span className="text-zinc-400 text-[11px]">
-                          {z.priceWeekday >= 1000 ? `${(z.priceWeekday/1000).toFixed(z.priceWeekday % 1000 ? 1 : 0)}k` : `${z.priceWeekday}`}
-                          {z.priceWeekend !== z.priceWeekday && <span className="text-zinc-600"> / {z.priceWeekend >= 1000 ? `${(z.priceWeekend/1000).toFixed(z.priceWeekend % 1000 ? 1 : 0)}k` : `${z.priceWeekend}`}</span>}
-                          <span className="text-zinc-600"> 원</span>
+                          {z.priceWeekday.toLocaleString()}원
+                          {z.priceWeekend !== z.priceWeekday && <span className="text-zinc-600"> / {z.priceWeekend.toLocaleString()}원</span>}
                         </span>
                       )}
                       <span className="text-zinc-600 text-[10px]">·</span>
