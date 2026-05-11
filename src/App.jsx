@@ -678,12 +678,13 @@ const LineupTab = () => {
       const canvas = await generateCanvas();
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       const filename = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
-      const file = new File([blob], filename, { type: 'image/png' });
-      // 모바일: 공유 시트 → "이미지 저장"으로 앨범 저장
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      if (isIOS && navigator.share) {
+        // iOS: 공유 시트 → "이미지 저장" → 사진 앨범
+        const file = new File([blob], filename, { type: 'image/png' });
         await navigator.share({ files: [file], title: '팩트페페 라인업' });
       } else {
-        // 데스크톱: 파일 다운로드
+        // Android Chrome / 데스크톱: 다운로드 (Android는 갤러리에 자동 노출)
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url; link.download = filename; link.click();
