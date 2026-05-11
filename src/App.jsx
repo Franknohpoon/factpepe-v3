@@ -73,12 +73,10 @@ const LANDERS_ZONES = [
 
   // ── 외야 ──
   { id: 'outfield', label: '외야 필드석', category: '외야', color: '#c8a84b', priceWeekday: 15000, priceWeekend: 18000,
-    // 배치도 외야 1층 (외야 좌/우, 중견 포함)
-    blocks: ['101B','102B','103B','104B','105B','106B',
-             '201B','202B','203B','204B','205B','206B'] },
+    blocks: ['104B','105B','106B','107B','108B','109B','110B','111B',
+             '204B','205B','206B'] },
   { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c', priceWeekday: 20000, priceWeekend: 28000,
-    // 외야 좌측(3루방향) 그린존
-    blocks: ['그린존 A','그린존 B'] },
+    blocks: [] },
 
   // ── 테이블석 ──
   { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020', priceWeekday: 25000, priceWeekend: 31000,
@@ -103,11 +101,9 @@ const LANDERS_ZONES = [
 
   // ── 응원석 ──
   { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040', priceWeekday: 19000, priceWeekend: 22000,
-    // 3루측 중간 응원석 구역
-    blocks: ['으쓱이 A','으쓱이 B','으쓱이 C'] },
+    blocks: ['1B','2B','3B','4B','5B','6B','N1','N2','N3','N4'] },
   { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030', priceWeekday: 19000, priceWeekend: 22000,
-    // 3루 파울라인 외곽 (배치도 좌측 상단)
-    blocks: ['원정 A','원정 B','원정 C'] },
+    blocks: ['27B','28B','29B','30B','31B','32B'] },
 
   // ── 특별석 ──
   { id: 'choijeong400', label: '최정 400홈런 기념존', category: '특별석', color: '#d4af37', priceWeekday: 400, priceWeekend: 400,
