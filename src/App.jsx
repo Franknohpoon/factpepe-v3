@@ -676,11 +676,21 @@ const LineupTab = () => {
     setBusy(true);
     try {
       const canvas = await generateCanvas();
-      const link = document.createElement('a');
-      link.download = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } finally { setBusy(false); }
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const filename = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+      // 모바일: 공유 시트 → "이미지 저장"으로 앨범 저장
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: '팩트페페 라인업' });
+      } else {
+        // 데스크톱: 파일 다운로드
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename; link.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) { if (e?.name !== 'AbortError') console.error(e); }
+    finally { setBusy(false); }
   };
 
   const shareToX = async () => {
@@ -688,20 +698,26 @@ const LineupTab = () => {
     setBusy(true);
     try {
       const canvas = await generateCanvas();
-      const text = encodeURIComponent(`SSG vs ${lineupData.opponent} 선발 라인업 🐸\n\n#SSG랜더스 #팩트페페 #KBO`);
-      canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'lineup.png', { type: 'image/png' });
-        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: '팩트페페 라인업', text: decodeURIComponent(text) });
-        } else {
-          const link = document.createElement('a');
-          link.href = canvas.toDataURL('image/png');
-          link.download = `lineup-${lineupData.date.replace(/\./g, '')}.png`;
-          link.click();
-          setTimeout(() => window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank'), 500);
-        }
-      });
-    } finally { setBusy(false); }
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const text = `SSG vs ${lineupData.opponent} 선발 라인업 🐸\n\n#SSG랜더스 #팩트페페 #KBO`;
+      const encodedText = encodeURIComponent(text);
+
+      // 이미지 클립보드 복사 (X 앱에서 붙여넣기 가능하도록)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      } catch {}
+
+      // X 앱 직접 실행, 미설치 시 1.5초 후 웹으로 폴백
+      let appOpened = false;
+      const onVisibility = () => { if (document.hidden) appOpened = true; };
+      document.addEventListener('visibilitychange', onVisibility);
+      window.location.href = `twitter://post?message=${encodedText}`;
+      setTimeout(() => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (!appOpened) window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
+      }, 1500);
+    } catch (e) { console.error(e); }
+    finally { setBusy(false); }
   };
 
   if (loading) return <div className="text-center py-20"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>;
@@ -719,8 +735,8 @@ const LineupTab = () => {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-black text-white">📋 라인업 생성기</h2>
         <div className="flex gap-2">
-          <button onClick={downloadImage} disabled={busy} className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">⬇ 저장</button>
-          <button onClick={shareToX} disabled={busy} className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유</button>
+          <button onClick={downloadImage} disabled={busy} className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">📷 저장</button>
+          <button onClick={shareToX} disabled={busy} className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유하기</button>
         </div>
       </div>
 
