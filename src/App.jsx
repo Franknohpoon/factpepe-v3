@@ -47,55 +47,73 @@ const KBO_TEAMS = ['KIA', '두산', '롯데', '삼성', 'LG', 'NC', 'KT', '한�
 const POSITIONS = ['투수', '포수', '1루수', '2루수', '3루수', '유격수', '좌익수', '중견수', '우익수', '지명타자'];
 
 const LANDERS_ZONES = [
-  // ── 내야 ── (가격순 정렬)
-  { id: 'sky4f', label: '4층 SKY뷰석', category: '내야', color: '#90d8e8', priceWeekday: 13000, priceWeekend: 15000,
-    blocks: ['4-101','4-102','4-103','4-104','4-105','4-106','4-107','4-108','4-109','4-110',
-             '4-201','4-202','4-203','4-204','4-205','4-206','4-207','4-208','4-209','4-210'] },
+  // ── 내야 ──
+  { id: 'sky4f', label: '4층 SKY뷰석', category: '내야', color: '#7dd8e8', priceWeekday: 13000, priceWeekend: 15000,
+    // 배치도 최외곽 링: 401B~420B
+    blocks: ['401B','402B','403B','404B','405B','406B','407B','408B','409B','410B',
+             '411B','412B','413B','414B','415B','416B','417B','418B','419B','420B'] },
   { id: 'infield', label: '내야 필드석', category: '내야', color: '#1a3c8f', priceWeekday: 16000, priceWeekend: 19000,
-    blocks: ['101','102A','102B','103A','103B','104','105A','105B','106A','106B','107','108A','108B','109A','109B','110','111','112','113','114',
-             '201','202A','202B','203A','203B','204','205A','205B','206A','206B','207','208A','208B','209A','209B','210','211','212','213','214'] },
+    // 배치도 내야 1층 링: 1B~32B (1루측 1B~14B, 홈플레이트 15B~19B, 3루측 20B~32B)
+    blocks: ['1B','2B','3B','4B','5B','6B','7B','8B','9B','10B','11B','12B','13B','14B',
+             '15B','16B','17B','18B','19B',
+             '20B','21B','22B','23B','24B','25B','26B','27B','28B','29B','30B','31B','32B'] },
   { id: 'dugout', label: '덕아웃 상단석', category: '내야', color: '#7b5ea7', priceWeekday: 21000, priceWeekend: 25000,
-    blocks: ['D1루','D3루'] },
-  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '내야', color: '#4080b0', priceWeekday: 34000, priceWeekend: 41000,
-    blocks: ['프렌들리-A','프렌들리-B'] },
+    // 배치도 덕아웃 바로 위 V블럭
+    blocks: ['V1','V2','V3','V4','V5','V6'] },
+  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '내야', color: '#2a9d8f', priceWeekday: 34000, priceWeekend: 41000,
+    // 배치도 1루 파울라인 외곽 N블럭
+    blocks: ['N1','N2','N3','N4'] },
   { id: 'landers_live', label: '랜더스 라이브존', category: '내야', color: '#e86faa', priceWeekday: 60000, priceWeekend: 75000,
-    blocks: ['라이브-A','라이브-B'] },
+    // 1루 덕아웃 옆 프리미엄석 (배치도상 라이브존 표기 구역)
+    blocks: ['라이브존 1루A','라이브존 1루B'] },
   { id: 'mini_skybox', label: '미니스카이박스', category: '내야', color: '#e06040', priceWeekday: 67000, priceWeekend: 86000,
-    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
-  { id: 'skybox', label: '스카이박스', category: '내야', color: '#40b8e0', priceWeekday: 83000, priceWeekend: 91000,
+    blocks: ['미니SB 1루','미니SB 3루'] },
+  { id: 'skybox', label: '스카이박스', category: '내야', color: '#4ab0e0', priceWeekday: 83000, priceWeekend: 91000,
     blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
+
   // ── 외야 ──
   { id: 'outfield', label: '외야 필드석', category: '외야', color: '#c8a84b', priceWeekday: 15000, priceWeekend: 18000,
-    blocks: ['301','302','303','304','305','306','307','308','309','310','311','312'] },
+    // 배치도 외야 1층 (외야 좌/우, 중견 포함)
+    blocks: ['101B','102B','103B','104B','105B','106B',
+             '201B','202B','203B','204B','205B','206B'] },
   { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c', priceWeekday: 20000, priceWeekend: 28000,
-    blocks: ['그린-좌측','그린-우측'] },
+    // 외야 좌측(3루방향) 그린존
+    blocks: ['그린존 A','그린존 B'] },
+
   // ── 테이블석 ──
   { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020', priceWeekday: 25000, priceWeekend: 31000,
-    blocks: ['파티덱-A','파티덱-B'] },
+    // 외야 중앙 상단 (배치도 최상단)
+    blocks: ['파티덱 A','파티덱 B'] },
   { id: 'sky_table', label: 'SKY탁자석', category: '테이블석', color: '#2db5a0', priceWeekday: 26000, priceWeekend: 36000,
-    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
-  { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#b8d870', priceWeekday: 27000, priceWeekend: 37000,
-    blocks: ['외야패밀리-좌','외야패밀리-우'] },
+    blocks: ['SKY탁자 1루','SKY탁자 3루'] },
+  { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#c8a878', priceWeekday: 27000, priceWeekend: 37000,
+    blocks: ['외야패밀리 좌','외야패밀리 우'] },
   { id: 'homerun', label: '홈런커플존', category: '테이블석', color: '#e84060', priceWeekday: 32000, priceWeekend: 41000,
-    blocks: ['HR존'] },
+    // 배치도 상단 1루/3루 양측 코너 (107B~113B, 207B~213B 근처)
+    blocks: ['107B','108B','109B','110B','111B','112B','113B',
+             '207B','208B','209B','210B','211B','212B','213B'] },
   { id: 'bbq_emart', label: '이마트 바비큐존/도드람한돈 바비큐존', category: '테이블석', color: '#8b4020', priceWeekday: 37000, priceWeekend: 48000,
-    blocks: ['바비큐-A','바비큐-B'] },
+    blocks: ['바비큐존 A','바비큐존 B'] },
   { id: 'yogiyo_family', label: '요기요 내야패밀리존', category: '테이블석', color: '#f0a030', priceWeekday: 40000, priceWeekend: 53000,
-    blocks: ['요기요-1루','요기요-3루'] },
+    blocks: ['요기요패밀리 1루','요기요패밀리 3루'] },
   { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '테이블석', color: '#3f7fc8', priceWeekday: 47000, priceWeekend: 55000,
-    blocks: ['NB-1루','NB-3루'] },
+    blocks: ['노브랜드 1루','노브랜드 3루'] },
   { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '테이블석', color: '#6b3fa0', priceWeekday: 53000, priceWeekend: 64000,
-    blocks: ['피코크-1루','피코크-3루'] },
+    blocks: ['피코크 1루','피코크 3루'] },
+
   // ── 응원석 ──
   { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040', priceWeekday: 19000, priceWeekend: 22000,
-    blocks: ['으쓱이-A','으쓱이-B'] },
+    // 3루측 중간 응원석 구역
+    blocks: ['으쓱이 A','으쓱이 B','으쓱이 C'] },
   { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030', priceWeekday: 19000, priceWeekend: 22000,
-    blocks: ['원정-A','원정-B'] },
+    // 3루 파울라인 외곽 (배치도 좌측 상단)
+    blocks: ['원정 A','원정 B','원정 C'] },
+
   // ── 특별석 ──
   { id: 'choijeong400', label: '최정 400홈런 기념존', category: '특별석', color: '#d4af37', priceWeekday: 400, priceWeekend: 400,
     blocks: ['기념존'] },
   { id: 'wheelchair', label: '휠체어 장애인석', category: '특별석', color: '#6699aa', priceWeekday: 5000, priceWeekend: 5000,
-    blocks: ['장애인석'] },
+    blocks: ['장애인석 1루','장애인석 3루'] },
   { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060', priceWeekday: 23000, priceWeekend: 31000,
     blocks: ['초가정자'] },
 ];
