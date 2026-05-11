@@ -650,6 +650,7 @@ const LineupTab = () => {
   const [bgPlayerName, setBgPlayerName] = useState(''); // 오늘의 주인공 이름
   const [busy, setBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [savePreview, setSavePreview] = useState(null); // 모바일 저장용 이미지 팝업
 
   useEffect(() => {
     onValue(dbRef(database, 'lineup/latest'), (snap) => {
@@ -679,18 +680,16 @@ const LineupTab = () => {
     setBusy(true);
     try {
       const canvas = await generateCanvas();
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      const filename = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
       const ua = navigator.userAgent;
-      const isIOS = /iPhone|iPad|iPod/.test(ua) && !/Windows/.test(ua);
-      const isMobile = isIOS || /Android/.test(ua);
+      const isMobile = /iPhone|iPad|iPod|Android/.test(ua) && !/Windows/.test(ua);
 
-      if (isIOS && navigator.share) {
-        // iOS: 공유 시트 → "이미지 저장" → 사진 앨범
-        const file = new File([blob], filename, { type: 'image/png' });
-        await navigator.share({ files: [file], title: '팩트페페 라인업' });
+      if (isMobile) {
+        // 모바일: 이미지 팝업 → 꾹 눌러 저장 (user gesture 만료 문제 우회)
+        setSavePreview(canvas.toDataURL('image/png'));
       } else {
-        // Android / 데스크톱: 직접 다운로드
+        // 데스크톱: 파일 다운로드
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        const filename = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -699,8 +698,7 @@ const LineupTab = () => {
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        if (isMobile) showSaveMsg('📥 다운로드 폴더에서 확인하세요');
-        else showSaveMsg('✅ 저장 완료!');
+        showSaveMsg('✅ 저장 완료!');
       }
     } catch (e) {
       if (e?.name !== 'AbortError') {
@@ -759,6 +757,19 @@ const LineupTab = () => {
       </div>
       {saveMsg && <p className="text-right text-xs text-zinc-400 mb-4 transition-all">{saveMsg}</p>}
       {!saveMsg && <div className="mb-4" />}
+
+      {/* 모바일 저장 팝업 */}
+      {savePreview && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6"
+          onClick={() => setSavePreview(null)}>
+          <p className="text-white font-black text-lg mb-2">📷 이미지를 꾹 눌러 저장하세요</p>
+          <p className="text-zinc-400 text-sm mb-5">사진 앨범에 저장 → 탭하여 닫기</p>
+          <img src={savePreview} alt="lineup" className="max-w-full rounded-2xl shadow-2xl"
+            onClick={e => e.stopPropagation()} style={{ maxHeight: '65vh', objectFit: 'contain' }} />
+          <button onClick={() => setSavePreview(null)}
+            className="mt-6 text-zinc-500 text-sm underline">닫기</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
