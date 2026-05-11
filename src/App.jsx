@@ -649,6 +649,7 @@ const LineupTab = () => {
   const [bgPlayerImage, setBgPlayerImage] = useState(null); // 선수 배경 이미지 (ObjectURL)
   const [bgPlayerName, setBgPlayerName] = useState(''); // 오늘의 주인공 이름
   const [busy, setBusy] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
     onValue(dbRef(database, 'lineup/latest'), (snap) => {
@@ -671,6 +672,8 @@ const LineupTab = () => {
 
   const generateCanvas = () => html2canvas(cardRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
 
+  const showSaveMsg = (msg) => { setSaveMsg(msg); setTimeout(() => setSaveMsg(''), 3000); };
+
   const downloadImage = async () => {
     if (!cardRef.current || busy) return;
     setBusy(true);
@@ -678,13 +681,16 @@ const LineupTab = () => {
       const canvas = await generateCanvas();
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       const filename = `lineup-${(lineupData?.date || 'unknown').replace(/\./g, '')}.png`;
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const ua = navigator.userAgent;
+      const isIOS = /iPhone|iPad|iPod/.test(ua) && !/Windows/.test(ua);
+      const isMobile = isIOS || /Android/.test(ua);
+
       if (isIOS && navigator.share) {
         // iOS: 공유 시트 → "이미지 저장" → 사진 앨범
         const file = new File([blob], filename, { type: 'image/png' });
         await navigator.share({ files: [file], title: '팩트페페 라인업' });
       } else {
-        // Android Chrome / 데스크톱: 다운로드 (Android는 갤러리에 자동 노출)
+        // Android / 데스크톱: 직접 다운로드
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -693,8 +699,15 @@ const LineupTab = () => {
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (isMobile) showSaveMsg('📥 다운로드 폴더에서 확인하세요');
+        else showSaveMsg('✅ 저장 완료!');
       }
-    } catch (e) { if (e?.name !== 'AbortError') console.error(e); }
+    } catch (e) {
+      if (e?.name !== 'AbortError') {
+        console.error(e);
+        showSaveMsg('❌ 저장 실패: ' + (e?.message || '알 수 없는 오류'));
+      }
+    }
     finally { setBusy(false); }
   };
 
@@ -737,13 +750,15 @@ const LineupTab = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-2xl font-black text-white">📋 라인업 생성기</h2>
         <div className="flex gap-2">
           <button onClick={downloadImage} disabled={busy} className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">📷 저장</button>
           <button onClick={shareToX} disabled={busy} className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유하기</button>
         </div>
       </div>
+      {saveMsg && <p className="text-right text-xs text-zinc-400 mb-4 transition-all">{saveMsg}</p>}
+      {!saveMsg && <div className="mb-4" />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
