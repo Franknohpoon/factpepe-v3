@@ -925,6 +925,7 @@ const SeatViewContent = () => {
   const [carousel, setCarousel] = useState(null);
   const touchStartX = useRef(null);
   const [expandedZone, setExpandedZone] = useState(null); // 메인 리스트에서 블럭 펼침
+  const [stadiumMap, setStadiumMap] = useState(null);
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -935,6 +936,9 @@ const SeatViewContent = () => {
       });
       setPhotos(parsed);
       setLoading(false);
+    });
+    onValue(dbRef(database, 'seatViews/stadiumMap'), (snap) => {
+      setStadiumMap(snap.val());
     });
   }, []);
 
@@ -1096,8 +1100,29 @@ const SeatViewContent = () => {
   }
 
   // ── 1단계: 카테고리 → 좌석종류 목록 ──
+  const [showStadiumMap, setShowStadiumMap] = useState(false);
+
   return (
     <div>
+      {/* 구장 배치도 참고 이미지 */}
+      {stadiumMap?.url && (
+        <>
+          <button
+            onClick={() => setShowStadiumMap(!showStadiumMap)}
+            className="w-full flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 mb-4 hover:border-zinc-600 transition-all"
+          >
+            <span className="text-white font-bold text-sm">🏟️ 구장 배치도 보기</span>
+            <span className={`text-zinc-500 text-sm transition-transform ${showStadiumMap ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {showStadiumMap && (
+            <div className="mb-5 rounded-2xl overflow-hidden border border-zinc-700">
+              <img src={stadiumMap.url} alt="구장 좌석 배치도" className="w-full block" style={{ touchAction: 'pinch-zoom' }} />
+              <p className="text-zinc-600 text-[10px] text-center py-1.5 bg-zinc-900">확대해서 구역 번호를 확인하세요</p>
+            </div>
+          )}
+        </>
+      )}
+
       <p className="text-gray-400 text-sm mb-4">좌석 종류를 선택하면 구역별 시야를 확인할 수 있어요</p>
 
       {/* 카테고리 탭 */}
