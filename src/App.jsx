@@ -945,6 +945,7 @@ const SeatViewContent = () => {
   const touchStartX = useRef(null);
   const [expandedZone, setExpandedZone] = useState(null); // 메인 리스트에서 블럭 펼침
   const [stadiumMap, setStadiumMap] = useState(null);
+  const [showStadiumMap, setShowStadiumMap] = useState(false);
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -1122,8 +1123,6 @@ const SeatViewContent = () => {
   }
 
   // ── 1단계: 카테고리 → 좌석종류 목록 ──
-  const [showStadiumMap, setShowStadiumMap] = useState(false);
-
   return (
     <div>
       {/* 구장 배치도 참고 이미지 */}
