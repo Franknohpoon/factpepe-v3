@@ -687,8 +687,12 @@ const LineupTab = () => {
         // Android Chrome / 데스크톱: 다운로드 (Android는 갤러리에 자동 노출)
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url; link.download = filename; link.click();
-        URL.revokeObjectURL(url);
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch (e) { if (e?.name !== 'AbortError') console.error(e); }
     finally { setBusy(false); }
