@@ -80,8 +80,8 @@ const LANDERS_ZONES = [
 
   // ── 테이블석 ──
   { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020', priceWeekday: 25000, priceWeekend: 31000,
-    // 외야 중앙 상단 (배치도 최상단)
-    blocks: ['파티덱 A','파티덱 B'] },
+    blocks: ['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12','A13','A14','A15','A16',
+             'B17','B18','B19','B20','B21','B22','B23','B24','B25','B26','B27','B28','B29'] },
   { id: 'sky_table', label: 'SKY탁자석', category: '테이블석', color: '#2db5a0', priceWeekday: 26000, priceWeekend: 36000,
     blocks: ['SKY탁자 1루','SKY탁자 3루'] },
   { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#c8a878', priceWeekday: 27000, priceWeekend: 37000,
