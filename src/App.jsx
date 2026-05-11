@@ -47,51 +47,57 @@ const KBO_TEAMS = ['KIA', '두산', '롯데', '삼성', 'LG', 'NC', 'KT', '한�
 const POSITIONS = ['투수', '포수', '1루수', '2루수', '3루수', '유격수', '좌익수', '중견수', '우익수', '지명타자'];
 
 const LANDERS_ZONES = [
-  // ── 내야 ──
-  { id: 'infield', label: '내야 필드석', category: '내야', color: '#1a3c8f',
-    blocks: ['101','102A','102B','103A','103B','104','105A','105B','106A','106B','107','108A','108B','109A','109B','110','111','112','113','114',
-             '201','202A','202B','203A','203B','204','205A','205B','206A','206B','207','208A','208B','209A','209B','210','211','212','213','214'] },
-  { id: 'sky4f', label: '4층 SKY뷰석', category: '내야', color: '#90d8e8',
+  // ── 내야 ── (가격순 정렬)
+  { id: 'sky4f', label: '4층 SKY뷰석', category: '내야', color: '#90d8e8', priceWeekday: 13000, priceWeekend: 15000,
     blocks: ['4-101','4-102','4-103','4-104','4-105','4-106','4-107','4-108','4-109','4-110',
              '4-201','4-202','4-203','4-204','4-205','4-206','4-207','4-208','4-209','4-210'] },
-  { id: 'dugout', label: '덕아웃 상단석', category: '내야', color: '#7b5ea7',
+  { id: 'infield', label: '내야 필드석', category: '내야', color: '#1a3c8f', priceWeekday: 16000, priceWeekend: 19000,
+    blocks: ['101','102A','102B','103A','103B','104','105A','105B','106A','106B','107','108A','108B','109A','109B','110','111','112','113','114',
+             '201','202A','202B','203A','203B','204','205A','205B','206A','206B','207','208A','208B','209A','209B','210','211','212','213','214'] },
+  { id: 'dugout', label: '덕아웃 상단석', category: '내야', color: '#7b5ea7', priceWeekday: 21000, priceWeekend: 25000,
     blocks: ['D1루','D3루'] },
-  { id: 'mini_skybox', label: '미니스카이박스', category: '내야', color: '#e06040',
-    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
-  { id: 'skybox', label: '스카이박스', category: '내야', color: '#40b8e0',
-    blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
-  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '내야', color: '#4080b0',
+  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '내야', color: '#4080b0', priceWeekday: 34000, priceWeekend: 41000,
     blocks: ['프렌들리-A','프렌들리-B'] },
-  { id: 'landers_live', label: '랜더스 라이브존', category: '내야', color: '#e86faa',
+  { id: 'landers_live', label: '랜더스 라이브존', category: '내야', color: '#e86faa', priceWeekday: 60000, priceWeekend: 75000,
     blocks: ['라이브-A','라이브-B'] },
+  { id: 'mini_skybox', label: '미니스카이박스', category: '내야', color: '#e06040', priceWeekday: 67000, priceWeekend: 86000,
+    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
+  { id: 'skybox', label: '스카이박스', category: '내야', color: '#40b8e0', priceWeekday: 83000, priceWeekend: 91000,
+    blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
   // ── 외야 ──
-  { id: 'outfield', label: '외야 필드석', category: '외야', color: '#c8a84b',
+  { id: 'outfield', label: '외야 필드석', category: '외야', color: '#c8a84b', priceWeekday: 15000, priceWeekend: 18000,
     blocks: ['301','302','303','304','305','306','307','308','309','310','311','312'] },
-  { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c',
+  { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c', priceWeekday: 20000, priceWeekend: 28000,
     blocks: ['그린-좌측','그린-우측'] },
   // ── 테이블석 ──
-  { id: 'homerun', label: '홈런커플존', category: '테이블석', color: '#e84060',
-    blocks: ['HR존'] },
-  { id: 'sky_table', label: 'SKY탁자석', category: '테이블석', color: '#2db5a0',
-    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
-  { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#b8d870',
-    blocks: ['외야패밀리-좌','외야패밀리-우'] },
-  { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '테이블석', color: '#6b3fa0',
-    blocks: ['피코크-1루','피코크-3루'] },
-  { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '테이블석', color: '#3f7fc8',
-    blocks: ['NB-1루','NB-3루'] },
-  { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020',
+  { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020', priceWeekday: 25000, priceWeekend: 31000,
     blocks: ['파티덱-A','파티덱-B'] },
+  { id: 'sky_table', label: 'SKY탁자석', category: '테이블석', color: '#2db5a0', priceWeekday: 26000, priceWeekend: 36000,
+    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
+  { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#b8d870', priceWeekday: 27000, priceWeekend: 37000,
+    blocks: ['외야패밀리-좌','외야패밀리-우'] },
+  { id: 'homerun', label: '홈런커플존', category: '테이블석', color: '#e84060', priceWeekday: 32000, priceWeekend: 41000,
+    blocks: ['HR존'] },
+  { id: 'bbq_emart', label: '이마트 바비큐존/도드람한돈 바비큐존', category: '테이블석', color: '#8b4020', priceWeekday: 37000, priceWeekend: 48000,
+    blocks: ['바비큐-A','바비큐-B'] },
+  { id: 'yogiyo_family', label: '요기요 내야패밀리존', category: '테이블석', color: '#f0a030', priceWeekday: 40000, priceWeekend: 53000,
+    blocks: ['요기요-1루','요기요-3루'] },
+  { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '테이블석', color: '#3f7fc8', priceWeekday: 47000, priceWeekend: 55000,
+    blocks: ['NB-1루','NB-3루'] },
+  { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '테이블석', color: '#6b3fa0', priceWeekday: 53000, priceWeekend: 64000,
+    blocks: ['피코크-1루','피코크-3루'] },
   // ── 응원석 ──
-  { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040',
+  { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040', priceWeekday: 19000, priceWeekend: 22000,
     blocks: ['으쓱이-A','으쓱이-B'] },
-  { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030',
+  { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030', priceWeekday: 19000, priceWeekend: 22000,
     blocks: ['원정-A','원정-B'] },
   // ── 특별석 ──
-  { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060',
+  { id: 'choijeong400', label: '최정 400홈런 기념존', category: '특별석', color: '#d4af37', priceWeekday: 400, priceWeekend: 400,
+    blocks: ['기념존'] },
+  { id: 'wheelchair', label: '휠체어 장애인석', category: '특별석', color: '#6699aa', priceWeekday: 5000, priceWeekend: 5000,
+    blocks: ['장애인석'] },
+  { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060', priceWeekday: 23000, priceWeekend: 31000,
     blocks: ['초가정자'] },
-  { id: 'landers_live_sp', label: '랜더스 라이브존', category: '특별석', color: '#e86faa',
-    blocks: ['라이브-특별A','라이브-특별B'] },
 ];
 
 const TEAM_CHANT_VIDEO_ID = 'zPGEpmBj4iw';
@@ -1028,7 +1034,10 @@ const SeatViewContent = () => {
             <span className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedZone.color }} />
             <div>
               <h3 className="text-white font-black text-xl">{selectedZone.label}</h3>
-              <p className="text-zinc-500 text-xs">{blocks.length}개 구역 · 시야 사진 {zonePhotos.length}장</p>
+              <p className="text-zinc-500 text-xs">
+                {selectedZone.priceWeekday && <span className="text-zinc-400">{selectedZone.priceWeekday.toLocaleString()}원{selectedZone.priceWeekend !== selectedZone.priceWeekday && ` / ${selectedZone.priceWeekend.toLocaleString()}원`} · </span>}
+                {blocks.length}구역 · 📷 {zonePhotos.length}
+              </p>
             </div>
           </div>
           <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
@@ -1138,9 +1147,17 @@ const SeatViewContent = () => {
                   <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-bold text-sm">{z.label}</p>
-                    <p className="text-zinc-500 text-xs mt-0.5">
-                      {blocks.length}개 구역 · 시야 사진 {zonePhotos.length}장
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {z.priceWeekday && (
+                        <span className="text-zinc-400 text-[11px]">
+                          {z.priceWeekday >= 1000 ? `${(z.priceWeekday/1000).toFixed(z.priceWeekday % 1000 ? 1 : 0)}k` : `${z.priceWeekday}`}
+                          {z.priceWeekend !== z.priceWeekday && <span className="text-zinc-600"> / {z.priceWeekend >= 1000 ? `${(z.priceWeekend/1000).toFixed(z.priceWeekend % 1000 ? 1 : 0)}k` : `${z.priceWeekend}`}</span>}
+                          <span className="text-zinc-600"> 원</span>
+                        </span>
+                      )}
+                      <span className="text-zinc-600 text-[10px]">·</span>
+                      <span className="text-zinc-500 text-[11px]">{blocks.length}구역 · 📷 {zonePhotos.length}</span>
+                    </div>
                   </div>
                   <span className={`text-zinc-500 text-sm transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
                 </button>
