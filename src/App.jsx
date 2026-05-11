@@ -48,65 +48,50 @@ const POSITIONS = ['투수', '포수', '1루수', '2루수', '3루수', '유격�
 
 const LANDERS_ZONES = [
   // ── 내야 ──
-  { id: 'infield', label: '내야 지정석', category: '내야', color: '#1a3c8f',
+  { id: 'infield', label: '내야 필드석', category: '내야', color: '#1a3c8f',
     blocks: ['101','102A','102B','103A','103B','104','105A','105B','106A','106B','107','108A','108B','109A','109B','110','111','112','113','114',
              '201','202A','202B','203A','203B','204','205A','205B','206A','206B','207','208A','208B','209A','209B','210','211','212','213','214'] },
-  { id: 'exciting', label: '익사이팅석', category: '내야', color: '#e63946',
-    blocks: ['E1루-A','E1루-B','E1루-C','E3루-A','E3루-B','E3루-C'] },
+  { id: 'sky4f', label: '4층 SKY뷰석', category: '내야', color: '#90d8e8',
+    blocks: ['4-101','4-102','4-103','4-104','4-105','4-106','4-107','4-108','4-109','4-110',
+             '4-201','4-202','4-203','4-204','4-205','4-206','4-207','4-208','4-209','4-210'] },
   { id: 'dugout', label: '덕아웃 상단석', category: '내야', color: '#7b5ea7',
     blocks: ['D1루','D3루'] },
+  { id: 'mini_skybox', label: '미니스카이박스', category: '내야', color: '#e06040',
+    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
+  { id: 'skybox', label: '스카이박스', category: '내야', color: '#40b8e0',
+    blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
+  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '내야', color: '#4080b0',
+    blocks: ['프렌들리-A','프렌들리-B'] },
   { id: 'landers_live', label: '랜더스 라이브존', category: '내야', color: '#e86faa',
     blocks: ['라이브-A','라이브-B'] },
   // ── 외야 ──
-  { id: 'outfield', label: '외야 지정석', category: '외야', color: '#c8a84b',
+  { id: 'outfield', label: '외야 필드석', category: '외야', color: '#c8a84b',
     blocks: ['301','302','303','304','305','306','307','308','309','310','311','312'] },
   { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c',
     blocks: ['그린-좌측','그린-우측'] },
-  { id: 'rocket', label: '로케트배터리 외야파티덱', category: '외야', color: '#2d6020',
-    blocks: ['파티덱-A','파티덱-B'] },
-  // ── 2층 ──
-  { id: 'sky2f', label: '2층 지정석', category: '2층', color: '#4488cc',
-    blocks: ['2-101','2-102','2-103','2-104','2-105','2-106','2-107','2-108','2-109','2-110',
-             '2-201','2-202','2-203','2-204','2-205','2-206','2-207','2-208','2-209','2-210'] },
-  { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '2층', color: '#3f7fc8',
-    blocks: ['NB-1루','NB-3루'] },
-  // ── 3층 ──
-  { id: 'sky3f', label: '3층 지정석', category: '3층', color: '#6aaad8',
-    blocks: ['3-101','3-102','3-103','3-104','3-105','3-106','3-107','3-108','3-109','3-110',
-             '3-201','3-202','3-203','3-204','3-205','3-206','3-207','3-208','3-209','3-210'] },
-  // ── 4층 ──
-  { id: 'sky4f', label: '4층 SKY뷰석', category: '4층', color: '#90d8e8',
-    blocks: ['4-101','4-102','4-103','4-104','4-105','4-106','4-107','4-108','4-109','4-110',
-             '4-201','4-202','4-203','4-204','4-205','4-206','4-207','4-208','4-209','4-210'] },
-  { id: 'sky_table', label: 'SKY탁자석', category: '4층', color: '#2db5a0',
-    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
-  // ── 특별석 ──
-  { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '특별석', color: '#6b3fa0',
-    blocks: ['피코크-1루','피코크-3루'] },
-  { id: 'skybox', label: '스카이박스', category: '특별석', color: '#40b8e0',
-    blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
-  { id: 'mini_skybox', label: '미니스카이박스', category: '특별석', color: '#e06040',
-    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
-  { id: 'homerun', label: '홈런커플존', category: '특별석', color: '#e84060',
+  // ── 테이블석 ──
+  { id: 'homerun', label: '홈런커플존', category: '테이블석', color: '#e84060',
     blocks: ['HR존'] },
-  { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060',
-    blocks: ['초가정자'] },
-  { id: 'bbq_open', label: '오픈 바비큐존', category: '특별석', color: '#b06030',
-    blocks: ['BBQ-A','BBQ-B'] },
-  { id: 'bbq_emart', label: '이마트 바비큐존', category: '특별석', color: '#8b4020',
-    blocks: ['이마트BBQ-A','이마트BBQ-B'] },
-  // ── 가족석 ──
-  { id: 'yogiyo_family', label: '요기요 내야패밀리존', category: '가족석', color: '#f0a030',
-    blocks: ['패밀리-1루','패밀리-3루'] },
-  { id: 'outfield_family', label: '외야패밀리존', category: '가족석', color: '#b8d870',
+  { id: 'sky_table', label: 'SKY탁자석', category: '테이블석', color: '#2db5a0',
+    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
+  { id: 'outfield_family', label: '외야패밀리존', category: '테이블석', color: '#b8d870',
     blocks: ['외야패밀리-좌','외야패밀리-우'] },
-  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '가족석', color: '#4080b0',
-    blocks: ['프렌들리-A','프렌들리-B'] },
+  { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '테이블석', color: '#6b3fa0',
+    blocks: ['피코크-1루','피코크-3루'] },
+  { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '테이블석', color: '#3f7fc8',
+    blocks: ['NB-1루','NB-3루'] },
+  { id: 'rocket', label: '로케트배터리 외야파티덱', category: '테이블석', color: '#2d6020',
+    blocks: ['파티덱-A','파티덱-B'] },
   // ── 응원석 ──
   { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040',
     blocks: ['으쓱이-A','으쓱이-B'] },
   { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030',
     blocks: ['원정-A','원정-B'] },
+  // ── 특별석 ──
+  { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060',
+    blocks: ['초가정자'] },
+  { id: 'landers_live_sp', label: '랜더스 라이브존', category: '특별석', color: '#e86faa',
+    blocks: ['라이브-특별A','라이브-특별B'] },
 ];
 
 const TEAM_CHANT_VIDEO_ID = 'zPGEpmBj4iw';
@@ -910,7 +895,7 @@ const ReportTab = () => {
   );
 };
 
-const ZONE_CATEGORIES = ['내야', '외야', '2층', '3층', '4층', '특별석', '가족석', '응원석'];
+const ZONE_CATEGORIES = ['내야', '외야', '테이블석', '응원석', '특별석'];
 
 const SeatViewContent = () => {
   const [photos, setPhotos] = useState({});  // { zoneId: [{id, photoUrl, row, seat, note, block}] }
