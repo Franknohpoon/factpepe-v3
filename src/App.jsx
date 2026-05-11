@@ -47,33 +47,66 @@ const KBO_TEAMS = ['KIA', '두산', '롯데', '삼성', 'LG', 'NC', 'KT', '한�
 const POSITIONS = ['투수', '포수', '1루수', '2루수', '3루수', '유격수', '좌익수', '중견수', '우익수', '지명타자'];
 
 const LANDERS_ZONES = [
-  // 내야                                                                       mapX/mapY = 배치도 이미지 위 % 좌표
-  { id: 'infield',        label: '내야 필드석',           category: '내야',   color: '#1a3c8f',  mapX: 50, mapY: 72 },
-  { id: 'dugout',         label: '덕아웃 상단석',         category: '내야',   color: '#7b5ea7',  mapX: 50, mapY: 62 },
-  { id: 'landers_live',   label: '랜더스 라이브존',       category: '내야',   color: '#e86faa',  mapX: 28, mapY: 62 },
-  // 외야
-  { id: 'outfield',       label: '외야 필드석',           category: '외야',   color: '#c8a84b',  mapX: 50, mapY: 22 },
-  { id: 'mollis',         label: '몰리스 그린존',         category: '외야',   color: '#5aaa3c',  mapX: 30, mapY: 28 },
-  { id: 'rocket',         label: '로케트배터리 외야파티덱', category: '외야', color: '#2d6020',  mapX: 70, mapY: 28 },
-  // 상단
-  { id: 'sky4f',          label: '4층 SKY뷰석',           category: '상단',   color: '#90d8e8',  mapX: 50, mapY: 48 },
-  { id: 'sky_table',      label: 'SKY탁자석',             category: '상단',   color: '#2db5a0',  mapX: 68, mapY: 48 },
-  // 테이블/특별석
-  { id: 'peacock_1f',     label: '피코크 테이블석(1층)',  category: '특별석', color: '#6b3fa0',  mapX: 22, mapY: 52 },
-  { id: 'nobrand_2f',     label: '노브랜드 테이블석(2층)', category: '특별석', color: '#3f7fc8', mapX: 78, mapY: 52 },
-  { id: 'skybox',         label: '스카이박스',             category: '특별석', color: '#40b8e0',  mapX: 32, mapY: 42 },
-  { id: 'mini_skybox',    label: '미니스카이박스',         category: '특별석', color: '#e06040',  mapX: 68, mapY: 42 },
-  { id: 'homerun',        label: '홈런커플존',             category: '특별석', color: '#e84060',  mapX: 50, mapY: 30 },
-  { id: 'chogangjeta',    label: '초가정자',               category: '특별석', color: '#60c060',  mapX: 15, mapY: 38 },
-  { id: 'bbq_open',       label: '오픈 바비큐존',          category: '특별석', color: '#b06030',  mapX: 85, mapY: 38 },
-  { id: 'bbq_emart',      label: '이마트 바비큐존',        category: '특별석', color: '#8b4020',  mapX: 85, mapY: 32 },
-  // 가족석
-  { id: 'yogiyo_family',  label: '요기요 내야패밀리존',   category: '가족석', color: '#f0a030',  mapX: 35, mapY: 55 },
-  { id: 'outfield_family',label: '외야패밀리존',           category: '가족석', color: '#b8d870',  mapX: 20, mapY: 32 },
-  { id: 'emart_friendly', label: '이마트 프렌들리존',      category: '가족석', color: '#4080b0',  mapX: 80, mapY: 55 },
-  // 응원
-  { id: 'sseugi',         label: '으쓱이존',              category: '응원',   color: '#c83040',  mapX: 38, mapY: 78 },
-  { id: 'away',           label: '원정응원석',             category: '응원',   color: '#e87030',  mapX: 62, mapY: 78 },
+  // ── 내야 ──
+  { id: 'infield', label: '내야 지정석', category: '내야', color: '#1a3c8f',
+    blocks: ['101','102A','102B','103A','103B','104','105A','105B','106A','106B','107','108A','108B','109A','109B','110','111','112','113','114',
+             '201','202A','202B','203A','203B','204','205A','205B','206A','206B','207','208A','208B','209A','209B','210','211','212','213','214'] },
+  { id: 'exciting', label: '익사이팅석', category: '내야', color: '#e63946',
+    blocks: ['E1루-A','E1루-B','E1루-C','E3루-A','E3루-B','E3루-C'] },
+  { id: 'dugout', label: '덕아웃 상단석', category: '내야', color: '#7b5ea7',
+    blocks: ['D1루','D3루'] },
+  { id: 'landers_live', label: '랜더스 라이브존', category: '내야', color: '#e86faa',
+    blocks: ['라이브-A','라이브-B'] },
+  // ── 외야 ──
+  { id: 'outfield', label: '외야 지정석', category: '외야', color: '#c8a84b',
+    blocks: ['301','302','303','304','305','306','307','308','309','310','311','312'] },
+  { id: 'mollis', label: '몰리스 그린존', category: '외야', color: '#5aaa3c',
+    blocks: ['그린-좌측','그린-우측'] },
+  { id: 'rocket', label: '로케트배터리 외야파티덱', category: '외야', color: '#2d6020',
+    blocks: ['파티덱-A','파티덱-B'] },
+  // ── 2층 ──
+  { id: 'sky2f', label: '2층 지정석', category: '2층', color: '#4488cc',
+    blocks: ['2-101','2-102','2-103','2-104','2-105','2-106','2-107','2-108','2-109','2-110',
+             '2-201','2-202','2-203','2-204','2-205','2-206','2-207','2-208','2-209','2-210'] },
+  { id: 'nobrand_2f', label: '노브랜드 테이블석(2층)', category: '2층', color: '#3f7fc8',
+    blocks: ['NB-1루','NB-3루'] },
+  // ── 3층 ──
+  { id: 'sky3f', label: '3층 지정석', category: '3층', color: '#6aaad8',
+    blocks: ['3-101','3-102','3-103','3-104','3-105','3-106','3-107','3-108','3-109','3-110',
+             '3-201','3-202','3-203','3-204','3-205','3-206','3-207','3-208','3-209','3-210'] },
+  // ── 4층 ──
+  { id: 'sky4f', label: '4층 SKY뷰석', category: '4층', color: '#90d8e8',
+    blocks: ['4-101','4-102','4-103','4-104','4-105','4-106','4-107','4-108','4-109','4-110',
+             '4-201','4-202','4-203','4-204','4-205','4-206','4-207','4-208','4-209','4-210'] },
+  { id: 'sky_table', label: 'SKY탁자석', category: '4층', color: '#2db5a0',
+    blocks: ['SKY탁자-1루','SKY탁자-3루'] },
+  // ── 특별석 ──
+  { id: 'peacock_1f', label: '피코크 테이블석(1층)', category: '특별석', color: '#6b3fa0',
+    blocks: ['피코크-1루','피코크-3루'] },
+  { id: 'skybox', label: '스카이박스', category: '특별석', color: '#40b8e0',
+    blocks: ['SB-1','SB-2','SB-3','SB-4','SB-5','SB-6','SB-7','SB-8'] },
+  { id: 'mini_skybox', label: '미니스카이박스', category: '특별석', color: '#e06040',
+    blocks: ['미니SB-1','미니SB-2','미니SB-3','미니SB-4'] },
+  { id: 'homerun', label: '홈런커플존', category: '특별석', color: '#e84060',
+    blocks: ['HR존'] },
+  { id: 'chogangjeta', label: '초가정자', category: '특별석', color: '#60c060',
+    blocks: ['초가정자'] },
+  { id: 'bbq_open', label: '오픈 바비큐존', category: '특별석', color: '#b06030',
+    blocks: ['BBQ-A','BBQ-B'] },
+  { id: 'bbq_emart', label: '이마트 바비큐존', category: '특별석', color: '#8b4020',
+    blocks: ['이마트BBQ-A','이마트BBQ-B'] },
+  // ── 가족석 ──
+  { id: 'yogiyo_family', label: '요기요 내야패밀리존', category: '가족석', color: '#f0a030',
+    blocks: ['패밀리-1루','패밀리-3루'] },
+  { id: 'outfield_family', label: '외야패밀리존', category: '가족석', color: '#b8d870',
+    blocks: ['외야패밀리-좌','외야패밀리-우'] },
+  { id: 'emart_friendly', label: '이마트 프렌들리존', category: '가족석', color: '#4080b0',
+    blocks: ['프렌들리-A','프렌들리-B'] },
+  // ── 응원석 ──
+  { id: 'sseugi', label: '으쓱이존', category: '응원석', color: '#c83040',
+    blocks: ['으쓱이-A','으쓱이-B'] },
+  { id: 'away', label: '원정응원석', category: '응원석', color: '#e87030',
+    blocks: ['원정-A','원정-B'] },
 ];
 
 const TEAM_CHANT_VIDEO_ID = 'zPGEpmBj4iw';
@@ -877,25 +910,21 @@ const ReportTab = () => {
   );
 };
 
-const ZONE_CATEGORIES = ['내야', '외야', '상단', '특별석', '가족석', '응원'];
+const ZONE_CATEGORIES = ['내야', '외야', '2층', '3층', '4층', '특별석', '가족석', '응원석'];
 
 const SeatViewContent = () => {
-  const [photos, setPhotos] = useState({});  // { zoneId: [{id, photoUrl, row, seat, note}] }
+  const [photos, setPhotos] = useState({});  // { zoneId: [{id, photoUrl, row, seat, note, block}] }
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('내야');
   const [selectedZone, setSelectedZone] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null); // 특정 블럭 선택
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [reportZone, setReportZone] = useState(null);
   const [reportBlock, setReportBlock] = useState('');
-  const [stadiumMap, setStadiumMap] = useState(null);
-  const [showMapExplorer, setShowMapExplorer] = useState(false);
-  const [explorerCategory, setExplorerCategory] = useState('내야');
-  const [explorerZone, setExplorerZone] = useState(null);
-  const [pinAction, setPinAction] = useState(null); // { zone, blockLabel }
-  // 같은 좌석 슬라이드
-  const [carousel, setCarousel] = useState(null); // { photos: [...], idx: number }
+  const [carousel, setCarousel] = useState(null);
   const touchStartX = useRef(null);
+  const [expandedZone, setExpandedZone] = useState(null); // 메인 리스트에서 블럭 펼침
 
   useEffect(() => {
     onValue(dbRef(database, 'seatViews/zonePhotos'), (snap) => {
@@ -909,120 +938,79 @@ const SeatViewContent = () => {
     });
   }, []);
 
-  useEffect(() => {
-    onValue(dbRef(database, 'seatViews/stadiumMap'), (snap) => {
-      setStadiumMap(snap.val());
-    });
-  }, []);
-
   const zonesInCategory = LANDERS_ZONES.filter(z => z.category === category);
 
-  if (selectedZone) {
-    const zonePhotos = photos[selectedZone.id] || [];
+  // 특정 블럭의 사진 필터링
+  const getBlockPhotos = (zoneId, blockName) => {
+    return (photos[zoneId] || []).filter(p => p.block === blockName);
+  };
 
-    // 블럭별 그룹핑: { '101블럭': [...], '102블럭': [...], '블럭 미지정': [...] }
-    const blockGroups = zonePhotos.reduce((acc, p) => {
-      const key = p.block ? p.block : '블럭 미지정';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(p);
-      return acc;
-    }, {});
-    // 블럭 미지정을 맨 뒤로
-    const blockKeys = Object.keys(blockGroups).sort((a, b) => {
-      if (a === '블럭 미지정') return 1;
-      if (b === '블럭 미지정') return -1;
-      return a.localeCompare(b, 'ko');
-    });
+  // ── 3단계: 블럭 내 사진 보기 ──
+  if (selectedBlock && selectedZone) {
+    const blockPhotos = getBlockPhotos(selectedZone.id, selectedBlock);
 
     return (
       <div>
-        <button onClick={() => setSelectedZone(null)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-5 transition-colors">
-          ← 뒤로
+        <button onClick={() => setSelectedBlock(null)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors text-sm">
+          ← {selectedZone.label}
         </button>
         <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZone.color }} />
-            <h3 className="text-white font-black text-xl">{selectedZone.label}</h3>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+              <h3 className="text-white font-black text-xl">{selectedBlock}</h3>
+            </div>
+            <p className="text-zinc-500 text-xs mt-1">{selectedZone.label} · {blockPhotos.length}장의 시야 사진</p>
           </div>
-          <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
-            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all">
-            ✏️ 시야 제보
+          <button onClick={() => { setReportZone(selectedZone); setReportBlock(selectedBlock); setShowForm(true); }}
+            className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all">
+            ✏️ 제보하기
           </button>
         </div>
 
-        {zonePhotos.length === 0 ? (
+        {blockPhotos.length === 0 ? (
           <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-2xl">
             <p className="text-5xl mb-4">📷</p>
             <p className="text-gray-400 text-lg mb-2">아직 시야 사진이 없어요</p>
-            <p className="text-gray-600 text-sm mb-6">이 구역을 방문하셨다면 제보해 주세요!</p>
-            <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
+            <p className="text-gray-600 text-sm mb-6">{selectedBlock} 구역을 방문하셨다면 제보해 주세요!</p>
+            <button onClick={() => { setReportZone(selectedZone); setReportBlock(selectedBlock); setShowForm(true); }}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold text-sm">
               📝 제보하기
             </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {blockKeys.map(blockKey => {
-              // 블럭 내에서 같은 열+번호끼리 묶기
-              const seatMap = {};
-              blockGroups[blockKey].forEach(p => {
-                const key = (p.row || p.seat) ? `${p.row || '?'}_${p.seat || '?'}` : `__solo_${p.id}`;
-                if (!seatMap[key]) seatMap[key] = { photos: [], row: p.row, seat: p.seat };
-                seatMap[key].photos.push(p);
-              });
-              const seatEntries = Object.entries(seatMap);
-
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {blockPhotos.map((p, i) => {
+              const label = [p.row && `${p.row}열`, p.seat && `${p.seat}번`].filter(Boolean).join(' ') || '';
               return (
-                <div key={blockKey}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-white font-black text-sm">{blockKey}</span>
-                    <span className="text-zinc-600 text-xs">{seatEntries.length}좌석 · {blockGroups[blockKey].length}장</span>
-                    <div className="flex-1 h-px bg-zinc-800" />
+                <button key={p.id}
+                  onClick={() => setSelectedPhoto(p)}
+                  className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500 active:scale-95">
+                  <img src={p.photoUrl} alt={label} className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <p className="text-white text-xs font-bold">{label || '위치 미상'}</p>
+                    {p.note && <p className="text-gray-300 text-[10px] truncate">{p.note}</p>}
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {seatEntries.map(([seatKey, group]) => {
-                      const rep = group.photos[0];
-                      const count = group.photos.length;
-                      const label = [group.row && `${group.row}열`, group.seat && `${group.seat}번`].filter(Boolean).join(' ') || '위치 미상';
-                      return (
-                        <button key={seatKey}
-                          onClick={() => count > 1
-                            ? setCarousel({ photos: group.photos, idx: 0, block: blockKey, row: group.row, seat: group.seat })
-                            : setSelectedPhoto({ ...rep, _block: blockKey })}
-                          className="relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all hover:ring-2 hover:ring-red-500 active:scale-95">
-                          <img src={rep.photoUrl} alt={label} className="w-full h-full object-cover" />
-                          {/* 위치 라벨 */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                            <p className="text-white text-xs">{label}</p>
-                          </div>
-                          {/* 여러 장 뱃지 */}
-                          {count > 1 && (
-                            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                              +{count - 1}장
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                </button>
               );
             })}
           </div>
         )}
 
+        {/* 사진 상세 모달 */}
         {selectedPhoto && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedPhoto(null)}>
             <div className="bg-zinc-900 rounded-2xl overflow-hidden max-w-lg w-full" onClick={e => e.stopPropagation()}>
               <img src={selectedPhoto.photoUrl} alt="" className="w-full aspect-video object-cover" />
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedZone.color }} />
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedZone.color }} />
                   <span className="text-white font-bold text-sm">{selectedZone.label}</span>
+                  <span className="text-zinc-500 text-xs">· {selectedBlock}</span>
                 </div>
-                {(selectedPhoto.block || selectedPhoto.row || selectedPhoto.seat) && (
+                {(selectedPhoto.row || selectedPhoto.seat) && (
                   <p className="text-gray-400 text-sm mb-1">
-                    {[selectedPhoto.block && `${selectedPhoto.block}블럭`, selectedPhoto.row && `${selectedPhoto.row}열`, selectedPhoto.seat && `${selectedPhoto.seat}번`].filter(Boolean).join(' ')}
+                    {[selectedPhoto.row && `${selectedPhoto.row}열`, selectedPhoto.seat && `${selectedPhoto.seat}번`].filter(Boolean).join(' ')}
                   </p>
                 )}
                 {selectedPhoto.note && <p className="text-gray-300 text-sm mt-1">"{selectedPhoto.note}"</p>}
@@ -1031,58 +1019,73 @@ const SeatViewContent = () => {
             </div>
           </div>
         )}
-        {/* 같은 좌석 슬라이드 모달 */}
-        {carousel && (
-          <div className="fixed inset-0 bg-black z-50 flex flex-col"
-            onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
-            onTouchEnd={e => {
-              if (touchStartX.current === null) return;
-              const diff = touchStartX.current - e.changedTouches[0].clientX;
-              if (diff > 50 && carousel.idx < carousel.photos.length - 1)
-                setCarousel(c => ({ ...c, idx: c.idx + 1 }));
-              else if (diff < -50 && carousel.idx > 0)
-                setCarousel(c => ({ ...c, idx: c.idx - 1 }));
-              touchStartX.current = null;
-            }}>
-            {/* 헤더 */}
-            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
-              <div>
-                <p className="text-white font-bold text-sm">
-                  {[carousel.block, carousel.row && `${carousel.row}열`, carousel.seat && `${carousel.seat}번`].filter(Boolean).join(' ')}
-                </p>
-                <p className="text-zinc-500 text-xs">{carousel.idx + 1} / {carousel.photos.length}장</p>
-              </div>
-              <button onClick={() => setCarousel(null)} className="text-gray-400 text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
+        {showForm && <SeatViewForm zone={reportZone} initialBlock={reportBlock} onClose={() => { setShowForm(false); setReportBlock(''); }} />}
+      </div>
+    );
+  }
+
+  // ── 2단계: 좌석종류 내 블럭 목록 ──
+  if (selectedZone) {
+    const zonePhotos = photos[selectedZone.id] || [];
+    const blocks = selectedZone.blocks || [];
+
+    return (
+      <div>
+        <button onClick={() => setSelectedZone(null)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors text-sm">
+          ← 뒤로
+        </button>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <span className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+            <div>
+              <h3 className="text-white font-black text-xl">{selectedZone.label}</h3>
+              <p className="text-zinc-500 text-xs">{blocks.length}개 구역 · 시야 사진 {zonePhotos.length}장</p>
             </div>
-            {/* 사진 */}
-            <div className="flex-1 flex items-center justify-center px-4 pb-4 relative">
-              <img src={carousel.photos[carousel.idx].photoUrl} alt=""
-                className="max-w-full max-h-full object-contain rounded-xl" />
-              {/* 이전/다음 버튼 */}
-              {carousel.idx > 0 && (
-                <button onClick={() => setCarousel(c => ({ ...c, idx: c.idx - 1 }))}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all">
-                  ‹
+          </div>
+          <button onClick={() => { setReportZone(selectedZone); setShowForm(true); }}
+            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-all">
+            ✏️ 제보
+          </button>
+        </div>
+
+        {/* 블럭 그리드 */}
+        <div className="grid grid-cols-4 gap-2">
+          {blocks.map(block => {
+            const count = getBlockPhotos(selectedZone.id, block).length;
+            return (
+              <button key={block}
+                onClick={() => setSelectedBlock(block)}
+                className={`relative py-3 px-1 rounded-xl text-center transition-all active:scale-95 border ${
+                  count > 0
+                    ? 'bg-zinc-800 border-zinc-600 hover:border-red-500'
+                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-600'
+                }`}>
+                <p className={`font-black text-sm ${count > 0 ? 'text-white' : 'text-zinc-500'}`}>{block}</p>
+                {count > 0 ? (
+                  <p className="text-red-400 text-[10px] font-bold mt-0.5">📷 {count}장</p>
+                ) : (
+                  <p className="text-zinc-700 text-[10px] mt-0.5">사진 없음</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 전체 사진 미리보기 (사진이 있을 때) */}
+        {zonePhotos.length > 0 && (
+          <div className="mt-6">
+            <p className="text-zinc-400 text-xs font-bold mb-3">최근 제보된 시야 사진</p>
+            <div className="grid grid-cols-3 gap-2">
+              {zonePhotos.slice(0, 6).map(p => (
+                <button key={p.id}
+                  onClick={() => { setSelectedBlock(p.block || blocks[0]); setSelectedPhoto(p); }}
+                  className="relative aspect-square rounded-lg overflow-hidden hover:scale-105 transition-all active:scale-95">
+                  <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+                    <p className="text-white text-[10px] font-bold">{p.block || '?'}</p>
+                  </div>
                 </button>
-              )}
-              {carousel.idx < carousel.photos.length - 1 && (
-                <button onClick={() => setCarousel(c => ({ ...c, idx: c.idx + 1 }))}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all">
-                  ›
-                </button>
-              )}
-            </div>
-            {/* 인디케이터 + 메모 */}
-            <div className="flex-shrink-0 px-4 pb-6">
-              {carousel.photos[carousel.idx].note && (
-                <p className="text-gray-300 text-sm text-center mb-3">"{carousel.photos[carousel.idx].note}"</p>
-              )}
-              <div className="flex justify-center gap-1.5">
-                {carousel.photos.map((_, i) => (
-                  <button key={i} onClick={() => setCarousel(c => ({ ...c, idx: i }))}
-                    className={`rounded-full transition-all ${i === carousel.idx ? 'w-5 h-2 bg-red-500' : 'w-2 h-2 bg-zinc-600'}`} />
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -1092,242 +1095,95 @@ const SeatViewContent = () => {
     );
   }
 
-  const [mapFilter, setMapFilter] = useState('전체');  // 배치도 카테고리 필터
-  const mapCategories = ['전체', ...ZONE_CATEGORIES];
-
+  // ── 1단계: 카테고리 → 좌석종류 목록 ──
   return (
     <div>
-      {/* ── 인터랙티브 구장 배치도 ── */}
-      <div className="mb-5">
-        <p className="text-white font-bold text-sm mb-2">🏟️ 구역을 탭해서 시야를 확인하세요</p>
+      <p className="text-gray-400 text-sm mb-4">좌석 종류를 선택하면 구역별 시야를 확인할 수 있어요</p>
 
-        {/* 카테고리 필터 */}
-        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-          {mapCategories.map(c => (
-            <button key={c} onClick={() => setMapFilter(c)}
-              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${mapFilter === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-500 hover:bg-zinc-700'}`}>
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative rounded-2xl overflow-hidden border border-zinc-700 bg-zinc-900">
-          {/* 배경 이미지 */}
-          {stadiumMap?.url ? (
-            <img src={stadiumMap.url} alt="구장 좌석 배치도" className="w-full block" />
-          ) : (
-            /* 이미지 없을 때 SVG 구장 기본 배경 */
-            <svg viewBox="0 0 400 300" className="w-full block" style={{ background: '#1a2a1a' }}>
-              {/* 외야 잔디 */}
-              <ellipse cx="200" cy="50" rx="180" ry="60" fill="#1a4a1a"/>
-              {/* 내야 다이아몬드 */}
-              <polygon points="200,80 120,180 200,280 280,180" fill="#2a5a2a" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
-              {/* 내야 흙 */}
-              <ellipse cx="200" cy="180" rx="90" ry="70" fill="#3a2a15"/>
-              {/* 파울 라인 */}
-              <line x1="200" y1="290" x2="20" y2="50" stroke="rgba(255,255,255,0.2)" strokeWidth="1"/>
-              <line x1="200" y1="290" x2="380" y2="50" stroke="rgba(255,255,255,0.2)" strokeWidth="1"/>
-              {/* 홈플레이트 */}
-              <polygon points="190,275 210,275 215,285 200,292 185,285" fill="white" opacity="0.5"/>
-              <text x="200" y="150" textAnchor="middle" fill="rgba(255,255,255,0.15)" fontSize="14" fontWeight="700">SSG LANDERS FIELD</text>
-            </svg>
-          )}
-
-          {/* 구역 마커 오버레이 */}
-          {LANDERS_ZONES
-            .filter(z => mapFilter === '전체' || z.category === mapFilter)
-            .map(z => {
-              if (!z.mapX || !z.mapY) return null;
-              const count = (photos[z.id] || []).length;
-              const hasPhotos = count > 0;
-              return (
-                <button
-                  key={z.id}
-                  onClick={(e) => { e.stopPropagation(); setSelectedZone(z); }}
-                  style={{ position: 'absolute', left: `${z.mapX}%`, top: `${z.mapY}%`, transform: 'translate(-50%, -50%)' }}
-                  className="group active:scale-110 transition-transform z-10"
-                >
-                  {/* 펄스 링 (사진 있는 구역) */}
-                  {hasPhotos && (
-                    <span className="absolute inset-[-6px] rounded-full animate-ping opacity-30"
-                      style={{ backgroundColor: z.color }} />
-                  )}
-                  {/* 마커 본체 */}
-                  <span className="relative flex items-center justify-center rounded-full border-2 border-white shadow-lg"
-                    style={{
-                      backgroundColor: z.color,
-                      width: hasPhotos ? '28px' : '20px',
-                      height: hasPhotos ? '28px' : '20px',
-                    }}>
-                    {/* 사진 카운트 뱃지 */}
-                    {hasPhotos && (
-                      <span className="text-white text-[9px] font-black">{count}</span>
-                    )}
-                  </span>
-                  {/* 라벨 (항상 표시) */}
-                  <span className="absolute left-1/2 -translate-x-1/2 mt-0.5 bg-black/85 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap pointer-events-none z-10 font-bold"
-                    style={{ borderLeft: `2px solid ${z.color}` }}>
-                    {z.label.length > 8 ? z.label.substring(0, 8) + '..' : z.label}
-                  </span>
-                </button>
-              );
-            })}
-        </div>
-        <p className="text-zinc-600 text-xs text-center mt-1.5">구역을 탭하면 시야 사진을 바로 확인할 수 있어요</p>
-      </div>
-
-      {/* ── 제보하기 버튼 ── */}
-      <button
-        onClick={() => { setReportZone(null); setReportBlock(''); setShowForm(true); }}
-        className="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm py-3 rounded-2xl mb-5 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-      >
-        ✏️ 시야 사진 제보하기
-      </button>
-
-      {/* ── 카테고리별 구역 리스트 ── */}
-      <p className="text-gray-400 text-sm mb-3 font-bold">구역 목록</p>
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+      {/* 카테고리 탭 */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
         {ZONE_CATEGORIES.map(c => (
-          <button key={c} onClick={() => setCategory(c)}
+          <button key={c} onClick={() => { setCategory(c); setExpandedZone(null); }}
             className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${category === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>
             {c}
           </button>
         ))}
       </div>
+
       {loading ? (
         <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-600 border-t-transparent" /></div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {zonesInCategory.map(z => {
             const zonePhotos = photos[z.id] || [];
-            const thumb = zonePhotos[0]?.photoUrl;
+            const isExpanded = expandedZone === z.id;
+            const blocks = z.blocks || [];
+
             return (
-              <button key={z.id} onClick={() => setSelectedZone(z)}
-                className="w-full flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl overflow-hidden transition-all text-left hover:scale-[1.01] active:scale-[0.99]">
-                <div className="flex items-center gap-3 flex-1 p-4">
+              <div key={z.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                {/* 좌석종류 헤더 — 탭하면 블럭 목록 펼침 */}
+                <button
+                  onClick={() => setExpandedZone(isExpanded ? null : z.id)}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-zinc-800/50 transition-all">
                   <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-bold text-sm">{z.label}</p>
-                    {thumb
-                      ? <p className="text-zinc-500 text-xs mt-0.5">시야 사진 {zonePhotos.length}장</p>
-                      : <p className="text-zinc-600 text-xs mt-0.5">사진 없음</p>
-                    }
+                    <p className="text-zinc-500 text-xs mt-0.5">
+                      {blocks.length}개 구역 · 시야 사진 {zonePhotos.length}장
+                    </p>
                   </div>
-                  <span className="text-zinc-600 text-sm flex-shrink-0">›</span>
-                </div>
-                <div className="w-20 h-16 flex-shrink-0 bg-zinc-800">
-                  {thumb
-                    ? <img src={thumb} alt={z.label} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xl">📷</div>
-                  }
-                </div>
-              </button>
+                  <span className={`text-zinc-500 text-sm transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                </button>
+
+                {/* 블럭 목록 (펼쳐졌을 때) */}
+                {isExpanded && (
+                  <div className="px-3 pb-3 border-t border-zinc-800">
+                    <div className="flex items-center justify-between py-2 mb-1">
+                      <p className="text-zinc-500 text-xs font-bold">구역을 선택하세요</p>
+                      <button onClick={() => setSelectedZone(z)}
+                        className="text-red-400 text-xs font-bold hover:text-red-300 transition-colors">
+                        전체 보기 →
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {blocks.map(block => {
+                        const count = getBlockPhotos(z.id, block).length;
+                        return (
+                          <button key={block}
+                            onClick={() => { setSelectedZone(z); setSelectedBlock(block); }}
+                            className={`py-2 px-0.5 rounded-lg text-center transition-all active:scale-95 ${
+                              count > 0
+                                ? 'bg-zinc-700 hover:bg-zinc-600'
+                                : 'bg-zinc-800/50 hover:bg-zinc-800'
+                            }`}>
+                            <p className={`font-bold text-xs ${count > 0 ? 'text-white' : 'text-zinc-600'}`}>
+                              {block.length > 5 ? block.substring(0, 5) + '..' : block}
+                            </p>
+                            {count > 0 && (
+                              <p className="text-red-400 text-[9px] font-bold">{count}</p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
       )}
+
+      {/* 제보 버튼 */}
+      <button
+        onClick={() => { setReportZone(null); setReportBlock(''); setShowForm(true); }}
+        className="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm py-3 rounded-2xl mt-5 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+      >
+        ✏️ 시야 사진 제보하기
+      </button>
+
       {showForm && <SeatViewForm zone={reportZone} initialBlock={reportBlock} onClose={() => { setShowForm(false); setReportBlock(''); }} />}
 
-      {/* 구장 배치도 탐색기 */}
-      {showMapExplorer && stadiumMap?.url && (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-zinc-800">
-            <p className="text-white font-bold text-sm">🏟️ 구역 선택</p>
-            <button onClick={() => { setShowMapExplorer(false); setExplorerZone(null); }}
-              className="text-gray-400 hover:text-white text-2xl font-bold w-10 h-10 flex items-center justify-center">×</button>
-          </div>
-
-          {/* 배치도 이미지 (참고용) */}
-          <div className="flex-shrink-0 px-4 pt-3 pb-2">
-            <img src={stadiumMap.url} alt="구장 배치도"
-              className="w-full object-contain bg-zinc-900 rounded-xl max-h-44" style={{ touchAction: 'pinch-zoom' }} />
-          </div>
-
-          {/* 카테고리 탭 */}
-          <div className="flex gap-2 px-4 py-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
-            {ZONE_CATEGORIES.map(c => (
-              <button key={c} onClick={() => { setExplorerCategory(c); setExplorerZone(null); }}
-                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${explorerCategory === c ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-400'}`}>
-                {c}
-              </button>
-            ))}
-          </div>
-
-          {/* 구역 리스트 */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 mt-1">
-            {LANDERS_ZONES.filter(z => z.category === explorerCategory).map(z => {
-              const zonePhotos = photos[z.id] || [];
-              const thumb = zonePhotos[0]?.photoUrl;
-              const isSelected = explorerZone?.id === z.id;
-              return (
-                <button key={z.id} onClick={() => setExplorerZone(z)}
-                  className={`w-full flex items-center gap-3 rounded-xl overflow-hidden transition-all text-left border ${isSelected ? 'border-red-500 bg-red-600/10' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'}`}>
-                  <div className="flex items-center gap-3 flex-1 p-3">
-                    <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-bold text-sm">{z.label}</p>
-                      {thumb
-                        ? <p className="text-zinc-500 text-xs mt-0.5">사진 {zonePhotos.length}장</p>
-                        : <p className="text-zinc-600 text-xs mt-0.5">사진 없음</p>
-                      }
-                    </div>
-                    <span className="text-zinc-600 text-sm flex-shrink-0">›</span>
-                  </div>
-                  <div className="w-16 h-14 flex-shrink-0 bg-zinc-800">
-                    {thumb
-                      ? <img src={thumb} alt={z.label} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-zinc-700 text-lg">📷</div>
-                    }
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 선택된 구역 액션 시트 */}
-          {explorerZone && (
-            <div className="fixed inset-0 z-10 flex items-end" onClick={() => setExplorerZone(null)}>
-              <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-3xl w-full p-5 pb-8"
-                onClick={e => e.stopPropagation()}>
-                <div className="w-10 h-1 bg-zinc-600 rounded-full mx-auto mb-4" />
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: explorerZone.color }} />
-                  <div>
-                    <p className="text-white font-black text-lg leading-tight">{explorerZone.label}</p>
-                    <p className="text-gray-500 text-xs">{explorerZone.category} · {photos[explorerZone.id]?.length || 0}장의 시야 사진</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => {
-                      setShowMapExplorer(false);
-                      setExplorerZone(null);
-                      setSelectedZone(explorerZone);
-                    }}
-                    className="bg-zinc-800 hover:bg-zinc-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
-                    <span className="text-2xl">📷</span>
-                    <span>사진 보기</span>
-                    <span className="text-zinc-500 text-xs font-normal">{photos[explorerZone.id]?.length || 0}장</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMapExplorer(false);
-                      setExplorerZone(null);
-                      setReportZone(explorerZone);
-                      setShowForm(true);
-                    }}
-                    className="bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-bold text-white text-sm transition-all flex flex-col items-center gap-1">
-                    <span className="text-2xl">✏️</span>
-                    <span>제보하기</span>
-                    <span className="text-red-300 text-xs font-normal">구역 자동 입력됨</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
