@@ -1419,8 +1419,9 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
     if (!mode) return;
     setErrorMsg('');
     setSubmitting(true);
-    const zoneId = zone?.id || 'unknown';
-    const zoneLabel = zone?.label || form.zoneName || '미지정';
+    const selectedZone = zone || LANDERS_ZONES.find(z => z.label === form.zoneName);
+    const zoneId = selectedZone?.id || 'unknown';
+    const zoneLabel = selectedZone?.label || form.zoneName || '미지정';
     try {
       if (mode === 'upload') {
         if (!photo) { setErrorMsg('사진을 선택해주세요'); setSubmitting(false); return; }
@@ -3449,11 +3450,21 @@ const AdminPendingPhotos = () => {
     return unsub;
   }, []);
 
-  const handleApprove = async (item) => {
+  const handleApprove = async (item, overrideZoneId) => {
     if (processing) return;
+    // zoneId 결정: 명시적 override > 저장된 값 > label로 역산
+    let zoneId = overrideZoneId || item.zoneId;
+    if (!zoneId || zoneId === 'unknown') {
+      const matched = LANDERS_ZONES.find(z => z.label === item.zone);
+      if (matched) zoneId = matched.id;
+    }
+    if (!zoneId || zoneId === 'unknown') {
+      alert('좌석 종류를 특정할 수 없습니다. 아래 선택창에서 직접 선택 후 승인해주세요.');
+      return;
+    }
     setProcessing(item.id);
     try {
-      await push(dbRef(database, `seatViews/zonePhotos/${item.zoneId}`), {
+      await push(dbRef(database, `seatViews/zonePhotos/${zoneId}`), {
         photoUrl: item.photoUrl,
         block: item.block || '',
         row: item.row || '',
@@ -3495,17 +3506,16 @@ const AdminPendingPhotos = () => {
       ) : (
         pending.map(item => {
           const zone = LANDERS_ZONES.find(z => z.id === item.zoneId);
+          const needsZonePick = !zone && (!item.zoneId || item.zoneId === 'unknown');
           return (
             <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-              {/* 사진 */}
               <button onClick={() => setEnlarged(item)} className="w-full">
                 <img src={item.photoUrl} alt="" className="w-full aspect-video object-cover hover:opacity-90 transition-opacity" />
               </button>
-              {/* 정보 */}
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   {zone && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color }} />}
-                  <span className="text-white font-bold text-sm">{item.zone}</span>
+                  <span className="text-white font-bold text-sm">{item.zone || '좌석 미지정'}</span>
                   {(item.block || item.row || item.seat) && (
                     <span className="text-gray-400 text-xs">
                       {item.block && `${item.block}블럭`}{item.row && ` ${item.row}열`}{item.seat && ` ${item.seat}번`}
@@ -3517,13 +3527,27 @@ const AdminPendingPhotos = () => {
                   <span>{item.nickname || '익명'}</span>
                   <span>{new Date(item.submittedAt).toLocaleDateString('ko-KR')}</span>
                 </div>
-                {/* 액션 버튼 */}
+                {needsZonePick && (
+                  <div className="mb-3">
+                    <p className="text-yellow-400 text-xs font-bold mb-1">⚠️ 좌석 종류 미지정 — 직접 선택 후 승인</p>
+                    <select id={`zone-pick-${item.id}`} defaultValue=""
+                      className="w-full bg-zinc-800 text-white border border-yellow-600 rounded-lg p-2 text-sm">
+                      <option value="">-- 좌석 종류 선택 --</option>
+                      {LANDERS_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => handleReject(item)} disabled={processing === item.id}
                     className="py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold text-sm transition-all disabled:opacity-40">
                     ✗ 거절
                   </button>
-                  <button onClick={() => handleApprove(item)} disabled={processing === item.id}
+                  <button
+                    onClick={() => {
+                      const overrideId = needsZonePick ? document.getElementById(`zone-pick-${item.id}`)?.value : undefined;
+                      handleApprove(item, overrideId || undefined);
+                    }}
+                    disabled={processing === item.id}
                     className="py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-all disabled:opacity-40">
                     {processing === item.id ? '처리 중...' : '✓ 승인'}
                   </button>
