@@ -972,7 +972,7 @@ const LineupTab = () => {
               ))}
             </div>
             <div style={{ textAlign: 'right', marginTop: '12px', paddingTop: '8px', borderTop: `1px solid ${currentStyle.dark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'}` }}>
-              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @pepe_noh</div>
+              <div style={{ color: currentStyle.dark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @factpepe_</div>
             </div>
           </div>
         </div>
