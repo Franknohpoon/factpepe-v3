@@ -1416,10 +1416,11 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
   };
 
   const handleSubmit = async () => {
-    if (!zone) { setErrorMsg('❗zone 없음 — 제보 버튼을 다시 눌러서 열어주세요'); return; }
-    if (!mode) { setErrorMsg('❗mode 없음'); return; }
+    if (!mode) return;
     setErrorMsg('');
     setSubmitting(true);
+    const zoneId = zone?.id || 'unknown';
+    const zoneLabel = zone?.label || form.zoneName || '미지정';
     try {
       if (mode === 'upload') {
         if (!photo) { setErrorMsg('사진을 선택해주세요'); setSubmitting(false); return; }
@@ -1427,15 +1428,15 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
         const photoUrl = await uploadToCloudinary(compressed);
         await push(dbRef(database, 'seatViews/pendingPhotos'), {
           photoUrl,
-          zoneId: zone.id,
-          zone: zone.label,
+          zoneId,
+          zone: zoneLabel,
           ...form,
           submittedAt: Date.now(),
         });
       } else {
         await push(dbRef(database, 'seatViews/reports'), {
-          zoneId: zone.id,
-          zone: zone.label,
+          zoneId,
+          zone: zoneLabel,
           ...form,
           submittedAt: Date.now(),
           date: new Date().toLocaleDateString('ko-KR'),
@@ -1452,6 +1453,16 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
 
   const sharedFields = (
     <>
+      {!zone && (
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">좌석 종류 *</label>
+          <select value={form.zoneName || ''} onChange={e => setForm({ ...form, zoneName: e.target.value })}
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm">
+            <option value="">-- 좌석 종류를 선택하세요 --</option>
+            {LANDERS_ZONES.map(z => <option key={z.id} value={z.label}>{z.label}</option>)}
+          </select>
+        </div>
+      )}
       <div>
         <label className="text-gray-400 text-xs mb-1 block">블럭</label>
         <input type="text" value={form.block} onChange={e => setForm({ ...form, block: e.target.value })}
@@ -1568,10 +1579,6 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
                 ❌ {errorMsg}
               </div>
             )}
-            {/* 디버그: 버튼 상태 표시 */}
-            <p className="text-zinc-600 text-[10px] text-right">
-              zone:{zone?.id ?? 'null'} · mode:{mode ?? 'null'} · photo:{photo ? '✓' : '✗'}
-            </p>
             <button onClick={handleSubmit} disabled={submitting || (mode === 'upload' && !photo)}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
               {submitting ? <span className="flex items-center justify-center gap-2"><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>업로드 중...</span> : mode === 'upload' ? '📷 제보 완료' : '🙋 요청 완료'}
