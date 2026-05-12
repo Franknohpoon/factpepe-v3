@@ -277,9 +277,21 @@ function App() {
       <header className="bg-gradient-to-r from-red-900 to-red-700 border-b-4 border-red-500 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="text-center md:text-left cursor-pointer select-none" onClick={handleLogoTap}>
-              <h1 className="text-3xl lg:text-4xl font-black text-white mb-1">🐸 팩트페페</h1>
-              <p className="text-red-200 text-sm">으쓱이들의 놀이터</p>
+            <div className="flex flex-col items-center md:items-start gap-1">
+              <div className="cursor-pointer select-none" onClick={handleLogoTap}>
+                <h1 className="text-3xl lg:text-4xl font-black text-white mb-0.5">🐸 팩트페페</h1>
+                <p className="text-red-200 text-sm">으쓱이들의 놀이터</p>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
+                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">𝕏</a>
+                <span className="text-red-700 text-xs">·</span>
+                <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
+                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">YouTube</a>
+                <span className="text-red-700 text-xs">·</span>
+                <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
+                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">TikTok</a>
+              </div>
             </div>
             <nav className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide justify-center md:justify-end">
               {tabs.map(tab => (
@@ -303,11 +315,24 @@ function App() {
 
       <footer className="bg-zinc-900 border-t border-zinc-800 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-          <p className="text-gray-400 text-sm mb-2">🐸 팩트페페 | SSG 랜더스 팬 서비스</p>
-          <p className="text-gray-600 text-xs">© 2026 FactPepe. All rights reserved.</p>
-          <div className="mt-3">
-            <a href="https://x.com/pepe_noh" target="_blank" rel="noopener noreferrer"
-              className="text-red-500 hover:text-red-400 text-sm font-bold">𝕏 @pepe_noh</a>
+          <p className="text-gray-400 text-sm mb-1">🐸 팩트페페 | SSG 랜더스 팬 서비스</p>
+          <p className="text-gray-600 text-xs mb-4">© 2026 FactPepe. All rights reserved.</p>
+          <div className="flex items-center justify-center gap-4">
+            <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
+              <span className="text-base">𝕏</span>
+              <span className="text-zinc-300">@factpepe_</span>
+            </a>
+            <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
+              <span className="text-red-500 text-base">▶</span>
+              <span className="text-zinc-300">YouTube</span>
+            </a>
+            <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
+              <span className="text-base">♪</span>
+              <span className="text-zinc-300">TikTok</span>
+            </a>
           </div>
         </div>
       </footer>
