@@ -1406,6 +1406,7 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
   const [preview, setPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handlePhoto = (e) => {
     const file = e.target.files[0];
@@ -1416,11 +1417,11 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
 
   const handleSubmit = async () => {
     if (!zone || !mode) return;
+    setErrorMsg('');
     setSubmitting(true);
     try {
       if (mode === 'upload') {
-        // 직접 제보: 사진 → Cloudinary → pending 대기열
-        if (!photo) { alert('사진을 선택해주세요'); setSubmitting(false); return; }
+        if (!photo) { setErrorMsg('사진을 선택해주세요'); setSubmitting(false); return; }
         const compressed = await compressImage(photo);
         const photoUrl = await uploadToCloudinary(compressed);
         await push(dbRef(database, 'seatViews/pendingPhotos'), {
@@ -1431,7 +1432,6 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
           submittedAt: Date.now(),
         });
       } else {
-        // 시야 요청: 텍스트만
         await push(dbRef(database, 'seatViews/reports'), {
           zoneId: zone.id,
           zone: zone.label,
@@ -1442,7 +1442,8 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
       }
       setDone(true);
     } catch (err) {
-      alert(`제출 실패: ${err.message}`);
+      console.error('제보 실패:', err);
+      setErrorMsg(`제출 실패: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -1561,9 +1562,14 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
 
             {sharedFields}
 
+            {errorMsg && (
+              <div className="bg-red-900/50 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm">
+                ❌ {errorMsg}
+              </div>
+            )}
             <button onClick={handleSubmit} disabled={submitting || (mode === 'upload' && !photo)}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
-              {submitting ? '제출 중...' : mode === 'upload' ? '📷 제보 완료' : '🙋 요청 완료'}
+              {submitting ? <span className="flex items-center justify-center gap-2"><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>업로드 중...</span> : mode === 'upload' ? '📷 제보 완료' : '🙋 요청 완료'}
             </button>
           </div>
         )}
