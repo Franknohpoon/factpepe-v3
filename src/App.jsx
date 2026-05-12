@@ -1416,7 +1416,8 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
   };
 
   const handleSubmit = async () => {
-    if (!zone || !mode) return;
+    if (!zone) { setErrorMsg('❗zone 없음 — 제보 버튼을 다시 눌러서 열어주세요'); return; }
+    if (!mode) { setErrorMsg('❗mode 없음'); return; }
     setErrorMsg('');
     setSubmitting(true);
     try {
@@ -1567,6 +1568,10 @@ const SeatViewForm = ({ zone, initialBlock = '', onClose }) => {
                 ❌ {errorMsg}
               </div>
             )}
+            {/* 디버그: 버튼 상태 표시 */}
+            <p className="text-zinc-600 text-[10px] text-right">
+              zone:{zone?.id ?? 'null'} · mode:{mode ?? 'null'} · photo:{photo ? '✓' : '✗'}
+            </p>
             <button onClick={handleSubmit} disabled={submitting || (mode === 'upload' && !photo)}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
               {submitting ? <span className="flex items-center justify-center gap-2"><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>업로드 중...</span> : mode === 'upload' ? '📷 제보 완료' : '🙋 요청 완료'}
