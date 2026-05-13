@@ -522,21 +522,250 @@ const FactNewsTab = () => {
   );
 };
 
-// ─── 2. 승요체크 (준비중) ─────────────────────────────────────────────
-const ScheduleTab = () => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-    <div className="text-7xl mb-6">📅</div>
-    <h2 className="text-3xl font-black text-white mb-3">승요체크</h2>
-    <div className="inline-block bg-red-600/20 border border-red-500/50 text-red-400 text-xs font-bold px-3 py-1 rounded-full mb-6 tracking-widest uppercase">Coming Soon</div>
-    <p className="text-gray-400 text-lg mb-2">나만의 직관 기록장</p>
-    <p className="text-gray-600 text-sm max-w-sm">직관 날짜, 결과, 착장, 코멘트를 기록하는 나만의 승요체크 기능이 곧 오픈됩니다! 🐸</p>
-    <div className="mt-8 flex gap-2">
-      {[0, 150, 300].map(d => (
-        <span key={d} className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: `${d}ms` }} />
-      ))}
+// ─── 2. 승요체크 ──────────────────────────────────────────────────────
+const OUTFIT_PRESETS = ['홈 유니폼', '원정 유니폼', '응원복', '사복', '기타'];
+
+const ScheduleTab = () => {
+  const [records, setRecords] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], opponent: '', result: '', outfit: '', comment: '' });
+  const [showStats, setShowStats] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('seungyoCheck');
+    if (saved) try { setRecords(JSON.parse(saved)); } catch {}
+  }, []);
+
+  const persist = (updated) => {
+    setRecords(updated);
+    localStorage.setItem('seungyoCheck', JSON.stringify(updated));
+  };
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({ date: new Date().toISOString().split('T')[0], opponent: '', result: '', outfit: '', comment: '' });
+    setShowForm(true);
+  };
+
+  const openEdit = (r) => {
+    setEditingId(r.id);
+    setForm({ date: r.date, opponent: r.opponent, result: r.result, outfit: r.outfit, comment: r.comment });
+    setShowForm(true);
+  };
+
+  const saveRecord = () => {
+    if (!form.opponent || !form.result) return;
+    const updated = editingId
+      ? records.map(r => r.id === editingId ? { ...r, ...form } : r)
+      : [{ ...form, id: Date.now() }, ...records];
+    persist(updated);
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const delRecord = (id) => {
+    if (!window.confirm('이 기록을 삭제할까요?')) return;
+    persist(records.filter(r => r.id !== id));
+  };
+
+  // 통계 계산
+  const total = records.length;
+  const wins = records.filter(r => r.result === '승').length;
+  const losses = records.filter(r => r.result === '패').length;
+  const draws = records.filter(r => r.result === '무').length;
+  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+
+  // 연승/연패 계산
+  let streak = 0, streakType = '';
+  for (const r of records) {
+    if (streak === 0) { streak = 1; streakType = r.result; }
+    else if (r.result === streakType) streak++;
+    else break;
+  }
+  const streakLabel = streak > 1 ? `${streak}연${streakType}` : '';
+
+  // 착장별 승률
+  const outfitStats = OUTFIT_PRESETS.map(o => {
+    const filtered = records.filter(r => r.outfit === o);
+    const w = filtered.filter(r => r.result === '승').length;
+    return { outfit: o, total: filtered.length, wins: w, rate: filtered.length > 0 ? Math.round((w / filtered.length) * 100) : null };
+  }).filter(o => o.total > 0);
+
+  const resultColor = (r) => r === '승' ? 'bg-red-600 text-white' : r === '패' ? 'bg-zinc-700 text-gray-300' : r === '무' ? 'bg-yellow-600 text-white' : 'bg-zinc-800 text-gray-500';
+
+  return (
+    <div>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-2xl font-black text-white">⚾ 승요체크</h2>
+          <p className="text-zinc-500 text-xs mt-0.5">나만의 직관 기록 · 이 기기에 저장됩니다</p>
+        </div>
+        <button onClick={openNew}
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95">
+          + 기록 추가
+        </button>
+      </div>
+
+      {/* 통계 요약 */}
+      {total > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-5">
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {[['총 직관', total, 'text-white'], ['승', wins, 'text-red-400'], ['패', losses, 'text-zinc-400'], ['무', draws, 'text-yellow-400']].map(([label, val, tc]) => (
+              <div key={label} className="text-center">
+                <p className={`text-2xl font-black ${tc}`}>{val}</p>
+                <p className="text-zinc-500 text-xs mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-2 rounded-full bg-zinc-800 flex-1 w-32 overflow-hidden">
+                <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${winRate}%` }} />
+              </div>
+              <span className="text-white font-black text-sm">직관 승률 {winRate}%</span>
+            </div>
+            {streakLabel && (
+              <span className={`text-xs font-black px-2.5 py-1 rounded-full ${streakType === '승' ? 'bg-red-600/20 text-red-400' : streakType === '패' ? 'bg-zinc-700 text-zinc-300' : 'bg-yellow-600/20 text-yellow-400'}`}>
+                🔥 {streakLabel} 중
+              </span>
+            )}
+          </div>
+          {/* 착장별 승률 */}
+          {outfitStats.length > 0 && (
+            <button onClick={() => setShowStats(!showStats)}
+              className="mt-3 w-full text-zinc-500 text-xs flex items-center justify-center gap-1 hover:text-zinc-300 transition-colors">
+              👕 착장별 승률 {showStats ? '▲' : '▼'}
+            </button>
+          )}
+          {showStats && outfitStats.length > 0 && (
+            <div className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
+              {outfitStats.sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1)).map(o => (
+                <div key={o.outfit} className="flex items-center gap-2">
+                  <span className="text-zinc-400 text-xs w-20 flex-shrink-0">{o.outfit}</span>
+                  <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-600 rounded-full" style={{ width: `${o.rate ?? 0}%` }} />
+                  </div>
+                  <span className="text-zinc-300 text-xs w-16 text-right">{o.rate}% ({o.total}회)</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 기록 추가/수정 폼 */}
+      {showForm && (
+        <div className="bg-zinc-900 border-2 border-red-600 rounded-2xl p-5 mb-5">
+          <h3 className="text-white font-black mb-4">{editingId ? '✏️ 기록 수정' : '✏️ 새 직관 기록'}</h3>
+          <div className="space-y-4">
+            {/* 날짜 + 상대팀 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-zinc-400 text-xs mb-1 block">날짜</label>
+                <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm" />
+              </div>
+              <div>
+                <label className="text-zinc-400 text-xs mb-1 block">상대팀</label>
+                <select value={form.opponent} onChange={e => setForm({ ...form, opponent: e.target.value })}
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm">
+                  <option value="">선택</option>
+                  {KBO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* 결과 */}
+            <div>
+              <label className="text-zinc-400 text-xs mb-1.5 block">결과</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['승', '패', '무'].map(r => (
+                  <button key={r} onClick={() => setForm({ ...form, result: r })}
+                    className={`py-3 rounded-xl font-black text-xl transition-all ${form.result === r ? resultColor(r) : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* 착장 */}
+            <div>
+              <label className="text-zinc-400 text-xs mb-1.5 block">착장 👕</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {OUTFIT_PRESETS.map(o => (
+                  <button key={o} onClick={() => setForm({ ...form, outfit: o })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${form.outfit === o ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+              <input type="text" value={OUTFIT_PRESETS.includes(form.outfit) ? '' : form.outfit}
+                onChange={e => setForm({ ...form, outfit: e.target.value })}
+                placeholder="직접 입력 (예: 유니폼+캡)"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm placeholder-zinc-600" />
+            </div>
+            {/* 코멘트 */}
+            <div>
+              <label className="text-zinc-400 text-xs mb-1 block">코멘트 💬</label>
+              <textarea value={form.comment} onChange={e => setForm({ ...form, comment: e.target.value })}
+                placeholder="오늘 경기 느낌, 하이라이트, 기억하고 싶은 것..." rows={3}
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm placeholder-zinc-600 resize-none" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => { setShowForm(false); setEditingId(null); }}
+              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 rounded-xl font-bold text-sm transition-all">
+              취소
+            </button>
+            <button onClick={saveRecord} disabled={!form.opponent || !form.result}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 rounded-xl font-bold text-sm transition-all">
+              저장
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 기록 없음 */}
+      {total === 0 && !showForm && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center">
+          <p className="text-5xl mb-4">⚾</p>
+          <p className="text-white font-black text-lg mb-1">직관 기록을 시작해보세요</p>
+          <p className="text-zinc-500 text-sm mb-5">날짜, 결과, 착장, 코멘트를 기록하면<br/>나만의 직관 승률을 확인할 수 있어요</p>
+          <button onClick={openNew} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all">
+            첫 직관 기록 추가 +
+          </button>
+        </div>
+      )}
+
+      {/* 기록 리스트 */}
+      {total > 0 && (
+        <div className="space-y-3">
+          {records.map(r => (
+            <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-zinc-700 transition-all">
+              <div className="flex items-start gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl flex-shrink-0 ${resultColor(r.result)}`}>
+                  {r.result || '-'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-white font-bold">SSG vs {r.opponent}</p>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => openEdit(r)} className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">수정</button>
+                      <button onClick={() => delRecord(r.id)} className="text-zinc-600 hover:text-red-500 text-xs transition-colors">삭제</button>
+                    </div>
+                  </div>
+                  <p className="text-zinc-500 text-xs mb-1.5">{r.date}</p>
+                  {r.outfit && <span className="inline-block text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full mb-1.5">👕 {r.outfit}</span>}
+                  {r.comment && <p className="text-zinc-400 text-sm leading-relaxed">{r.comment}</p>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ─── (구) 승요체크 로직 (보관) ─────────────────────────────────────────
 const _ScheduleTabFull = () => {
