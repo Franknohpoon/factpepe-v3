@@ -2865,6 +2865,34 @@ const AdminLineupForm = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  // 선수별 포지션 빈도 맵: { '최정': { '3루수': 12, ... }, ... }
+  const [posFreqMap, setPosFreqMap] = useState({});
+
+  // 라인업 히스토리 로드 → 포지션 빈도 계산
+  useEffect(() => {
+    onValue(dbRef(database, 'lineup/history'), (snap) => {
+      const data = snap.val();
+      if (!data) return;
+      const freq = {};
+      Object.values(data).forEach(record => {
+        if (!record.players) return;
+        Object.values(record.players).forEach(p => {
+          if (!p.name || !p.pos) return;
+          if (!freq[p.name]) freq[p.name] = {};
+          freq[p.name][p.pos] = (freq[p.name][p.pos] || 0) + 1;
+        });
+      });
+      setPosFreqMap(freq);
+    }, { onlyOnce: true });
+  }, []);
+
+  // 이름으로 주로 쓰는 포지션 반환 (5회 이상이면)
+  const getAutoPos = (name) => {
+    const posMap = posFreqMap[name];
+    if (!posMap) return '';
+    const best = Object.entries(posMap).sort((a, b) => b[1] - a[1])[0];
+    return best && best[1] >= 5 ? best[0] : '';
+  };
 
   const updatePlayer = (idx, field, value) => {
     const updated = [...players];
@@ -2873,7 +2901,10 @@ const AdminLineupForm = () => {
   };
 
   const selectPlayer = (idx, name) => {
-    updatePlayer(idx, 'name', name);
+    const autoPos = getAutoPos(name);
+    const updated = [...players];
+    updated[idx] = { ...updated[idx], name, pos: autoPos || updated[idx].pos };
+    setPlayers(updated);
     const q = [...query]; q[idx] = ''; setQuery(q);
   };
 
@@ -2890,7 +2921,12 @@ const AdminLineupForm = () => {
     setSaveError('');
     try {
       const playersObj = players.reduce((acc, p, i) => ({ ...acc, [i]: p }), {});
-      await set(dbRef(database, 'lineup/latest'), { date, opponent, pitcher, players: playersObj, updatedAt: Date.now() });
+      const record = { date, opponent, pitcher, players: playersObj, updatedAt: Date.now() };
+      // latest 업데이트 + history에 누적 저장
+      await Promise.all([
+        set(dbRef(database, 'lineup/latest'), record),
+        set(dbRef(database, `lineup/history/${Date.now()}`), record),
+      ]);
       setSaved(true);
       setConfirm(false);
       setTimeout(() => setSaved(false), 3000);
@@ -2970,17 +3006,25 @@ const AdminLineupForm = () => {
                 />
                 {filteredPlayers(idx).length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-zinc-800 border border-zinc-600 rounded-lg mt-1 z-10 overflow-hidden">
-                    {filteredPlayers(idx).map(name => (
-                      <button key={name} onClick={() => selectPlayer(idx, name)}
-                        className="w-full text-left px-4 py-3 text-white hover:bg-zinc-700 text-base font-bold border-b border-zinc-700 last:border-0">
-                        {name}
-                      </button>
-                    ))}
+                    {filteredPlayers(idx).map(name => {
+                      const autoPos = getAutoPos(name);
+                      return (
+                        <button key={name} onClick={() => selectPlayer(idx, name)}
+                          className="w-full text-left px-4 py-3 text-white hover:bg-zinc-700 text-base font-bold border-b border-zinc-700 last:border-0 flex items-center justify-between">
+                          <span>{name}</span>
+                          {autoPos && <span className="text-xs text-red-400 font-bold bg-red-900/30 px-2 py-0.5 rounded-full">{autoPos}</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
               <select value={player.pos} onChange={e => updatePlayer(idx, 'pos', e.target.value)}
-                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm flex-shrink-0">
+                className={`text-white rounded-lg p-3 text-sm flex-shrink-0 border transition-all ${
+                  player.name && getAutoPos(player.name) && player.pos === getAutoPos(player.name)
+                    ? 'bg-red-900/40 border-red-500'
+                    : 'bg-zinc-800 border-zinc-700'
+                }`}>
                 <option value="">포지션</option>
                 {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
