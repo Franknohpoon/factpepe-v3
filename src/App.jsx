@@ -2850,6 +2850,20 @@ const AdminPage = () => {
   );
 };
 
+// 포지션 시드 데이터 (히스토리 없어도 처음부터 활용)
+// 단일 포지션 → 10 (자동선택 즉시 활성화)
+// 복수 포지션 → 4 (자동선택 안 하고 히스토리 누적 후 결정)
+const PLAYER_POS_SEEDS = {
+  '이지영':  { '포수': 10 },
+  '조형우':  { '포수': 10 },
+  '정준재':  { '2루수': 10 },
+  '박성한':  { '유격수': 10 },
+  '최지훈':  { '중견수': 10 },
+  '에레디아': { '지명타자': 4, '좌익수': 4 },
+  '최정':    { '3루수': 4, '좌익수': 4 },
+  '김재환':  { '좌익수': 4, '지명타자': 4 },
+};
+
 const AdminLineupForm = () => {
   const today = new Date();
   const todayStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
@@ -2868,20 +2882,26 @@ const AdminLineupForm = () => {
   // 선수별 포지션 빈도 맵: { '최정': { '3루수': 12, ... }, ... }
   const [posFreqMap, setPosFreqMap] = useState({});
 
-  // 라인업 히스토리 로드 → 포지션 빈도 계산
+  // 라인업 히스토리 로드 → 시드 + Firebase 히스토리 합산
   useEffect(() => {
+    // 시드 데이터 깊은 복사
+    const freq = {};
+    Object.entries(PLAYER_POS_SEEDS).forEach(([name, posMap]) => {
+      freq[name] = { ...posMap };
+    });
+
     onValue(dbRef(database, 'lineup/history'), (snap) => {
       const data = snap.val();
-      if (!data) return;
-      const freq = {};
-      Object.values(data).forEach(record => {
-        if (!record.players) return;
-        Object.values(record.players).forEach(p => {
-          if (!p.name || !p.pos) return;
-          if (!freq[p.name]) freq[p.name] = {};
-          freq[p.name][p.pos] = (freq[p.name][p.pos] || 0) + 1;
+      if (data) {
+        Object.values(data).forEach(record => {
+          if (!record.players) return;
+          Object.values(record.players).forEach(p => {
+            if (!p.name || !p.pos) return;
+            if (!freq[p.name]) freq[p.name] = {};
+            freq[p.name][p.pos] = (freq[p.name][p.pos] || 0) + 1;
+          });
         });
-      });
+      }
       setPosFreqMap(freq);
     }, { onlyOnce: true });
   }, []);
