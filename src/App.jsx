@@ -892,7 +892,9 @@ const _ScheduleTabFull = () => {
 // ─── 3. 라인업 ───────────────────────────────────────────────────────
 const LineupTab = () => {
   const cardRef = useRef(null);
+  const matchupCardRef = useRef(null);
   const [lineupData, setLineupData] = useState(null);
+  const [matchupData, setMatchupData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stylePreset, setStylePreset] = useState('classic');
   const [logo, setLogo] = useState('🐸');
@@ -905,6 +907,9 @@ const LineupTab = () => {
   const [busy, setBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [savePreview, setSavePreview] = useState(null); // 모바일 저장용 이미지 팝업
+  const [matchupBusy, setMatchupBusy] = useState(false);
+  const [matchupSaveMsg, setMatchupSaveMsg] = useState('');
+  const [matchupSavePreview, setMatchupSavePreview] = useState(null);
 
   useEffect(() => {
     onValue(dbRef(database, 'lineup/latest'), (snap) => {
@@ -920,6 +925,69 @@ const LineupTab = () => {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'matchup/latest'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        setMatchupData({
+          date: data.date,
+          opponent: data.opponent,
+          pitcher: data.pitcher,
+          players: Object.values(data.players || {}),
+        });
+      }
+    });
+  }, []);
+
+  const generateMatchupCanvas = () =>
+    html2canvas(matchupCardRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
+
+  const showMatchupSaveMsg = (msg) => { setMatchupSaveMsg(msg); setTimeout(() => setMatchupSaveMsg(''), 3000); };
+
+  const downloadMatchupImage = async () => {
+    if (!matchupCardRef.current || matchupBusy) return;
+    setMatchupBusy(true);
+    try {
+      const canvas = await generateMatchupCanvas();
+      const ua = navigator.userAgent;
+      const isMobile = /iPhone|iPad|iPod|Android/.test(ua) && !/Windows/.test(ua);
+      if (isMobile) {
+        setMatchupSavePreview(canvas.toDataURL('image/png'));
+      } else {
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        const filename = `matchup-${(matchupData?.date || 'unknown').replace(/\./g, '')}.png`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showMatchupSaveMsg('✅ 저장 완료!');
+      }
+    } catch (e) { if (e?.name !== 'AbortError') showMatchupSaveMsg('❌ 저장 실패'); }
+    finally { setMatchupBusy(false); }
+  };
+
+  const shareMatchupToX = async () => {
+    if (!matchupCardRef.current || matchupBusy || !matchupData) return;
+    setMatchupBusy(true);
+    try {
+      const canvas = await generateMatchupCanvas();
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const text = `SSG vs ${matchupData.opponent} 선발 ${matchupData.pitcher} 상대전적 ⚔️\n\n#SSG랜더스 #팩트페페 #KBO`;
+      const encodedText = encodeURIComponent(text);
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); } catch {}
+      let appOpened = false;
+      const onVisibility = () => { if (document.hidden) appOpened = true; };
+      document.addEventListener('visibilitychange', onVisibility);
+      window.location.href = `twitter://post?message=${encodedText}`;
+      setTimeout(() => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (!appOpened) window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
+      }, 1500);
+    } catch (e) { console.error(e); }
+    finally { setMatchupBusy(false); }
+  };
 
   const displaySubtitle = subtitle === 'custom' ? customSubtitle : subtitle;
   const displayMsg = specialMsg === 'custom' ? customMsg : specialMsg;
@@ -1206,7 +1274,106 @@ const LineupTab = () => {
           </div>
         </div>
       </div>
-    </div>
+
+    {/* ─── 상대전적 카드 ─── */}
+    {matchupData && (
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-2xl font-black text-white">⚔️ 상대전적 카드</h2>
+          <div className="flex gap-2">
+            <button onClick={downloadMatchupImage} disabled={matchupBusy}
+              className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">📷 저장</button>
+            <button onClick={shareMatchupToX} disabled={matchupBusy}
+              className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유하기</button>
+          </div>
+        </div>
+        {matchupSaveMsg && <p className="text-right text-xs text-zinc-400 mb-3">{matchupSaveMsg}</p>}
+
+        {/* 모바일 저장 팝업 */}
+        {matchupSavePreview && (
+          <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6"
+            onClick={() => setMatchupSavePreview(null)}>
+            <p className="text-white font-black text-lg mb-2">📷 이미지를 꾹 눌러 저장하세요</p>
+            <p className="text-zinc-400 text-sm mb-5">사진 앨범에 저장 → 탭하여 닫기</p>
+            <img src={matchupSavePreview} alt="matchup" className="max-w-full rounded-2xl shadow-2xl"
+              onClick={e => e.stopPropagation()} style={{ maxHeight: '65vh', objectFit: 'contain' }} />
+            <button onClick={() => setMatchupSavePreview(null)} className="mt-6 text-zinc-500 text-sm underline">닫기</button>
+          </div>
+        )}
+
+        <div className="flex justify-center">
+          {/* 상대전적 카드 (html2canvas 대상) */}
+          <div ref={matchupCardRef} style={{
+            background: 'linear-gradient(160deg, #0f0f1a 0%, #1a0a0a 50%, #0a0a1a 100%)',
+            boxShadow: '0 8px 40px rgba(220,30,30,0.25)',
+            width: '340px',
+            borderRadius: '20px',
+            padding: '24px 20px',
+            fontFamily: 'sans-serif',
+          }}>
+            {/* 헤더 */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', letterSpacing: '2px', fontWeight: 700, marginBottom: '6px' }}>
+                {matchupData.date} · SSG vs {matchupData.opponent}
+              </div>
+              <div style={{ color: '#ff4444', fontSize: '11px', fontWeight: 800, letterSpacing: '1px', marginBottom: '4px' }}>⚔️ 상대 선발</div>
+              <div style={{ color: 'white', fontSize: '22px', fontWeight: 900, letterSpacing: '1px' }}>{matchupData.pitcher}</div>
+            </div>
+
+            {/* 컬럼 헤더 */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', marginBottom: '4px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '20px' }}>#</span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, flex: 1 }}>타자</span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '44px', textAlign: 'right' }}>타율</span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '42px', textAlign: 'right' }}>안타/타수</span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '28px', textAlign: 'right' }}>홈런</span>
+            </div>
+
+            {/* 선수 행 */}
+            <div>
+              {matchupData.players.map((p, i) => {
+                const ab = parseInt(p.ab) || 0;
+                const h = parseInt(p.h) || 0;
+                const hr = parseInt(p.hr) || 0;
+                const avg = ab > 0 ? (h / ab) : null;
+                const avgStr = avg !== null ? avg.toFixed(3).replace('0.', '.') : '-';
+                const avgColor = avg === null ? 'rgba(255,255,255,0.3)'
+                  : avg >= 0.3 ? '#4ade80'
+                  : avg >= 0.2 ? '#facc15'
+                  : '#f87171';
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '7px', borderLeft: `3px solid ${avgColor}33` }}>
+                    <span style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '12px', width: '20px' }}>{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ color: 'white', fontWeight: 700, fontSize: '13px' }}>{p.name}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '9px', marginLeft: '5px' }}>{p.pos}</span>
+                    </div>
+                    <span style={{ color: avgColor, fontWeight: 800, fontSize: '13px', width: '44px', textAlign: 'right' }}>{avgStr}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', width: '42px', textAlign: 'right' }}>{ab > 0 ? `${h}/${ab}` : '-'}</span>
+                    <span style={{ color: hr > 0 ? '#fbbf24' : 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: hr > 0 ? 800 : 400, width: '28px', textAlign: 'right' }}>{hr > 0 ? `${hr}💣` : '0'}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 범례 */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              {[['#4ade80', '.300+'], ['#facc15', '.200+'], ['#f87171', '.200↓']].map(([color, label]) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: color }} />
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '8px' }}>
+              <div style={{ color: 'rgba(255,255,255,0.18)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @factpepe_</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 
@@ -2822,6 +2989,7 @@ const AdminPage = () => {
     { id: 'factpepe',   label: '🐸 팩트페페' },
     { id: 'news',       label: '📰 뉴스 작성' },
     { id: 'lineup',     label: '📋 라인업 입력' },
+    { id: 'matchup',    label: '⚔️ 상대전적 입력' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'pending',    label: '🔍 사진 검토' },
     { id: 'seatview',   label: '💬 제보 목록' },
@@ -2842,6 +3010,7 @@ const AdminPage = () => {
       {section === 'factpepe'  && <AdminFactPepe />}
       {section === 'news'      && <AdminNewsForm />}
       {section === 'lineup'    && <AdminLineupForm />}
+      {section === 'matchup'   && <AdminMatchupForm />}
       {section === 'seatphoto' && <AdminSeatPhotoUpload />}
       {section === 'pending'   && <AdminPendingPhotos />}
       {section === 'seatview'  && <AdminSeatReports />}
@@ -3084,6 +3253,155 @@ const AdminLineupForm = () => {
         <div className="bg-green-900/30 border border-green-600 text-green-400 rounded-xl p-3 text-center font-bold">
           ✅ 라인업이 저장되었습니다!
         </div>
+      )}
+    </div>
+  );
+};
+
+// ─── 관리자: 상대전적 입력 ──────────────────────────────────────────────
+const AdminMatchupForm = () => {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+  const [date, setDate] = useState(todayStr);
+  const [opponent, setOpponent] = useState('');
+  const [pitcher, setPitcher] = useState('');
+  const [pitcherQuery, setPitcherQuery] = useState('');
+  // 상대팀 선수 검색용
+  const [players, setPlayers] = useState(
+    Array.from({ length: 9 }, () => ({ name: '', pos: '', ab: '', h: '', hr: '' }))
+  );
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [loadedFromLineup, setLoadedFromLineup] = useState(false);
+
+  // lineup/latest에서 선수 자동 로드
+  useEffect(() => {
+    onValue(dbRef(database, 'lineup/latest'), (snap) => {
+      const data = snap.val();
+      if (data?.players) {
+        const lp = Object.values(data.players);
+        setPlayers(lp.map(p => ({ name: p.name || '', pos: p.pos || '', ab: '', h: '', hr: '' })));
+        if (data.opponent) setOpponent(data.opponent);
+        if (data.date) setDate(data.date);
+        setLoadedFromLineup(true);
+      }
+    }, { onlyOnce: true });
+  }, []);
+
+  const updatePlayer = (idx, field, value) => {
+    const updated = [...players];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setPlayers(updated);
+  };
+
+  const handleSave = async () => {
+    setSaving(true); setSaveError('');
+    try {
+      const playersObj = players.reduce((acc, p, i) => ({ ...acc, [i]: p }), {});
+      await set(dbRef(database, 'matchup/latest'), { date, opponent, pitcher, players: playersObj, updatedAt: Date.now() });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) { setSaveError(`저장 실패: ${err.message}`); }
+    finally { setSaving(false); }
+  };
+
+  const canSave = opponent && pitcher && players.every(p => p.name);
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      {loadedFromLineup && (
+        <div className="bg-blue-900/20 border border-blue-700 rounded-xl p-3 text-blue-400 text-sm font-bold text-center">
+          ✅ 오늘 라인업에서 선수 정보를 자동으로 불러왔어요
+        </div>
+      )}
+
+      {/* 날짜 + 상대팀 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">날짜</label>
+          <input type="text" value={date} onChange={e => setDate(e.target.value)}
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base" />
+        </div>
+        <div>
+          <label className="text-gray-400 text-xs mb-2 block">상대팀</label>
+          <div className="grid grid-cols-3 gap-2">
+            {KBO_TEAMS.map(t => (
+              <button key={t} onClick={() => setOpponent(t)}
+                className={`py-3 rounded-lg font-black text-base transition-all ${opponent === t ? 'bg-red-600 text-white' : 'bg-zinc-800 text-gray-300 hover:bg-zinc-700'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 상대 선발 투수 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">⚔️ 상대 선발 투수</p>
+        <input
+          type="text"
+          value={pitcher}
+          onChange={e => setPitcher(e.target.value)}
+          placeholder="예: 김광현, 에이스"
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600"
+        />
+      </div>
+
+      {/* 타자별 상대전적 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">📊 타자별 상대전적</p>
+        <p className="text-gray-600 text-xs mb-4">타수(AB) · 안타(H) · 홈런(HR) — 없으면 0 입력</p>
+
+        {/* 컬럼 헤더 */}
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <span className="w-5" />
+          <span className="flex-1 text-gray-600 text-xs">선수</span>
+          <span className="w-14 text-gray-600 text-xs text-center">타수</span>
+          <span className="w-14 text-gray-600 text-xs text-center">안타</span>
+          <span className="w-14 text-gray-600 text-xs text-center">홈런</span>
+        </div>
+
+        <div className="space-y-2">
+          {players.map((player, idx) => {
+            const ab = parseInt(player.ab) || 0;
+            const h = parseInt(player.h) || 0;
+            const avg = ab > 0 ? (h / ab).toFixed(3).replace('0.', '.') : '-';
+            const avgColor = ab === 0 ? 'text-gray-600'
+              : h / ab >= 0.3 ? 'text-green-400'
+              : h / ab >= 0.2 ? 'text-yellow-400'
+              : 'text-red-400';
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="text-red-500 font-black text-sm w-5 text-center flex-shrink-0">{idx + 1}</span>
+                <div className="flex-1">
+                  <div className="text-white text-sm font-bold">{player.name || <span className="text-zinc-600">-</span>}</div>
+                  <div className="text-zinc-600 text-xs">{player.pos}</div>
+                </div>
+                <input type="number" min="0" value={player.ab} onChange={e => updatePlayer(idx, 'ab', e.target.value)}
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+                <input type="number" min="0" value={player.h} onChange={e => updatePlayer(idx, 'h', e.target.value)}
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+                <input type="number" min="0" value={player.hr} onChange={e => updatePlayer(idx, 'hr', e.target.value)}
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 저장 */}
+      <button onClick={handleSave} disabled={!canSave || saving}
+        className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-4 rounded-xl font-black text-lg transition-all">
+        {saving ? '저장 중...' : '⚔️ 상대전적 저장'}
+      </button>
+
+      {saveError && (
+        <div className="bg-red-900/30 border border-red-600 text-red-400 rounded-xl p-3 text-center text-sm font-bold">❌ {saveError}</div>
+      )}
+      {saved && (
+        <div className="bg-green-900/30 border border-green-600 text-green-400 rounded-xl p-3 text-center font-bold">✅ 상대전적이 저장되었습니다!</div>
       )}
     </div>
   );
