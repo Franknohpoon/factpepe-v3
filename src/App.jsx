@@ -263,6 +263,7 @@ function App() {
     { id: 'news',     name: '팩트 뉴스', emoji: '🐸', component: FactNewsTab },
     { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
     { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
+    { id: 'matchup',  name: '상대전적',  emoji: '⚔️', component: MatchupTab },
     { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
     { id: 'game',     name: '미니게임',   emoji: '🎮', component: GameTab },
     { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
@@ -892,9 +893,7 @@ const _ScheduleTabFull = () => {
 // ─── 3. 라인업 ───────────────────────────────────────────────────────
 const LineupTab = () => {
   const cardRef = useRef(null);
-  const matchupCardRef = useRef(null);
   const [lineupData, setLineupData] = useState(null);
-  const [matchupData, setMatchupData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stylePreset, setStylePreset] = useState('classic');
   const [logo, setLogo] = useState('🐸');
@@ -907,9 +906,6 @@ const LineupTab = () => {
   const [busy, setBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [savePreview, setSavePreview] = useState(null); // 모바일 저장용 이미지 팝업
-  const [matchupBusy, setMatchupBusy] = useState(false);
-  const [matchupSaveMsg, setMatchupSaveMsg] = useState('');
-  const [matchupSavePreview, setMatchupSavePreview] = useState(null);
 
   useEffect(() => {
     onValue(dbRef(database, 'lineup/latest'), (snap) => {
@@ -925,69 +921,6 @@ const LineupTab = () => {
       setLoading(false);
     });
   }, []);
-
-  useEffect(() => {
-    onValue(dbRef(database, 'matchup/latest'), (snap) => {
-      const data = snap.val();
-      if (data) {
-        setMatchupData({
-          date: data.date,
-          opponent: data.opponent,
-          pitcher: data.pitcher,
-          players: Object.values(data.players || {}),
-        });
-      }
-    });
-  }, []);
-
-  const generateMatchupCanvas = () =>
-    html2canvas(matchupCardRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
-
-  const showMatchupSaveMsg = (msg) => { setMatchupSaveMsg(msg); setTimeout(() => setMatchupSaveMsg(''), 3000); };
-
-  const downloadMatchupImage = async () => {
-    if (!matchupCardRef.current || matchupBusy) return;
-    setMatchupBusy(true);
-    try {
-      const canvas = await generateMatchupCanvas();
-      const ua = navigator.userAgent;
-      const isMobile = /iPhone|iPad|iPod|Android/.test(ua) && !/Windows/.test(ua);
-      if (isMobile) {
-        setMatchupSavePreview(canvas.toDataURL('image/png'));
-      } else {
-        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-        const filename = `matchup-${(matchupData?.date || 'unknown').replace(/\./g, '')}.png`;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url; link.download = filename;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showMatchupSaveMsg('✅ 저장 완료!');
-      }
-    } catch (e) { if (e?.name !== 'AbortError') showMatchupSaveMsg('❌ 저장 실패'); }
-    finally { setMatchupBusy(false); }
-  };
-
-  const shareMatchupToX = async () => {
-    if (!matchupCardRef.current || matchupBusy || !matchupData) return;
-    setMatchupBusy(true);
-    try {
-      const canvas = await generateMatchupCanvas();
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      const text = `SSG vs ${matchupData.opponent} 선발 ${matchupData.pitcher} 상대전적 ⚔️\n\n#SSG랜더스 #팩트페페 #KBO`;
-      const encodedText = encodeURIComponent(text);
-      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); } catch {}
-      let appOpened = false;
-      const onVisibility = () => { if (document.hidden) appOpened = true; };
-      document.addEventListener('visibilitychange', onVisibility);
-      window.location.href = `twitter://post?message=${encodedText}`;
-      setTimeout(() => {
-        document.removeEventListener('visibilitychange', onVisibility);
-        if (!appOpened) window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
-      }, 1500);
-    } catch (e) { console.error(e); }
-    finally { setMatchupBusy(false); }
-  };
 
   const displaySubtitle = subtitle === 'custom' ? customSubtitle : subtitle;
   const displayMsg = specialMsg === 'custom' ? customMsg : specialMsg;
@@ -1275,109 +1208,192 @@ const LineupTab = () => {
         </div>
       </div>
 
-    {/* ─── 상대전적 카드 ─── */}
-    {matchupData && (
-      <div className="mt-10">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-black text-white">⚔️ 상대전적 카드</h2>
-          <div className="flex gap-2">
-            <button onClick={downloadMatchupImage} disabled={matchupBusy}
-              className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">📷 저장</button>
-            <button onClick={shareMatchupToX} disabled={matchupBusy}
-              className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유하기</button>
-          </div>
-        </div>
-        {matchupSaveMsg && <p className="text-right text-xs text-zinc-400 mb-3">{matchupSaveMsg}</p>}
-
-        {/* 모바일 저장 팝업 */}
-        {matchupSavePreview && (
-          <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6"
-            onClick={() => setMatchupSavePreview(null)}>
-            <p className="text-white font-black text-lg mb-2">📷 이미지를 꾹 눌러 저장하세요</p>
-            <p className="text-zinc-400 text-sm mb-5">사진 앨범에 저장 → 탭하여 닫기</p>
-            <img src={matchupSavePreview} alt="matchup" className="max-w-full rounded-2xl shadow-2xl"
-              onClick={e => e.stopPropagation()} style={{ maxHeight: '65vh', objectFit: 'contain' }} />
-            <button onClick={() => setMatchupSavePreview(null)} className="mt-6 text-zinc-500 text-sm underline">닫기</button>
-          </div>
-        )}
-
-        <div className="flex justify-center">
-          {/* 상대전적 카드 (html2canvas 대상) */}
-          <div ref={matchupCardRef} style={{
-            background: 'linear-gradient(160deg, #0f0f1a 0%, #1a0a0a 50%, #0a0a1a 100%)',
-            boxShadow: '0 8px 40px rgba(220,30,30,0.25)',
-            width: '340px',
-            borderRadius: '20px',
-            padding: '24px 20px',
-            fontFamily: 'sans-serif',
-          }}>
-            {/* 헤더 */}
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', letterSpacing: '2px', fontWeight: 700, marginBottom: '6px' }}>
-                {matchupData.date} · SSG vs {matchupData.opponent}
-              </div>
-              <div style={{ color: '#ff4444', fontSize: '11px', fontWeight: 800, letterSpacing: '1px', marginBottom: '4px' }}>⚔️ 상대 선발</div>
-              <div style={{ color: 'white', fontSize: '22px', fontWeight: 900, letterSpacing: '1px' }}>{matchupData.pitcher}</div>
-            </div>
-
-            {/* 컬럼 헤더 */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', marginBottom: '4px' }}>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '20px' }}>#</span>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, flex: 1 }}>타자</span>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '44px', textAlign: 'right' }}>타율</span>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '42px', textAlign: 'right' }}>안타/타수</span>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '28px', textAlign: 'right' }}>홈런</span>
-            </div>
-
-            {/* 선수 행 */}
-            <div>
-              {matchupData.players.map((p, i) => {
-                const ab = parseInt(p.ab) || 0;
-                const h = parseInt(p.h) || 0;
-                const hr = parseInt(p.hr) || 0;
-                const avg = ab > 0 ? (h / ab) : null;
-                const avgStr = avg !== null ? avg.toFixed(3).replace('0.', '.') : '-';
-                const avgColor = avg === null ? 'rgba(255,255,255,0.3)'
-                  : avg >= 0.3 ? '#4ade80'
-                  : avg >= 0.2 ? '#facc15'
-                  : '#f87171';
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '7px', borderLeft: `3px solid ${avgColor}33` }}>
-                    <span style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '12px', width: '20px' }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <span style={{ color: 'white', fontWeight: 700, fontSize: '13px' }}>{p.name}</span>
-                      <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '9px', marginLeft: '5px' }}>{p.pos}</span>
-                    </div>
-                    <span style={{ color: avgColor, fontWeight: 800, fontSize: '13px', width: '44px', textAlign: 'right' }}>{avgStr}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', width: '42px', textAlign: 'right' }}>{ab > 0 ? `${h}/${ab}` : '-'}</span>
-                    <span style={{ color: hr > 0 ? '#fbbf24' : 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: hr > 0 ? 800 : 400, width: '28px', textAlign: 'right' }}>{hr > 0 ? `${hr}💣` : '0'}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 범례 */}
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              {[['#4ade80', '.300+'], ['#facc15', '.200+'], ['#f87171', '.200↓']].map(([color, label]) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: color }} />
-                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>{label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ textAlign: 'right', marginTop: '8px' }}>
-              <div style={{ color: 'rgba(255,255,255,0.18)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @factpepe_</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
   </div>
   );
 };
 
-// ─── 4. 제보 탭 ──────────────────────────────────────────────────────
+// ─── 4. 상대전적 탭 ──────────────────────────────────────────────────
+const MatchupTab = () => {
+  const cardRef = useRef(null);
+  const [matchupData, setMatchupData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [savePreview, setSavePreview] = useState(null);
+
+  useEffect(() => {
+    onValue(dbRef(database, 'matchup/latest'), (snap) => {
+      const data = snap.val();
+      if (data) {
+        setMatchupData({
+          date: data.date,
+          opponent: data.opponent,
+          pitcher: data.pitcher,
+          players: Object.values(data.players || {}),
+        });
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  const generateCanvas = () =>
+    html2canvas(cardRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
+
+  const showSaveMsg = (msg) => { setSaveMsg(msg); setTimeout(() => setSaveMsg(''), 3000); };
+
+  const downloadImage = async () => {
+    if (!cardRef.current || busy) return;
+    setBusy(true);
+    try {
+      const canvas = await generateCanvas();
+      const ua = navigator.userAgent;
+      const isMobile = /iPhone|iPad|iPod|Android/.test(ua) && !/Windows/.test(ua);
+      if (isMobile) {
+        setSavePreview(canvas.toDataURL('image/png'));
+      } else {
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        const filename = `matchup-${(matchupData?.date || 'unknown').replace(/\./g, '')}.png`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showSaveMsg('✅ 저장 완료!');
+      }
+    } catch (e) { if (e?.name !== 'AbortError') showSaveMsg('❌ 저장 실패'); }
+    finally { setBusy(false); }
+  };
+
+  const shareToX = async () => {
+    if (!cardRef.current || busy || !matchupData) return;
+    setBusy(true);
+    try {
+      const canvas = await generateCanvas();
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const text = `SSG vs ${matchupData.opponent} 선발 ${matchupData.pitcher} 상대전적 ⚔️\n\n#SSG랜더스 #팩트페페 #KBO`;
+      const encodedText = encodeURIComponent(text);
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); } catch {}
+      let appOpened = false;
+      const onVisibility = () => { if (document.hidden) appOpened = true; };
+      document.addEventListener('visibilitychange', onVisibility);
+      window.location.href = `twitter://post?message=${encodedText}`;
+      setTimeout(() => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (!appOpened) window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
+      }, 1500);
+    } catch (e) { console.error(e); }
+    finally { setBusy(false); }
+  };
+
+  if (loading) return <div className="text-center py-20"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" /></div>;
+
+  if (!matchupData) return (
+    <div className="text-center py-20 bg-zinc-900 border border-zinc-800 rounded-2xl">
+      <p className="text-5xl mb-4">⚔️</p>
+      <p className="text-gray-400 text-lg mb-2">상대전적 준비 중입니다</p>
+      <p className="text-gray-600 text-sm">경기 당일 업로드됩니다</p>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-black text-white">⚔️ 상대전적</h2>
+        <div className="flex gap-2">
+          <button onClick={downloadImage} disabled={busy}
+            className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-bold text-sm transition-all">📷 저장</button>
+          <button onClick={shareToX} disabled={busy}
+            className="bg-black hover:bg-zinc-900 disabled:opacity-50 text-white border border-zinc-600 px-3 py-2 rounded-lg font-bold text-sm transition-all">𝕏 공유하기</button>
+        </div>
+      </div>
+      {saveMsg && <p className="text-right text-xs text-zinc-400 mb-3">{saveMsg}</p>}
+
+      {/* 모바일 저장 팝업 */}
+      {savePreview && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6"
+          onClick={() => setSavePreview(null)}>
+          <p className="text-white font-black text-lg mb-2">📷 이미지를 꾹 눌러 저장하세요</p>
+          <p className="text-zinc-400 text-sm mb-5">사진 앨범에 저장 → 탭하여 닫기</p>
+          <img src={savePreview} alt="matchup" className="max-w-full rounded-2xl shadow-2xl"
+            onClick={e => e.stopPropagation()} style={{ maxHeight: '65vh', objectFit: 'contain' }} />
+          <button onClick={() => setSavePreview(null)} className="mt-6 text-zinc-500 text-sm underline">닫기</button>
+        </div>
+      )}
+
+      <div className="flex justify-center">
+        <div ref={cardRef} style={{
+          background: 'linear-gradient(160deg, #0f0f1a 0%, #1a0a0a 50%, #0a0a1a 100%)',
+          boxShadow: '0 8px 40px rgba(220,30,30,0.25)',
+          width: '340px',
+          borderRadius: '20px',
+          padding: '24px 20px',
+          fontFamily: 'sans-serif',
+        }}>
+          {/* 헤더 */}
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', letterSpacing: '2px', fontWeight: 700, marginBottom: '6px' }}>
+              {matchupData.date} · SSG vs {matchupData.opponent}
+            </div>
+            <div style={{ color: '#ff4444', fontSize: '11px', fontWeight: 800, letterSpacing: '1px', marginBottom: '4px' }}>⚔️ 상대 선발</div>
+            <div style={{ color: 'white', fontSize: '22px', fontWeight: 900, letterSpacing: '1px' }}>{matchupData.pitcher}</div>
+          </div>
+
+          {/* 컬럼 헤더 */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '4px 10px', marginBottom: '4px' }}>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '20px' }}>#</span>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, flex: 1 }}>타자</span>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '44px', textAlign: 'right' }}>타율</span>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '42px', textAlign: 'right' }}>안타/타수</span>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontWeight: 700, width: '28px', textAlign: 'right' }}>타점</span>
+          </div>
+
+          {/* 선수 행 */}
+          <div>
+            {matchupData.players.map((p, i) => {
+              const ab = parseInt(p.ab) || 0;
+              const h = parseInt(p.h) || 0;
+              const rbi = parseInt(p.rbi) || 0;
+              const avg = ab > 0 ? (h / ab) : null;
+              const avgStr = avg !== null ? avg.toFixed(3).replace('0.', '.') : '-';
+              const avgColor = avg === null ? 'rgba(255,255,255,0.3)'
+                : avg >= 0.3 ? '#4ade80'
+                : avg >= 0.2 ? '#facc15'
+                : '#f87171';
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '3px', background: 'rgba(255,255,255,0.04)', borderRadius: '7px', borderLeft: `3px solid ${avgColor}33` }}>
+                  <span style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '12px', width: '20px' }}>{i + 1}</span>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ color: 'white', fontWeight: 700, fontSize: '13px' }}>{p.name}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '9px', marginLeft: '5px' }}>{p.pos}</span>
+                  </div>
+                  <span style={{ color: avgColor, fontWeight: 800, fontSize: '13px', width: '44px', textAlign: 'right' }}>{avgStr}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', width: '42px', textAlign: 'right' }}>{ab > 0 ? `${h}/${ab}` : '-'}</span>
+                  <span style={{ color: rbi > 0 ? '#fbbf24' : 'rgba(255,255,255,0.25)', fontSize: '11px', fontWeight: rbi > 0 ? 800 : 400, width: '28px', textAlign: 'right' }}>{rbi > 0 ? rbi : '0'}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 범례 */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {[['#4ade80', '.300+'], ['#facc15', '.200+'], ['#f87171', '.200↓']].map(([color, label]) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: color }} />
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'right', marginTop: '8px' }}>
+            <div style={{ color: 'rgba(255,255,255,0.18)', fontSize: '9px', letterSpacing: '0.5px' }}>factpepe · @factpepe_</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── 5. 제보 탭 ──────────────────────────────────────────────────────
 const GOODS_TYPES = ['유니폼/자켓', '모자', '응원도구', '키링/뱃지', '기타'];
 
 const ReportTab = () => {
@@ -3269,7 +3285,7 @@ const AdminMatchupForm = () => {
   const [pitcherQuery, setPitcherQuery] = useState('');
   // 상대팀 선수 검색용
   const [players, setPlayers] = useState(
-    Array.from({ length: 9 }, () => ({ name: '', pos: '', ab: '', h: '', hr: '' }))
+    Array.from({ length: 9 }, () => ({ name: '', pos: '', ab: '', h: '', rbi: '' }))
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -3282,7 +3298,7 @@ const AdminMatchupForm = () => {
       const data = snap.val();
       if (data?.players) {
         const lp = Object.values(data.players);
-        setPlayers(lp.map(p => ({ name: p.name || '', pos: p.pos || '', ab: '', h: '', hr: '' })));
+        setPlayers(lp.map(p => ({ name: p.name || '', pos: p.pos || '', ab: '', h: '', rbi: '' })));
         if (data.opponent) setOpponent(data.opponent);
         if (data.date) setDate(data.date);
         setLoadedFromLineup(true);
@@ -3352,7 +3368,7 @@ const AdminMatchupForm = () => {
       {/* 타자별 상대전적 */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">📊 타자별 상대전적</p>
-        <p className="text-gray-600 text-xs mb-4">타수(AB) · 안타(H) · 홈런(HR) — 없으면 0 입력</p>
+        <p className="text-gray-600 text-xs mb-4">타수(AB) · 안타(H) · 타점(RBI) — 없으면 0 입력</p>
 
         {/* 컬럼 헤더 */}
         <div className="flex items-center gap-2 mb-2 px-1">
@@ -3360,7 +3376,7 @@ const AdminMatchupForm = () => {
           <span className="flex-1 text-gray-600 text-xs">선수</span>
           <span className="w-14 text-gray-600 text-xs text-center">타수</span>
           <span className="w-14 text-gray-600 text-xs text-center">안타</span>
-          <span className="w-14 text-gray-600 text-xs text-center">홈런</span>
+          <span className="w-14 text-gray-600 text-xs text-center">타점</span>
         </div>
 
         <div className="space-y-2">
@@ -3383,7 +3399,7 @@ const AdminMatchupForm = () => {
                   placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
                 <input type="number" min="0" value={player.h} onChange={e => updatePlayer(idx, 'h', e.target.value)}
                   placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
-                <input type="number" min="0" value={player.hr} onChange={e => updatePlayer(idx, 'hr', e.target.value)}
+                <input type="number" min="0" value={player.rbi} onChange={e => updatePlayer(idx, 'rbi', e.target.value)}
                   placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
               </div>
             );
