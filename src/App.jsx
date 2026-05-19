@@ -226,6 +226,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('news');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [tapCount, setTapCount] = useState(0);
   const tapTimer = useRef(null);
 
@@ -259,63 +260,55 @@ function App() {
     }
   };
 
-  const baseTabs = [
-    { id: 'news',     name: '팩트 뉴스', emoji: '🐸', component: FactNewsTab },
-    { id: 'schedule', name: '승요체크',  emoji: '📅', component: ScheduleTab },
-    { id: 'lineup',   name: '라인업',    emoji: '📋', component: LineupTab },
-    { id: 'report',   name: '제보',      emoji: '📬', component: ReportTab },
-    { id: 'game',     name: '미니게임',   emoji: '🎮', component: GameTab },
-    { id: 'chant',    name: '응원가',    emoji: '🎵', component: ChantTab },
-    { id: 'comic',    name: '4컷',       emoji: '🎨', component: ComicTab },
+  // 하단 탭바에 표시할 주요 탭 (5개)
+  const primaryTabs = [
+    { id: 'news',     name: '뉴스',    emoji: '🐸', component: FactNewsTab },
+    { id: 'schedule', name: '승요체크', emoji: '📅', component: ScheduleTab },
+    { id: 'lineup',   name: '라인업',  emoji: '📋', component: LineupTab },
+    { id: 'report',   name: '제보',    emoji: '📬', component: ReportTab },
   ];
+  // 더보기 메뉴에 들어갈 보조 탭
+  const moreTabs = [
+    { id: 'game',  name: '미니게임', emoji: '🎮', component: GameTab },
+    { id: 'chant', name: '응원가',  emoji: '🎵', component: ChantTab },
+    { id: 'comic', name: '4컷',     emoji: '🎨', component: ComicTab },
+  ];
+  const baseTabs = [...primaryTabs, ...moreTabs];
   const adminTab = { id: 'admin', name: '관리', emoji: '🔧', component: AdminPage };
   const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
   const ActiveComponent = tabs.find(t => t.id === activeTab)?.component;
+  const isMoreActive = moreTabs.some(t => t.id === activeTab) || activeTab === 'admin';
 
   return (
     <div className="min-h-screen bg-black">
-      <header className="bg-[#1a0000] sticky top-0 z-50">
-        {/* 상단 타이틀 바 */}
+      {/* 헤더: 브랜드 + 소셜 링크만 */}
+      <header className="bg-[#1a0000] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="cursor-pointer select-none flex items-center gap-3" onClick={handleLogoTap}>
-            <span className="text-2xl leading-none">🐸</span>
-            <div>
-              <span className="text-white font-black text-lg tracking-tight leading-none">팩트페페</span>
-              <span className="text-red-400 text-xs ml-2 font-normal hidden sm:inline">으쓱이들의 놀이터</span>
-            </div>
+          <div className="cursor-pointer select-none flex items-center gap-2.5" onClick={handleLogoTap}>
+            <span className="text-xl leading-none">🐸</span>
+            <span className="text-white font-black text-base tracking-tight">팩트페페</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">𝕏</a>
+              className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors py-1 px-1">𝕏</a>
             <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">YouTube</a>
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors py-1 px-1">YouTube</a>
             <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
-              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">TikTok</a>
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors py-1 px-1">TikTok</a>
           </div>
-        </div>
-        {/* 탭 내비게이션 */}
-        <div className="border-t border-red-950">
-          <nav className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-hide">
-            {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === tab.id
-                    ? 'border-red-500 text-white'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
-                }`}>
-                {tab.name}
-              </button>
-            ))}
-          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* 메인 콘텐츠 — 하단 탭바 높이(+safe area)만큼 여백 */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"
+        style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
         {ActiveComponent && <ActiveComponent isAdmin={isAdmin} />}
       </main>
 
-      <footer className="border-t border-zinc-800/60 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+      {/* 푸터 — 데스크탑만 표시 */}
+      <footer className="hidden sm:block border-t border-zinc-800/60 mt-8"
+        style={{ marginBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
           <p className="text-zinc-600 text-xs">팩트페페 · SSG 랜더스 팬 서비스</p>
           <div className="flex items-center gap-4">
             <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
@@ -327,6 +320,66 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* 하단 탭바 */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0f0000] border-t border-zinc-800/80"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex">
+          {/* 주요 4개 탭 */}
+          {primaryTabs.map(tab => (
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowMoreMenu(false); }}
+              className={`flex-1 flex flex-col items-center justify-center pt-2 pb-1.5 gap-0.5 transition-colors min-h-[52px] ${
+                activeTab === tab.id ? 'text-white' : 'text-zinc-600 active:text-zinc-400'
+              }`}>
+              <span className="text-[22px] leading-none">{tab.emoji}</span>
+              <span className={`text-[10px] font-bold leading-none mt-0.5 ${activeTab === tab.id ? 'text-red-400' : ''}`}>
+                {tab.name}
+              </span>
+            </button>
+          ))}
+
+          {/* 더보기 버튼 */}
+          <button onClick={() => setShowMoreMenu(v => !v)}
+            className={`flex-1 flex flex-col items-center justify-center pt-2 pb-1.5 gap-0.5 transition-colors min-h-[52px] ${
+              isMoreActive || showMoreMenu ? 'text-white' : 'text-zinc-600 active:text-zinc-400'
+            }`}>
+            <span className="text-[22px] leading-none">···</span>
+            <span className={`text-[10px] font-bold leading-none mt-0.5 ${isMoreActive || showMoreMenu ? 'text-red-400' : ''}`}>
+              더보기
+            </span>
+          </button>
+        </div>
+
+        {/* 더보기 메뉴 */}
+        {showMoreMenu && (
+          <div className="border-t border-zinc-800/80 bg-[#0f0000]">
+            <div className="flex">
+              {moreTabs.map(tab => (
+                <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowMoreMenu(false); }}
+                  className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
+                    activeTab === tab.id ? 'text-white' : 'text-zinc-500 active:text-zinc-400'
+                  }`}>
+                  <span className="text-xl leading-none">{tab.emoji}</span>
+                  <span className={`text-[10px] font-bold leading-none mt-0.5 ${activeTab === tab.id ? 'text-red-400' : ''}`}>
+                    {tab.name}
+                  </span>
+                </button>
+              ))}
+              {isAdmin && (
+                <button onClick={() => { setActiveTab('admin'); setShowMoreMenu(false); }}
+                  className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
+                    activeTab === 'admin' ? 'text-white' : 'text-zinc-500 active:text-zinc-400'
+                  }`}>
+                  <span className="text-xl leading-none">🔧</span>
+                  <span className={`text-[10px] font-bold leading-none mt-0.5 ${activeTab === 'admin' ? 'text-red-400' : ''}`}>
+                    관리
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </nav>
 
       {/* 어드민 로그인 모달 */}
       {showAdminLogin && (
@@ -648,12 +701,12 @@ const ScheduleTab = () => {
               <div>
                 <label className="text-zinc-400 text-xs mb-1 block">날짜</label>
                 <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm" />
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-base" />
               </div>
               <div>
                 <label className="text-zinc-400 text-xs mb-1 block">상대팀</label>
                 <select value={form.opponent} onChange={e => setForm({ ...form, opponent: e.target.value })}
-                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm">
+                  className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-base">
                   <option value="">선택</option>
                   {KBO_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -685,14 +738,14 @@ const ScheduleTab = () => {
               <input type="text" value={OUTFIT_PRESETS.includes(form.outfit) ? '' : form.outfit}
                 onChange={e => setForm({ ...form, outfit: e.target.value })}
                 placeholder="직접 입력 (예: 유니폼+캡)"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm placeholder-zinc-600" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-base placeholder-zinc-600" />
             </div>
             {/* 코멘트 */}
             <div>
               <label className="text-zinc-400 text-xs mb-1 block">코멘트 💬</label>
               <textarea value={form.comment} onChange={e => setForm({ ...form, comment: e.target.value })}
                 placeholder="오늘 경기 느낌, 하이라이트, 기억하고 싶은 것..." rows={3}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-sm placeholder-zinc-600 resize-none" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2.5 text-base placeholder-zinc-600 resize-none" />
             </div>
           </div>
           <div className="flex gap-2 mt-4">
@@ -801,7 +854,7 @@ const _ScheduleTabFull = () => {
             <div>
               <label className="text-gray-400 text-xs mb-1 block">날짜</label>
               <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base" />
             </div>
             <div>
               <label className="text-gray-400 text-xs mb-1 block">상대팀</label>
@@ -825,13 +878,13 @@ const _ScheduleTabFull = () => {
               <label className="text-gray-400 text-xs mb-1 block">착장 👕</label>
               <input type="text" value={form.outfit} onChange={e => setForm({ ...form, outfit: e.target.value })}
                 placeholder="홈 유니폼, 블랙 후드..."
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             </div>
             <div className="md:col-span-2">
               <label className="text-gray-400 text-xs mb-1 block">코멘트 💬</label>
               <textarea value={form.comment} onChange={e => setForm({ ...form, comment: e.target.value })}
                 placeholder="오늘 경기 느낌, 하이라이트..." rows={3}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600 resize-none" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600 resize-none" />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
@@ -1156,7 +1209,7 @@ const LineupTab = () => {
             <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">📝 텍스트</p>
             <div className="space-y-2">
               <select value={subtitle} onChange={e => setSubtitle(e.target.value)}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm">
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base">
                 <option value="SSG LANDERS LINEUP">SSG LANDERS LINEUP</option>
                 <option value="선발 라인업">선발 라인업</option>
                 <option value="STARTING IX">STARTING IX</option>
@@ -1165,10 +1218,10 @@ const LineupTab = () => {
               </select>
               {subtitle === 'custom' && (
                 <input type="text" value={customSubtitle} onChange={e => setCustomSubtitle(e.target.value)}
-                  placeholder="서브타이틀 입력" className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                  placeholder="서브타이틀 입력" className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
               )}
               <select value={specialMsg} onChange={e => setSpecialMsg(e.target.value)}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm">
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base">
                 <option value="">특별 메시지 없음</option>
                 <option value="개막 5연승 행진">개막 5연승 행진</option>
                 <option value="KIA 킬러 라인업">KIA 킬러 라인업</option>
@@ -1179,7 +1232,7 @@ const LineupTab = () => {
               </select>
               {specialMsg === 'custom' && (
                 <input type="text" value={customMsg} onChange={e => setCustomMsg(e.target.value)}
-                  placeholder="특별 메시지 입력" className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                  placeholder="특별 메시지 입력" className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
               )}
             </div>
           </div>
@@ -1194,7 +1247,7 @@ const LineupTab = () => {
                 value={bgPlayerName}
                 onChange={e => setBgPlayerName(e.target.value)}
                 placeholder="선수 이름 (예: 정준재)"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600"
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600"
               />
               <label className="flex items-center gap-2 cursor-pointer">
                 <div className={`flex-1 py-2 rounded-lg text-center text-xs font-bold border transition-all ${bgPlayerImage ? 'bg-yellow-600 border-yellow-500 text-white' : 'bg-zinc-800 border-zinc-700 text-gray-400 hover:bg-zinc-700'}`}>
@@ -2247,19 +2300,19 @@ const GoodsForm = ({ onClose }) => {
               <label className="text-gray-400 text-xs mb-1 block">상품명 (선택)</label>
               <input type="text" value={form.itemName} onChange={e => setForm({ ...form, itemName: e.target.value })}
                 placeholder="예) 2026 홈 유니폼, 최정 키링..."
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             </div>
             <div>
               <label className="text-gray-400 text-xs mb-1 block">한줄 후기 (선택)</label>
               <textarea value={form.review} onChange={e => setForm({ ...form, review: e.target.value })}
                 placeholder="품질, 착용감, 추천 여부 등..." rows={2}
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600 resize-none" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600 resize-none" />
             </div>
             <div>
               <label className="text-gray-400 text-xs mb-1 block">닉네임 (선택)</label>
               <input type="text" value={form.nickname} onChange={e => setForm({ ...form, nickname: e.target.value })}
                 placeholder="익명으로 올리려면 비워두세요"
-                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             </div>
             <button onClick={handleSubmit}
               disabled={uploading || !photo || !form.goodsType}
@@ -3625,11 +3678,11 @@ const AdminMatchupForm = () => {
                   <div className="text-zinc-600 text-xs">{player.pos}</div>
                 </div>
                 <input type="number" min="0" value={player.ab} onChange={e => updatePlayer(idx, 'ab', e.target.value)}
-                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base text-center" />
                 <input type="number" min="0" value={player.h} onChange={e => updatePlayer(idx, 'h', e.target.value)}
-                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base text-center" />
                 <input type="number" min="0" value={player.rbi} onChange={e => updatePlayer(idx, 'rbi', e.target.value)}
-                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm text-center" />
+                  placeholder="0" className="w-14 bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base text-center" />
               </div>
             );
           })}
@@ -4188,15 +4241,15 @@ const AdminSeatPhotoUpload = () => {
               </label>
             )}
             <input type="text" value={block} onChange={e => setBlock(e.target.value)} placeholder="블럭 (예: 101, A블럭)"
-              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             <div className="grid grid-cols-2 gap-2">
               <input type="text" value={row} onChange={e => setRow(e.target.value)} placeholder="열 (예: A열)"
-                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
               <input type="text" value={seat} onChange={e => setSeat(e.target.value)} placeholder="번호 (예: 15)"
-                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+                className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             </div>
             <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="설명 (선택)"
-              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             <button onClick={handleUpload} disabled={uploading || !photo}
               className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-3 rounded-xl font-black transition-all">
               {uploading ? '업로드 중...' : saved ? '✓ 업로드 완료!' : '📷 업로드'}
@@ -4387,7 +4440,7 @@ const AdminPendingPhotos = () => {
                   <div className="mb-3">
                     <p className="text-yellow-400 text-xs font-bold mb-1">⚠️ 좌석 종류 미지정 — 직접 선택 후 승인</p>
                     <select id={`zone-pick-${item.id}`} defaultValue=""
-                      className="w-full bg-zinc-800 text-white border border-yellow-600 rounded-lg p-2 text-sm">
+                      className="w-full bg-zinc-800 text-white border border-yellow-600 rounded-lg p-2 text-base">
                       <option value="">-- 좌석 종류 선택 --</option>
                       {LANDERS_ZONES.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
                     </select>
@@ -4554,18 +4607,18 @@ const AdminFoodManager = () => {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <input type="text" placeholder="음식 이름 *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             <input type="text" placeholder="이모지 (예: 🍤)" value={form.emoji} onChange={e => setForm(p => ({ ...p, emoji: e.target.value }))}
-              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input type="text" placeholder="위치 (예: 1루 외야)" value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))}
-              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
             <input type="text" placeholder="가게 이름" value={form.store} onChange={e => setForm(p => ({ ...p, store: e.target.value }))}
-              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+              className="bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
           </div>
           <input type="text" placeholder="한줄 설명 (선택)" value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))}
-            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-sm placeholder-zinc-600" />
+            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-2 text-base placeholder-zinc-600" />
           <div>
             <label className="block cursor-pointer">
               <div className="bg-zinc-800 border border-dashed border-zinc-600 rounded-lg p-3 text-center text-sm text-gray-400 hover:bg-zinc-700 transition-all">
