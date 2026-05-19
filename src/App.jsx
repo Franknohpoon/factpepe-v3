@@ -2612,23 +2612,52 @@ const RouletteTab = () => {
                     {(() => {
                       const name = item.name;
                       const rot = (i + 0.5) * segAngle;
+                      // 세그먼트 넓이 기반 폰트 크기 (많을수록 작게)
+                      const baseFontSingle = count <= 8 ? 12 : count <= 12 ? 11 : 10;
+                      const baseFontTwo   = count <= 8 ? 10 : count <= 12 ? 9.5 : 9;
+
+                      // 공백 기준 분할 우선 시도
+                      const spaceIdx = name.indexOf(' ');
+                      const hasSpace = spaceIdx > 0 && spaceIdx < name.length - 1;
+
+                      // 한 줄로 표시 가능 (4자 이하 또는 공백 없는 5자 이상이지만 짧은 편)
                       if (name.length <= 4) {
                         return (
                           <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle"
-                            fill="white" fontSize="10" fontWeight="900"
-                            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                            fill="white" fontSize={baseFontSingle} fontWeight="900"
                             transform={`rotate(${rot}, ${tx}, ${ty})`}>
                             {name}
                           </text>
                         );
                       }
-                      const mid = Math.ceil(name.length / 2);
+
+                      // 2줄 분할
+                      let line1, line2;
+                      if (hasSpace) {
+                        // 공백 기준 (가장 자연스러운 분할)
+                        line1 = name.slice(0, spaceIdx);
+                        line2 = name.slice(spaceIdx + 1);
+                      } else if (name.length === 5) {
+                        // 5자: 2+3 (예: "소시" / "지구이")
+                        line1 = name.slice(0, 2);
+                        line2 = name.slice(2);
+                      } else if (name.length === 6) {
+                        // 6자: 3+3 (예: "불고기" / "버거스")
+                        line1 = name.slice(0, 3);
+                        line2 = name.slice(3);
+                      } else {
+                        // 7자+: 3+나머지 (예: "랜더스" / "치킨버거")
+                        line1 = name.slice(0, 3);
+                        line2 = name.slice(3);
+                      }
+
+                      const lineSpacing = baseFontTwo * 1.1;
                       return (
                         <g transform={`rotate(${rot}, ${tx}, ${ty})`}>
-                          <text x={tx} y={ty - 6} textAnchor="middle" dominantBaseline="middle"
-                            fill="white" fontSize="9" fontWeight="900">{name.slice(0, mid)}</text>
-                          <text x={tx} y={ty + 6} textAnchor="middle" dominantBaseline="middle"
-                            fill="white" fontSize="9" fontWeight="900">{name.slice(mid)}</text>
+                          <text x={tx} y={ty - lineSpacing / 2} textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize={baseFontTwo} fontWeight="900">{line1}</text>
+                          <text x={tx} y={ty + lineSpacing / 2} textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize={baseFontTwo} fontWeight="900">{line2}</text>
                         </g>
                       );
                     })()}
