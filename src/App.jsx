@@ -2781,6 +2781,18 @@ const RouletteTab = () => {
 };
 
 // ─── 6-2. 홈런 더비 ──────────────────────────────────────────────────
+// SSG 랜더스 주요 타자 (2025 시즌 기준)
+const HR_BATTERS = [
+  { name: '최정',    number: 14, pos: '3루수',   emoji: '👑', desc: '400홈런 레전드' },
+  { name: '한유섬',  number: 35, pos: '중견수',   emoji: '💨', desc: '스피드 & 파워' },
+  { name: '에레디아', number: 27, pos: '우익수',  emoji: '💪', desc: '외국인 강타자' },
+  { name: '오태곤',  number: 37, pos: '1루수',   emoji: '🔥', desc: '클린업 히터' },
+  { name: '박성한',  number: 2,  pos: '유격수',   emoji: '⚡', desc: '테이블 세터' },
+  { name: '조형우',  number: 20, pos: '포수',     emoji: '🛡️', desc: '수비형 포수' },
+  { name: '김성욱',  number: 31, pos: '외야수',   emoji: '🌟', desc: '찬스 메이커' },
+  { name: '류효승',  number: 45, pos: '지명타자', emoji: '🎯', desc: '지명타자 특급' },
+];
+
 const HR_RESULTS = [
   { min: 0,   max: 15,  label: '⚡ PERFECT 홈런!', emoji: '💥', type: 'homerun', pts: 4 },
   { min: 15,  max: 30,  label: '2루타!', emoji: '✨', type: 'double', pts: 2 },
@@ -2798,7 +2810,8 @@ const HR_TITLES = [
 const HomerunGame = () => {
   const resultRef = useRef(null);
   const animRef = useRef(null);
-  const [phase, setPhase] = useState('ready');
+  const [phase, setPhase] = useState('select'); // 'select' → 'ready' → 'countdown' → ...
+  const [selectedBatter, setSelectedBatter] = useState(null);
   const [round, setRound] = useState(0);
   const [results, setResults] = useState([]);
   const [currentResult, setCurrentResult] = useState(null);
@@ -2816,7 +2829,14 @@ const HomerunGame = () => {
   const ballY = 53 + bp * bp * 28;                   // 53% → 81% (마운드 → 스트라이크존 위치)
   const ballBlur = bp > 0.82 ? (bp - 0.82) * 15 : 0; // 아주 가까울 때만 모션블러
 
-  const startGame = () => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); nextPitch(0); };
+  const startGame = (batter) => {
+    setSelectedBatter(batter);
+    setPhase('ready');
+    setRound(0);
+    setResults([]);
+    setCurrentResult(null);
+    nextPitch(0);
+  };
 
   const nextPitch = (r) => {
     if (r >= totalRounds) { setPhase('done'); return; }
@@ -2880,14 +2900,51 @@ const HomerunGame = () => {
     } finally { setBusy(false); }
   };
 
-  // ── 시작 화면 ──
+  // ── 선수 선택 화면 ──
+  if (phase === 'select') return (
+    <div className="pb-4">
+      <div className="flex flex-col items-center pt-6 pb-4">
+        <div className="text-5xl mb-3">⚾</div>
+        <h3 className="text-white font-black text-xl mb-1">홈런 더비</h3>
+        <p className="text-gray-400 text-sm">오늘의 타자를 선택하세요</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 px-1">
+        {HR_BATTERS.map(batter => (
+          <button
+            key={batter.number}
+            onClick={() => startGame(batter)}
+            className="bg-zinc-900 hover:bg-zinc-800 active:scale-95 border border-zinc-800 hover:border-red-600/50 rounded-2xl p-3.5 flex flex-col items-center gap-1.5 transition-all"
+          >
+            {/* 등번호 배지 */}
+            <div className="w-12 h-12 rounded-full bg-red-600/20 border-2 border-red-600/40 flex items-center justify-center mb-0.5">
+              <span className="text-red-400 font-black text-xl leading-none">{batter.number}</span>
+            </div>
+            <span className="text-white font-black text-sm leading-none">{batter.name}</span>
+            <span className="text-zinc-500 text-[11px] leading-none">{batter.pos}</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[13px]">{batter.emoji}</span>
+              <span className="text-zinc-600 text-[10px]">{batter.desc}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── 게임 시작 대기 화면 (선수 선택 후) ──
   if (phase === 'ready' && round === 0) return (
     <div className="flex flex-col items-center py-8">
-      <div className="text-7xl mb-4">⚾</div>
-      <h3 className="text-white font-black text-2xl mb-2">홈런 더비</h3>
-      <p className="text-gray-400 text-sm mb-1">공이 날아오면 화면을 터치!</p>
+      <div className="text-5xl mb-3">{selectedBatter?.emoji ?? '⚾'}</div>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="bg-red-600 text-white font-black text-sm px-2.5 py-0.5 rounded-full">#{selectedBatter?.number}</span>
+        <h3 className="text-white font-black text-xl">{selectedBatter?.name}</h3>
+      </div>
+      <p className="text-gray-400 text-sm mb-1 mt-2">공이 날아오면 화면을 터치!</p>
       <p className="text-gray-600 text-xs mb-8">10번의 타석 · 타이밍이 전부입니다</p>
-      <button onClick={startGame} className="bg-red-600 hover:bg-red-500 text-white px-10 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all">🏟️ 경기 시작!</button>
+      <div className="flex gap-2">
+        <button onClick={() => setPhase('select')} className="bg-zinc-800 hover:bg-zinc-700 text-gray-300 px-5 py-3 rounded-2xl font-bold text-sm transition-all">← 변경</button>
+        <button onClick={() => nextPitch(0)} className="bg-red-600 hover:bg-red-500 text-white px-10 py-3 rounded-2xl font-black text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all">🏟️ 경기 시작!</button>
+      </div>
     </div>
   );
 
@@ -2899,7 +2956,13 @@ const HomerunGame = () => {
       <div className="flex flex-col items-center">
         <div ref={resultRef} style={{ background: 'linear-gradient(160deg, #1a0008 0%, #CE0E2D 50%, #1a0008 100%)', width: '340px', borderRadius: '20px', padding: '28px 22px', boxShadow: '0 20px 50px rgba(206,14,45,0.4)' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginBottom: '8px' }}>홈런 더비 결과</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginBottom: '4px' }}>홈런 더비 결과</div>
+            {selectedBatter && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', borderRadius: '20px', padding: '4px 12px', marginBottom: '10px' }}>
+                <span style={{ color: '#ff4d6d', fontWeight: 900, fontSize: '12px' }}>#{selectedBatter.number}</span>
+                <span style={{ color: 'white', fontWeight: 800, fontSize: '13px' }}>{selectedBatter.name}</span>
+              </div>
+            )}
             <div style={{ fontSize: '48px', marginBottom: '4px' }}>{finalTitle.emoji}</div>
             <div style={{ color: 'white', fontWeight: 900, fontSize: '22px' }}>{finalTitle.title}</div>
           </div>
@@ -2927,7 +2990,7 @@ const HomerunGame = () => {
         </div>
         <div className="flex gap-2 mt-4">
           <button onClick={shareResult} disabled={busy} className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">⬇ 저장</button>
-          <button onClick={() => { setPhase('ready'); setRound(0); setResults([]); setCurrentResult(null); }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">🔄 다시하기</button>
+          <button onClick={() => { setPhase('select'); setRound(0); setResults([]); setCurrentResult(null); setSelectedBatter(null); }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">🔄 다시하기</button>
         </div>
       </div>
     );
@@ -2936,13 +2999,23 @@ const HomerunGame = () => {
   // ── 게임 진행 중 ──
   return (
     <div>
-      {/* 상태바 */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-gray-400 text-xs font-bold">{round} / {totalRounds} 타석</span>
+      {/* 선수 & 상태바 */}
+      <div className="flex items-center justify-between mb-2">
+        {selectedBatter ? (
+          <div className="flex items-center gap-1.5">
+            <span className="bg-red-600/20 border border-red-600/40 text-red-400 font-black text-xs px-2 py-0.5 rounded-full">#{selectedBatter.number}</span>
+            <span className="text-white font-bold text-xs">{selectedBatter.name}</span>
+          </div>
+        ) : (
+          <span className="text-gray-400 text-xs font-bold">{round} / {totalRounds} 타석</span>
+        )}
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${round >= 9 ? 'bg-red-600/30 text-red-400' : round >= 6 ? 'bg-orange-600/30 text-orange-400' : 'bg-zinc-700 text-gray-500'}`}>
           {round >= 9 ? '🔥 MAX 속도' : round >= 6 ? '⚡ 가속 중' : '🎯 준비'}
         </span>
         <span className="text-white font-black text-sm">타점: {totalScore}</span>
+      </div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-gray-500 text-[11px]">{round} / {totalRounds} 타석</span>
       </div>
       <div className="flex gap-1 mb-3">
         {Array.from({ length: totalRounds }, (_, i) => {
@@ -3156,7 +3229,11 @@ const HomerunGame = () => {
               {/* LANDERS 등 텍스트 */}
               <text x="117" y="158" textAnchor="middle" fill="rgba(255,255,255,0.88)" fontSize="22" fontWeight="800" fontFamily="sans-serif" letterSpacing="4">LANDERS</text>
               {/* 등번호 */}
-              <text x="117" y="218" textAnchor="middle" fill="rgba(255,255,255,0.82)" fontSize="56" fontWeight="900" fontFamily="sans-serif">1</text>
+              <text x="117" y="218" textAnchor="middle" fill="rgba(255,255,255,0.82)"
+                fontSize={selectedBatter && String(selectedBatter.number).length >= 3 ? "42" : "56"}
+                fontWeight="900" fontFamily="sans-serif">
+                {selectedBatter ? selectedBatter.number : '1'}
+              </text>
 
               {/* ─── 어깨 (빨간 소매) ─── */}
               <path d="M68,92 Q52,98 42,110 L50,122 Q58,110 68,104" fill="#CE0E2D"/>
