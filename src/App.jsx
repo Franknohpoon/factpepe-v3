@@ -2420,7 +2420,14 @@ const ChantTab = () => {
 };
 
 // ─── 6. 으쓱 룰렛 (구장 먹거리 추천) ──────────────────────────────────
-const WHEEL_COLORS = ['#CE0E2D', '#0f4023', '#1a3a5c', '#b45309', '#7c3aed', '#0369a1', '#dc2626', '#a16207', '#db2777', '#4f46e5', '#ca8a04', '#15803d', '#8b5cf6', '#0891b2', '#be123c', '#065f46'];
+// SSG 랜더스 컬러 교대 배색
+const WHEEL_COLORS = [
+  '#CE0E2D', '#003087', '#E8102D', '#0A3282',
+  '#B50C28', '#1A4090', '#D50E2C', '#143A80',
+  '#A80C24', '#0C3070', '#C00E28', '#1E4494',
+  '#BE0C25', '#0E3476', '#CA0E2A', '#183C88',
+];
+const MAX_DAILY_SPINS = 3;
 
 const RouletteTab = () => {
   const resultRef = useRef(null);
@@ -2429,10 +2436,13 @@ const RouletteTab = () => {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [angle, setAngle] = useState(0);
-  const [todayUsed, setTodayUsed] = useState(false);
+  const [spinCount, setSpinCount] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+  const countKey = `roulette_count_${today}`;
+  const todayUsed = spinCount >= MAX_DAILY_SPINS;
+  const remaining = MAX_DAILY_SPINS - spinCount;
 
   useEffect(() => {
     onValue(dbRef(database, 'roulette/foods'), snap => {
@@ -2447,11 +2457,11 @@ const RouletteTab = () => {
   }, []);
 
   useEffect(() => {
-    const last = localStorage.getItem('roulette_last');
-    if (last === today) {
-      setTodayUsed(true);
-      const saved = localStorage.getItem('roulette_result');
-      if (saved) setResult(JSON.parse(saved));
+    const saved = parseInt(localStorage.getItem(countKey) || '0');
+    setSpinCount(saved);
+    if (saved > 0) {
+      const lastResult = localStorage.getItem('roulette_result');
+      if (lastResult) try { setResult(JSON.parse(lastResult)); } catch {}
     }
   }, [today]);
 
@@ -2472,8 +2482,9 @@ const RouletteTab = () => {
       const item = foods[idx];
       setResult(item);
       setSpinning(false);
-      setTodayUsed(true);
-      localStorage.setItem('roulette_last', today);
+      const newCount = spinCount + 1;
+      setSpinCount(newCount);
+      localStorage.setItem(countKey, String(newCount));
       localStorage.setItem('roulette_result', JSON.stringify(item));
       runTransaction(dbRef(database, `analytics/roulette/${today}`), v => (v || 0) + 1).catch(() => {});
     }, 4200);
@@ -2509,91 +2520,146 @@ const RouletteTab = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-gray-400 text-sm font-bold">인천 SSG 랜더스필드 구장 먹거리 추천</p>
-        {todayUsed && <span className="text-xs text-gray-500 bg-zinc-800 px-3 py-1 rounded-full">오늘 완료!</span>}
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-white font-black text-base">인천 SSG 랜더스필드</p>
+          <p className="text-zinc-500 text-xs">구장 먹거리 추천 룰렛</p>
+        </div>
+        {/* 남은 횟수 표시 */}
+        <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5">
+          {Array.from({ length: MAX_DAILY_SPINS }).map((_, i) => (
+            <div key={i} className={`w-2.5 h-2.5 rounded-full ${i < spinCount ? 'bg-zinc-700' : 'bg-red-500'}`} />
+          ))}
+          <span className="text-zinc-400 text-xs ml-1">
+            {todayUsed ? '오늘 완료!' : `${remaining}회 남음`}
+          </span>
+        </div>
       </div>
 
       {/* 룰렛 */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="text-2xl mb-1" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>🔻</div>
+      <div className="flex flex-col items-center mb-6">
 
-        <div className="relative" style={{ width: '300px', height: '300px' }}>
-          <svg
-            viewBox="0 0 300 300"
-            className="w-full h-full drop-shadow-2xl"
-            style={{
-              transform: `rotate(${angle}deg)`,
-              transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-            }}
-          >
-            {foods.map((item, i) => {
-              const startA = (i * segAngle - 90) * Math.PI / 180;
-              const endA = ((i + 1) * segAngle - 90) * Math.PI / 180;
-              const x1 = 150 + 150 * Math.cos(startA);
-              const y1 = 150 + 150 * Math.sin(startA);
-              const x2 = 150 + 150 * Math.cos(endA);
-              const y2 = 150 + 150 * Math.sin(endA);
-              const largeArc = segAngle > 180 ? 1 : 0;
-              const midA = ((i + 0.5) * segAngle - 90) * Math.PI / 180;
-              const tx = 150 + 85 * Math.cos(midA);
-              const ty = 150 + 85 * Math.sin(midA);
-              const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
-              return (
-                <g key={item.id}>
-                  <path
-                    d={`M150,150 L${x1},${y1} A150,150 0 ${largeArc},1 ${x2},${y2} Z`}
-                    fill={color}
-                    stroke="rgba(0,0,0,0.3)"
-                    strokeWidth="1"
-                  />
-                  {/* 음식 이름을 여러 줄로 분할해서 표시 */}
-                  {(() => {
-                    const name = item.name;
-                    const rot = (i + 0.5) * segAngle;
-                    // 4자 이하면 한 줄, 그 이상은 두 줄로 분할
-                    if (name.length <= 4) {
+        {/* 포인터 + 휠 묶음 */}
+        <div className="relative flex flex-col items-center">
+          {/* 포인터 (고정) */}
+          <div className="relative z-10" style={{ marginBottom: '-6px' }}>
+            <svg width="36" height="28" viewBox="0 0 36 28">
+              <polygon points="18,26 2,2 34,2" fill="#CE0E2D" stroke="white" strokeWidth="2" strokeLinejoin="round" />
+              <polygon points="18,22 6,4 30,4" fill="#FFD700" opacity="0.4" />
+            </svg>
+          </div>
+
+          {/* 룰렛 휠 */}
+          <div className="relative" style={{ width: '300px', height: '300px' }}>
+
+            {/* 외곽 글로우 링 (고정) */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 300" style={{ pointerEvents: 'none' }}>
+              {/* 외곽 링 */}
+              <circle cx="150" cy="150" r="148" fill="none" stroke="#CE0E2D" strokeWidth="5" opacity="0.8" />
+              <circle cx="150" cy="150" r="143" fill="none" stroke="#003087" strokeWidth="3" opacity="0.6" />
+              {/* 야구공 스티칭 틱마크 */}
+              {Array.from({ length: 32 }, (_, i) => {
+                const a = (i * 11.25) * Math.PI / 180;
+                const r1 = 140, r2 = 148;
+                const x1 = 150 + r1 * Math.cos(a);
+                const y1 = 150 + r1 * Math.sin(a);
+                const x2 = 150 + r2 * Math.cos(a);
+                const y2 = 150 + r2 * Math.sin(a);
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="white" strokeWidth="1.5" opacity="0.5" />;
+              })}
+            </svg>
+
+            {/* 회전하는 휠 */}
+            <svg
+              viewBox="0 0 300 300"
+              className="w-full h-full"
+              style={{
+                transform: `rotate(${angle}deg)`,
+                transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+                filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.6))',
+              }}
+            >
+              {/* 세그먼트 */}
+              {foods.map((item, i) => {
+                const startA = (i * segAngle - 90) * Math.PI / 180;
+                const endA = ((i + 1) * segAngle - 90) * Math.PI / 180;
+                const r = 138;
+                const x1 = 150 + r * Math.cos(startA);
+                const y1 = 150 + r * Math.sin(startA);
+                const x2 = 150 + r * Math.cos(endA);
+                const y2 = 150 + r * Math.sin(endA);
+                const largeArc = segAngle > 180 ? 1 : 0;
+                const midA = ((i + 0.5) * segAngle - 90) * Math.PI / 180;
+                const tx = 150 + 85 * Math.cos(midA);
+                const ty = 150 + 85 * Math.sin(midA);
+                const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
+                const isNavy = color.startsWith('#00') || color.startsWith('#0A') || color.startsWith('#1A') || color.startsWith('#14') || color.startsWith('#0C') || color.startsWith('#1E') || color.startsWith('#0E') || color.startsWith('#18');
+                return (
+                  <g key={item.id}>
+                    <path
+                      d={`M150,150 L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`}
+                      fill={color}
+                      stroke="rgba(255,255,255,0.15)"
+                      strokeWidth="1"
+                    />
+                    {/* 세그먼트 하이라이트 */}
+                    <path
+                      d={`M150,150 L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`}
+                      fill="url(#segGlow)"
+                      opacity="0.08"
+                    />
+                    {(() => {
+                      const name = item.name;
+                      const rot = (i + 0.5) * segAngle;
+                      if (name.length <= 4) {
+                        return (
+                          <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize="10" fontWeight="900"
+                            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                            transform={`rotate(${rot}, ${tx}, ${ty})`}>
+                            {name}
+                          </text>
+                        );
+                      }
+                      const mid = Math.ceil(name.length / 2);
                       return (
-                        <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle"
-                          fill="white" fontSize="10" fontWeight="900"
-                          transform={`rotate(${rot}, ${tx}, ${ty})`}>
-                          {name}
-                        </text>
+                        <g transform={`rotate(${rot}, ${tx}, ${ty})`}>
+                          <text x={tx} y={ty - 6} textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize="9" fontWeight="900">{name.slice(0, mid)}</text>
+                          <text x={tx} y={ty + 6} textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize="9" fontWeight="900">{name.slice(mid)}</text>
+                        </g>
                       );
-                    }
-                    const mid = Math.ceil(name.length / 2);
-                    const line1 = name.slice(0, mid);
-                    const line2 = name.slice(mid);
-                    return (
-                      <g transform={`rotate(${rot}, ${tx}, ${ty})`}>
-                        <text x={tx} y={ty - 6} textAnchor="middle" dominantBaseline="middle"
-                          fill="white" fontSize="9" fontWeight="900">{line1}</text>
-                        <text x={tx} y={ty + 6} textAnchor="middle" dominantBaseline="middle"
-                          fill="white" fontSize="9" fontWeight="900">{line2}</text>
-                      </g>
-                    );
-                  })()}
-                </g>
-              );
-            })}
-            <circle cx="150" cy="150" r="28" fill="#1a1a2e" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-            <text x="150" y="146" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="10" fontWeight="900">오늘의</text>
-            <text x="150" y="159" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="10" fontWeight="900">먹거리</text>
-          </svg>
+                    })()}
+                  </g>
+                );
+              })}
+
+              {/* 중앙 SSG 허브 */}
+              <circle cx="150" cy="150" r="34" fill="#003087" stroke="white" strokeWidth="2.5" />
+              <circle cx="150" cy="150" r="30" fill="#003087" stroke="#CE0E2D" strokeWidth="1.5" />
+              <text x="150" y="144" textAnchor="middle" dominantBaseline="middle"
+                fill="white" fontSize="13" fontWeight="900" letterSpacing="1">SSG</text>
+              <text x="150" y="158" textAnchor="middle" dominantBaseline="middle"
+                fill="#FFD700" fontSize="8" fontWeight="700">LANDERS</text>
+            </svg>
+          </div>
         </div>
 
+        {/* 스핀 버튼 */}
         <button
           onClick={spin}
           disabled={spinning || todayUsed}
-          className={`mt-6 px-8 py-3 rounded-2xl font-black text-lg transition-all ${
+          className={`mt-5 px-10 py-3.5 rounded-2xl font-black text-lg transition-all active:scale-95 ${
             spinning
               ? 'bg-zinc-700 text-gray-500 animate-pulse'
               : todayUsed
                 ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 hover:shadow-red-500/40 active:scale-95'
+                : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
           }`}
         >
-          {spinning ? '으쓱으쓱 돌아가는 중...' : todayUsed ? '내일 다시 도전!' : '🍔 룰렛 돌리기!'}
+          {spinning ? '⚾ 돌아가는 중...' : todayUsed ? `내일 다시 도전! (${MAX_DAILY_SPINS}/${MAX_DAILY_SPINS})` : `🍔 룰렛 돌리기! (${remaining}회)`}
         </button>
       </div>
 
@@ -2612,17 +2678,20 @@ const RouletteTab = () => {
               </div>
             )}
             <div style={{ padding: '20px 24px 24px' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', letterSpacing: '3px', fontWeight: 700, marginBottom: '8px' }}>오늘의 구장 먹거리 추천</div>
-                <div style={{ fontSize: '28px', marginBottom: '4px' }}>{result.emoji || '🍽️'}</div>
-                <div style={{ color: 'white', fontWeight: 900, fontSize: '24px', marginBottom: '12px' }}>{result.name}</div>
+              {/* SSG 스트라이프 헤더 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ width: '4px', height: '36px', background: '#CE0E2D', borderRadius: '2px' }} />
+                <div>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', letterSpacing: '2px', fontWeight: 700 }}>TODAY'S PICK</div>
+                  <div style={{ color: 'white', fontWeight: 900, fontSize: '22px', lineHeight: 1.1 }}>{result.emoji || '🍽️'} {result.name}</div>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                <div style={{ flex: 1, background: 'rgba(206,14,45,0.15)', border: '1px solid rgba(206,14,45,0.3)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ flex: 1, background: 'rgba(0,48,135,0.3)', border: '1px solid rgba(0,48,135,0.5)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
                   <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px', marginBottom: '4px' }}>위치</div>
                   <div style={{ color: 'white', fontSize: '13px', fontWeight: 800 }}>📍 {result.location || '-'}</div>
                 </div>
-                <div style={{ flex: 1, background: 'rgba(206,14,45,0.15)', border: '1px solid rgba(206,14,45,0.3)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ flex: 1, background: 'rgba(0,48,135,0.3)', border: '1px solid rgba(0,48,135,0.5)', borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
                   <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700, letterSpacing: '1px', marginBottom: '4px' }}>가게</div>
                   <div style={{ color: 'white', fontSize: '13px', fontWeight: 800 }}>🏪 {result.store || '-'}</div>
                 </div>
@@ -2632,8 +2701,8 @@ const RouletteTab = () => {
                   <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: '1.5' }}>{result.desc}</div>
                 </div>
               )}
-              <div style={{ textAlign: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>{today} · 팩트페페 먹거리 룰렛</div>
+              <div style={{ textAlign: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px' }}>{today} · SSG 랜더스필드 · 팩트페페</div>
               </div>
             </div>
           </div>
@@ -2674,8 +2743,8 @@ const RouletteTab = () => {
       )}
 
       {!result && !spinning && (
-        <div className="text-center mt-6">
-          <p className="text-gray-600 text-xs">매일 1회 룰렛을 돌릴 수 있어요 · 결과를 저장해서 공유해보세요! 🐸</p>
+        <div className="text-center mt-4">
+          <p className="text-zinc-600 text-xs">하루 {MAX_DAILY_SPINS}회 돌릴 수 있어요 · 결과를 저장해서 공유해보세요! 🐸</p>
         </div>
       )}
     </div>
