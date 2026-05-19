@@ -2822,12 +2822,11 @@ const HomerunGame = () => {
   const totalRounds = 10;
 
   // 공 궤적: 투수 마운드(작고 멀리) → 홈플레이트(크고 가까이)
-  // 원근감: 크기가 급격히 커지면서 약간 아래로 내려옴 (포물선 투구)
   const bp = ballProgress;
-  const ballSize = 5 + bp * bp * 95;                 // 5px → 100px (후반에 급격히 커짐)
-  const ballX = 53 + bp * 1.2;                       // 스트라이크존 중심(53%)으로
-  const ballY = 53 + bp * bp * 28;                   // 53% → 81% (마운드 → 스트라이크존 위치)
-  const ballBlur = bp > 0.82 ? (bp - 0.82) * 15 : 0; // 아주 가까울 때만 모션블러
+  const ballSize = 4 + bp * bp * 88;                  // 4px → 92px
+  const ballX = 56 + bp * 1.5;                        // 스트라이크존 중심으로
+  const ballY = 38 + bp * bp * 40;                     // 38% → 78% (마운드 → 스트라이크존)
+  const ballBlur = bp > 0.82 ? (bp - 0.82) * 12 : 0;
 
   const startGame = (batter) => {
     setSelectedBatter(batter);
@@ -3024,124 +3023,224 @@ const HomerunGame = () => {
         })}
       </div>
 
-      {/* ── 타자 시점 야구장 ── */}
+      {/* ══ MLB/컴프야 스타일 브로드캐스트 카메라 ══ */}
       <div
         className="relative w-full overflow-hidden select-none"
         style={{ height: '520px', borderRadius: '16px', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
         onClick={handleSwing}
         onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
       >
-        {/* 배경: 야구장 원근감 SVG */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 360 420" preserveAspectRatio="xMidYMid slice">
+        {/* ═══ 야구장 배경 (포수 뒤 카메라 앵글) ═══ */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 360 520" preserveAspectRatio="xMidYMid slice">
           <defs>
-            <linearGradient id="hrSky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#04050f"/>
-              <stop offset="60%" stopColor="#080d1e"/>
-              <stop offset="100%" stopColor="#0a1228"/>
+            <linearGradient id="hrNight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#020818"/>
+              <stop offset="40%" stopColor="#061028"/>
+              <stop offset="100%" stopColor="#0a1830"/>
             </linearGradient>
-            {/* 조명 */}
-            <radialGradient id="lamp1" cx="12%" cy="5%" r="28%">
-              <stop offset="0%" stopColor="rgba(255,245,200,0.18)"/>
-              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            <radialGradient id="lampL" cx="8%" cy="2%" r="32%">
+              <stop offset="0%" stopColor="rgba(255,245,200,0.22)"/>
+              <stop offset="100%" stopColor="transparent"/>
             </radialGradient>
-            <radialGradient id="lamp2" cx="88%" cy="5%" r="28%">
-              <stop offset="0%" stopColor="rgba(255,245,200,0.18)"/>
-              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            <radialGradient id="lampR" cx="92%" cy="2%" r="32%">
+              <stop offset="0%" stopColor="rgba(255,245,200,0.22)"/>
+              <stop offset="100%" stopColor="transparent"/>
             </radialGradient>
-            <radialGradient id="moundGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(180,140,80,0.3)"/>
-              <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
+            <radialGradient id="moundSpot" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(200,170,100,0.35)"/>
+              <stop offset="100%" stopColor="transparent"/>
             </radialGradient>
+            <linearGradient id="batWood" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#1c0e06"/>
+              <stop offset="40%" stopColor="#2e1a09"/>
+              <stop offset="100%" stopColor="#0e0804"/>
+            </linearGradient>
           </defs>
 
-          {/* 하늘 */}
-          <rect width="360" height="420" fill="url(#hrSky)"/>
-          <rect width="360" height="420" fill="url(#lamp1)"/>
-          <rect width="360" height="420" fill="url(#lamp2)"/>
+          {/* 하늘 + 야간조명 */}
+          <rect width="360" height="520" fill="url(#hrNight)"/>
+          <rect width="360" height="520" fill="url(#lampL)"/>
+          <rect width="360" height="520" fill="url(#lampR)"/>
 
-          {/* 관중석 실루엣 */}
-          <rect x="0" y="0" width="360" height="115" fill="rgba(6,7,18,0.85)"/>
-          {/* 관중석 열 */}
-          {[25,40,55,70,85,100].map(y => (
-            <line key={y} x1="0" y1={y} x2="360" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="8"/>
+          {/* 관중석 */}
+          <rect x="0" y="0" width="360" height="108" fill="rgba(4,6,16,0.92)"/>
+          {[18,32,46,60,74,88].map(y => (
+            <line key={y} x1="0" y1={y} x2="360" y2={y} stroke="rgba(255,255,255,0.03)" strokeWidth="10"/>
+          ))}
+          {/* 관중 밝은 점 */}
+          {[{x:35,y:30},{x:88,y:55},{x:145,y:22},{x:210,y:68},{x:275,y:38},{x:320,y:75},{x:55,y:80},{x:190,y:42}].map((p,i) => (
+            <circle key={i} cx={p.x} cy={p.y} r="1.5" fill={`rgba(255,${220+i*4},${180+i*6},${0.15 + (i%3)*0.1})`}/>
           ))}
 
-          {/* 조명 기둥 */}
-          <rect x="22" y="0" width="4" height="120" fill="#18182e"/>
-          <rect x="334" y="0" width="4" height="120" fill="#18182e"/>
-          {/* 조명 등 */}
-          <rect x="8" y="0" width="32" height="9" rx="2" fill="#28284a"/>
-          <rect x="320" y="0" width="32" height="9" rx="2" fill="#28284a"/>
-          {/* 조명 빛줄기 */}
-          <polygon points="8,9 40,9 120,115 0,115" fill="rgba(255,245,180,0.025)"/>
-          <polygon points="320,9 352,9 360,115 240,115" fill="rgba(255,245,180,0.025)"/>
+          {/* 조명탑 */}
+          <rect x="14" y="0" width="5" height="108" fill="#0c0e22"/>
+          <rect x="341" y="0" width="5" height="108" fill="#0c0e22"/>
+          <rect x="2" y="0" width="30" height="11" rx="2" fill="#1e2040"/>
+          <rect x="328" y="0" width="30" height="11" rx="2" fill="#1e2040"/>
+          <ellipse cx="17" cy="5" rx="10" ry="4" fill="rgba(255,240,180,0.5)"/>
+          <ellipse cx="343" cy="5" rx="10" ry="4" fill="rgba(255,240,180,0.5)"/>
+          <polygon points="2,11 32,11 200,108 0,108" fill="rgba(255,245,180,0.02)"/>
+          <polygon points="328,11 358,11 360,108 160,108" fill="rgba(255,245,180,0.02)"/>
 
           {/* 외야 펜스 */}
-          <rect x="0" y="110" width="360" height="16" fill="#1c1c35" rx="2"/>
-          <rect x="0" y="118" width="360" height="4" fill="#CE0E2D" opacity="0.7"/>
+          <rect x="0" y="105" width="360" height="16" fill="#141428"/>
+          <rect x="0" y="105" width="360" height="3" fill="#c4a820" opacity="0.55"/>
+          {/* SSG 광고판 */}
+          <rect x="130" y="107" width="100" height="12" rx="2" fill="rgba(206,14,45,0.3)"/>
+          <text x="180" y="117" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontWeight="800" fontFamily="sans-serif" letterSpacing="1">SSG LANDERS</text>
 
           {/* 외야 잔디 */}
-          <rect x="0" y="126" width="360" height="100" fill="#0d3309"/>
-          {/* 잔디 무늬 */}
-          {[135,150,165,180,195,210,225].map((y, i) => (
-            <rect key={y} x="0" y={y} width="360" height="12" fill={i % 2 === 0 ? '#0f3a0a' : '#0b2e07'}/>
+          <rect x="0" y="121" width="360" height="80" fill="#145a0c"/>
+          {[0,1,2,3,4,5].map(i => (
+            <rect key={i} x="0" y={121 + i*13} width="360" height="7" fill={i%2===0 ? '#176610' : '#125008'}/>
           ))}
 
+          {/* 파울라인 */}
+          <line x1="200" y1="520" x2="0" y2="121" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5"/>
+          <line x1="200" y1="520" x2="360" y2="121" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5"/>
+
           {/* 내야 잔디 다이아몬드 */}
-          <polygon points="180,175 60,295 180,415 300,295" fill="#165c0d"/>
+          <polygon points="200,170 60,330 200,490 340,330" fill="#1a6e12"/>
 
           {/* 내야 흙 */}
-          <ellipse cx="180" cy="295" rx="150" ry="130" fill="#6b3a18"/>
-          <ellipse cx="180" cy="295" rx="135" ry="115" fill="#7a4520"/>
+          <ellipse cx="200" cy="340" rx="155" ry="135" fill="#6b3a18"/>
+          <ellipse cx="200" cy="340" rx="140" ry="120" fill="#7a4e22"/>
 
           {/* 내야 잔디 클로버 */}
-          <polygon points="180,185 75,280 180,375 285,280" fill="#1a6e10"/>
+          <polygon points="200,185 82,320 200,455 318,320" fill="#1e7214"/>
 
-          {/* 파울 라인 */}
-          <line x1="180" y1="420" x2="0" y2="126" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
-          <line x1="180" y1="420" x2="360" y2="126" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>
+          {/* 잔디깎기 줄 */}
+          {[190,205,220,235,250,265,280,295].map((y,i) => (
+            <line key={y} x1="82" y1={y+40} x2="318" y2={y+40} stroke={i%2===0 ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.04)'} strokeWidth="7"/>
+          ))}
 
           {/* 베이스 */}
-          <g transform="rotate(45 180 200)">
-            <rect x="166" y="186" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
-          </g>
-          <rect x="262" y="272" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
-          <rect x="84" y="272" width="14" height="14" rx="2" fill="white" opacity="0.75"/>
+          <rect x="196" y="182" width="8" height="8" fill="white" opacity="0.7" transform="rotate(45 200 186)"/>
+          <rect x="296" y="310" width="10" height="10" fill="white" opacity="0.7" transform="rotate(45 301 315)"/>
+          <rect x="92" y="310" width="10" height="10" fill="white" opacity="0.7" transform="rotate(45 97 315)"/>
 
           {/* 투수 마운드 */}
-          <ellipse cx="180" cy="248" rx="26" ry="11" fill="url(#moundGlow)"/>
-          <ellipse cx="180" cy="248" rx="22" ry="9" fill="#8a5520"/>
-          <ellipse cx="180" cy="246" rx="16" ry="6" fill="#9a6228"/>
-          {/* 마운드 고무판 */}
-          <rect x="173" y="242" width="14" height="5" rx="1.5" fill="white" opacity="0.9"/>
+          <ellipse cx="200" cy="268" rx="28" ry="12" fill="url(#moundSpot)"/>
+          <ellipse cx="200" cy="268" rx="24" ry="10" fill="#8a5a22"/>
+          <ellipse cx="200" cy="266" rx="18" ry="7" fill="#9a6a2a"/>
+          <rect x="194" y="263" width="12" height="4" rx="1.5" fill="white" opacity="0.85"/>
 
-          {/* 홈플레이트 앞 흙 */}
-          <ellipse cx="180" cy="390" rx="70" ry="30" fill="#6b3a18" opacity="0.6"/>
+          {/* 투수 실루엣 */}
+          {phase !== 'swung' && (
+            <g opacity="0.85">
+              {phase === 'countdown' ? (
+                <>
+                  <ellipse cx="200" cy="238" rx="5" ry="6" fill="#1a1a2a"/>
+                  <rect x="195" y="244" width="10" height="15" rx="2" fill="#222238"/>
+                  <line x1="198" y1="259" x2="195" y2="272" stroke="#222238" strokeWidth="3.5" strokeLinecap="round"/>
+                  <line x1="202" y1="259" x2="205" y2="272" stroke="#222238" strokeWidth="3.5" strokeLinecap="round"/>
+                  <line x1="195" y1="249" x2="188" y2="256" stroke="#222238" strokeWidth="2.5" strokeLinecap="round"/>
+                  <line x1="205" y1="249" x2="212" y2="256" stroke="#222238" strokeWidth="2.5" strokeLinecap="round"/>
+                </>
+              ) : (
+                <>
+                  <ellipse cx="202" cy="237" rx="5" ry="6" fill="#1a1a2a"/>
+                  <path d="M196,243 L192,256 L208,258 L210,243 Z" fill="#222238"/>
+                  <line x1="210" y1="248" x2="220" y2="240" stroke="#222238" strokeWidth="2.5" strokeLinecap="round"/>
+                  <circle cx="221" cy="239" r="2" fill="white" opacity={phase === 'pitching' && bp < 0.05 ? 0.9 : 0}/>
+                  <line x1="194" y1="256" x2="186" y2="272" stroke="#222238" strokeWidth="3.5" strokeLinecap="round"/>
+                  <line x1="206" y1="258" x2="212" y2="271" stroke="#222238" strokeWidth="3" strokeLinecap="round"/>
+                  <line x1="196" y1="248" x2="184" y2="252" stroke="#222238" strokeWidth="2.5" strokeLinecap="round"/>
+                </>
+              )}
+            </g>
+          )}
 
-          {/* 홈플레이트 */}
-          <polygon points="166,408 194,408 200,418 180,425 160,418" fill="white" opacity="0.7"/>
+          {/* 홈플레이트 영역 */}
+          <ellipse cx="200" cy="450" rx="75" ry="32" fill="#6b3a18" opacity="0.5"/>
+          <polygon points="190,460 210,460 215,468 200,474 185,468" fill="white" opacity="0.65"/>
+          <rect x="148" y="438" width="34" height="38" rx="2" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2"/>
+          <rect x="218" y="438" width="34" height="38" rx="2" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2"/>
 
-          {/* 타석 박스 */}
-          <rect x="130" y="375" width="36" height="40" rx="2" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
-          <rect x="194" y="375" width="36" height="40" rx="2" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
-        </svg>
-
-        {/* 투수 실루엣 (마운드 위치에 고정) */}
-        {phase !== 'swung' && (
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '52%',
-            transform: `translate(-50%, -50%) scale(${phase === 'pitching' ? 0.9 : 1})`,
-            fontSize: '20px',
-            filter: 'grayscale(0.6) brightness(0.55)',
-            transition: 'transform 0.2s',
-            pointerEvents: 'none',
-            lineHeight: 1,
+          {/* ═══ 타자 (우타자 뒷모습 — 좌측 크게, 컴프야 스타일) ═══ */}
+          <g style={{
+            transformOrigin: '95px 400px',
+            transform: swinging ? 'rotate(-8deg) translateX(4px)' : 'rotate(0)',
+            transition: swinging ? 'transform 0.14s cubic-bezier(0.2,0,0.08,1)' : 'transform 0.4s ease',
           }}>
-            {phase === 'countdown' ? '🧍' : '🤾'}
-          </div>
-        )}
+            {/* 헬멧 */}
+            <ellipse cx="96" cy="310" rx="22" ry="25" fill="#0e0e0e"/>
+            <ellipse cx="90" cy="303" rx="25" ry="18" fill="#CE0E2D" opacity="0.93"/>
+            <path d="M68,307 Q64,318 70,326 L82,320 Q78,312 72,304 Z" fill="#0a0a0a"/>
+            <path d="M70,312 Q66,326 70,338 L78,336 Q76,324 76,312 Z" fill="#CE0E2D" opacity="0.82"/>
+            <ellipse cx="88" cy="296" rx="12" ry="6" fill="rgba(255,255,255,0.05)"/>
+
+            {/* 목 */}
+            <path d="M88,334 Q94,332 104,334 L106,348 L86,348 Z" fill="#b87d52"/>
+
+            {/* 유니폼 상의 */}
+            <path d="M56,348 Q50,354 52,365 L48,460 L152,460 L148,365 Q150,354 144,348 Z" fill="#CE0E2D"/>
+            <path d="M105,348 L152,460 L148,365 Q150,354 144,348 Z" fill="rgba(0,0,0,0.1)"/>
+            <line x1="100" y1="352" x2="100" y2="460" stroke="rgba(0,0,0,0.05)" strokeWidth="1"/>
+            <text x="100" y="392" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="15" fontWeight="800" fontFamily="sans-serif" letterSpacing="2.5">LANDERS</text>
+            <text x="100" y="432" textAnchor="middle" fill="rgba(255,255,255,0.78)"
+              fontSize={selectedBatter && String(selectedBatter.number).length >= 2 ? '34' : '40'}
+              fontWeight="900" fontFamily="sans-serif">
+              {selectedBatter ? selectedBatter.number : '1'}
+            </text>
+
+            {/* 어깨 */}
+            <path d="M56,348 Q44,354 36,362 L42,372 Q48,362 56,356 Z" fill="#CE0E2D"/>
+            <path d="M144,348 Q156,354 164,362 L158,372 Q152,362 144,356 Z" fill="#CE0E2D"/>
+
+            {/* 벨트 */}
+            <rect x="48" y="457" width="104" height="8" rx="2" fill="#1a1a1a"/>
+            <rect x="94" y="457" width="12" height="8" rx="1.5" fill="#555"/>
+
+            {/* 바지 */}
+            <path d="M56,465 L40,550 L62,554 L76,465 Z" fill="#f0f0f0"/>
+            <path d="M120,465 L130,550 L152,548 L138,465 Z" fill="#e4e4e4"/>
+
+            {/* 팔 + 배트 (스윙 그룹) */}
+            <g style={{
+              transformOrigin: '100px 365px',
+              transform: swinging ? 'rotate(-130deg)' : 'rotate(0)',
+              transition: swinging
+                ? 'transform 0.14s cubic-bezier(0.12,0,0.04,1)'
+                : 'transform 0.38s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+              {/* 오른팔 */}
+              <path d="M150,358 Q162,350 168,340" fill="none" stroke="#CE0E2D" strokeWidth="15" strokeLinecap="round"/>
+              <path d="M168,340 Q172,330 174,322" fill="none" stroke="#b87d52" strokeWidth="12" strokeLinecap="round"/>
+              {/* 왼팔 */}
+              <path d="M140,368 Q156,358 163,346" fill="none" stroke="#CE0E2D" strokeWidth="13" strokeLinecap="round"/>
+              <path d="M163,346 Q166,338 168,330" fill="none" stroke="#b87d52" strokeWidth="11" strokeLinecap="round"/>
+
+              {/* 글러브 */}
+              <ellipse cx="174" cy="320" rx="10" ry="9" fill="#1a1a1a"/>
+              <ellipse cx="172" cy="324" rx="9" ry="8" fill="#222"/>
+
+              {/* 배트 그립 */}
+              <line x1="174" y1="316" x2="178" y2="292" stroke="#333" strokeWidth="7" strokeLinecap="round"/>
+              <line x1="174" y1="316" x2="176" y2="306" stroke="#2c1409" strokeWidth="6" strokeLinecap="round"/>
+              {/* 배트 테이퍼 */}
+              <line x1="178" y1="292" x2="182" y2="260" stroke="#2a1208" strokeWidth="8" strokeLinecap="round"/>
+              {/* 배트 배럴 */}
+              <line x1="182" y1="260" x2="186" y2="222" stroke="#1e0e06" strokeWidth="10" strokeLinecap="round"/>
+              <line x1="186" y1="222" x2="188" y2="194" stroke="#160c04" strokeWidth="11" strokeLinecap="round"/>
+              <line x1="188" y1="194" x2="190" y2="172" stroke="#120a04" strokeWidth="12" strokeLinecap="round"/>
+              <ellipse cx="190" cy="168" rx="6.5" ry="4.5" fill="#0d0704"/>
+            </g>
+          </g>
+
+          {/* 포수 실루엣 */}
+          <g opacity="0.55">
+            <ellipse cx="218" cy="458" rx="14" ry="12" fill="#222"/>
+            <rect x="208" y="468" width="20" height="18" rx="4" fill="#1a1a2a"/>
+            <ellipse cx="226" cy="474" rx="8" ry="7" fill="#6b3a18"/>
+          </g>
+
+          {/* 심판 실루엣 */}
+          <g opacity="0.3">
+            <ellipse cx="230" cy="440" rx="8" ry="9" fill="#111"/>
+            <rect x="224" y="448" width="12" height="14" rx="2" fill="#0e0e0e"/>
+          </g>
+        </svg>
 
         {/* 날아오는 공 */}
         {(phase === 'pitching' || phase === 'swung') && ballProgress > 0 && (
@@ -3153,15 +3252,14 @@ const HomerunGame = () => {
             width: `${ballSize}px`,
             height: `${ballSize}px`,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 38% 32%, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%)',
-            boxShadow: `0 0 ${ballSize * 0.25}px rgba(255,255,255,0.55), 0 ${ballSize * 0.06}px ${ballSize * 0.15}px rgba(0,0,0,0.5)`,
+            background: 'radial-gradient(circle at 38% 32%, #ffffff 0%, #eee 50%, #ccc 100%)',
+            boxShadow: `0 0 ${ballSize * 0.3}px rgba(255,255,255,0.6), 0 ${ballSize * 0.06}px ${ballSize * 0.12}px rgba(0,0,0,0.5)`,
             filter: ballBlur > 0 ? `blur(${ballBlur}px)` : 'none',
             pointerEvents: 'none',
-            zIndex: 20,
+            zIndex: 30,
             overflow: 'hidden',
           }}>
-            {/* 야구공 솔기 (일정 크기 이상일 때) */}
-            {ballSize > 28 && (
+            {ballSize > 24 && (
               <svg viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
                 <path d="M30,15 Q42,28 30,50 Q18,72 30,85" stroke="#cc1111" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.7"/>
                 <path d="M70,15 Q58,28 70,50 Q82,72 70,85" stroke="#cc1111" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.7"/>
@@ -3170,120 +3268,39 @@ const HomerunGame = () => {
           </div>
         )}
 
-        {/* 스트라이크존 3×3 격자 */}
+        {/* 스트라이크존 */}
         <div style={{
           position: 'absolute',
-          left: '53%', top: '72%',
+          left: '56%', top: '76%',
           transform: 'translate(-50%, -50%)',
-          width: '120px', height: '90px',
+          width: '105px', height: '80px',
           pointerEvents: 'none',
           zIndex: 15,
         }}>
-          {/* 외곽선 */}
           <div style={{
             position: 'absolute', inset: 0,
-            border: `1.5px solid rgba(255,255,255,${phase === 'pitching' && bp > 0.4 ? Math.min((bp - 0.4) * 0.8, 0.45) : 0.12})`,
+            border: `1.5px solid rgba(255,255,255,${phase === 'pitching' && bp > 0.4 ? Math.min((bp - 0.4) * 0.85, 0.5) : 0.1})`,
             borderRadius: '2px',
-            transition: 'border-color 0.15s',
+            transition: 'border-color 0.12s',
           }}/>
-          {/* 세로선 2개 */}
-          <div style={{ position: 'absolute', left: '33.33%', top: 0, bottom: 0, width: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.2 : 0.06})`, transition: 'background 0.15s' }}/>
-          <div style={{ position: 'absolute', left: '66.66%', top: 0, bottom: 0, width: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.2 : 0.06})`, transition: 'background 0.15s' }}/>
-          {/* 가로선 2개 */}
-          <div style={{ position: 'absolute', top: '33.33%', left: 0, right: 0, height: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.2 : 0.06})`, transition: 'background 0.15s' }}/>
-          <div style={{ position: 'absolute', top: '66.66%', left: 0, right: 0, height: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.2 : 0.06})`, transition: 'background 0.15s' }}/>
+          <div style={{ position: 'absolute', left: '33.33%', top: 0, bottom: 0, width: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.18 : 0.05})`, transition: 'background 0.12s' }}/>
+          <div style={{ position: 'absolute', left: '66.66%', top: 0, bottom: 0, width: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.18 : 0.05})`, transition: 'background 0.12s' }}/>
+          <div style={{ position: 'absolute', top: '33.33%', left: 0, right: 0, height: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.18 : 0.05})`, transition: 'background 0.12s' }}/>
+          <div style={{ position: 'absolute', top: '66.66%', left: 0, right: 0, height: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.18 : 0.05})`, transition: 'background 0.12s' }}/>
         </div>
 
-        {/* ── 1인칭 타자 시점: 양팔 + 배트 ── */}
-        <svg
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 25 }}
-          viewBox="0 0 360 520"
-        >
-          <defs>
-            <linearGradient id="batWood" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1c0e06"/>
-              <stop offset="40%" stopColor="#2e1a09"/>
-              <stop offset="70%" stopColor="#1a0c05"/>
-              <stop offset="100%" stopColor="#0e0804"/>
-            </linearGradient>
-          </defs>
+        {/* 스윙 모션블러 */}
+        {swinging && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 26 }}>
+            <svg viewBox="0 0 360 520" style={{ width: '100%', height: '100%' }}>
+              <g opacity="0.15" style={{ transformOrigin: '100px 365px', transform: 'rotate(-80deg)' }}>
+                <line x1="178" y1="292" x2="186" y2="222" stroke="#fff" strokeWidth="10" strokeLinecap="round"/>
+                <line x1="186" y1="222" x2="190" y2="172" stroke="#fff" strokeWidth="12" strokeLinecap="round"/>
+              </g>
+            </svg>
+          </div>
+        )}
 
-          {/* ── 팔 고정 레이어 (스윙과 무관) ── */}
-          {/* 왼팔 소매: 화면 왼쪽 밖에서 그립 쪽으로 */}
-          <path d="M-40,555 Q30,535 145,492" fill="none" stroke="#CE0E2D" strokeWidth="36" strokeLinecap="round"/>
-          {/* 왼팔 피부 (소매 끝 ~ 손목) */}
-          <path d="M82,524 Q118,510 145,492" fill="none" stroke="#b87d52" strokeWidth="24" strokeLinecap="round"/>
-
-          {/* 오른팔 소매: 화면 오른쪽 밖에서 그립 쪽으로 */}
-          <path d="M400,555 Q330,535 220,495" fill="none" stroke="#CE0E2D" strokeWidth="36" strokeLinecap="round"/>
-          {/* 오른팔 피부 */}
-          <path d="M285,524 Q255,510 220,495" fill="none" stroke="#b87d52" strokeWidth="24" strokeLinecap="round"/>
-
-          {/* ── 배트 + 손 그룹: 그립 중심 회전 ── */}
-          {/* 대기 자세(ready): 우타자 기준 배트를 오른쪽 어깨 위로 세운 포지션 → rotate(32deg) */}
-          {/* 스윙(swing): 배트가 왼쪽으로 휩쓸리며 팔로우스루 → rotate(-58deg) */}
-          <g style={{
-            transformOrigin: '185px 484px',
-            transform: swinging ? 'rotate(-58deg)' : 'rotate(32deg)',
-            transition: swinging
-              ? 'transform 0.13s cubic-bezier(0.1, 0, 0.04, 1)'
-              : 'transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}>
-            {/* ─── 배트 본체 (아래 노브 → 위 배럴 끝) ─── */}
-            {/* 노브 */}
-            <ellipse cx="185" cy="498" rx="12" ry="8" fill="#0d0706"/>
-            {/* 그립 (손잡이 얇은 부분) */}
-            <line x1="185" y1="492" x2="182" y2="428" stroke="#2c1409" strokeWidth="13" strokeLinecap="round"/>
-            {/* 그립 테이프 — 대각선 줄 */}
-            {[0,1,2,3,4,5].map(i => (
-              <line key={i}
-                x1={188} y1={486 - i * 10}
-                x2={180} y2={482 - i * 10}
-                stroke="#3a3a3a" strokeWidth="3.2" strokeLinecap="round"
-              />
-            ))}
-            {/* 테이퍼 구간 */}
-            <line x1="182" y1="428" x2="177" y2="355" stroke="#2a1208" strokeWidth="18" strokeLinecap="round"/>
-            {/* 배럴 하단 */}
-            <line x1="177" y1="355" x2="168" y2="262" stroke="url(#batWood)" strokeWidth="25" strokeLinecap="round"/>
-            {/* 배럴 중간 */}
-            <line x1="168" y1="262" x2="160" y2="170" stroke="#180e06" strokeWidth="28" strokeLinecap="round"/>
-            {/* 배럴 상단 */}
-            <line x1="160" y1="170" x2="153" y2="108" stroke="#120a04" strokeWidth="29" strokeLinecap="round"/>
-            {/* 나뭇결 하이라이트 */}
-            <line x1="173" y1="250" x2="157" y2="120" stroke="rgba(140,75,30,0.22)" strokeWidth="5" strokeLinecap="round"/>
-            {/* 반대쪽 나뭇결 */}
-            <line x1="162" y1="245" x2="148" y2="115" stroke="rgba(0,0,0,0.15)" strokeWidth="3" strokeLinecap="round"/>
-            {/* 배트 끝 마감 */}
-            <ellipse cx="151" cy="100" rx="16" ry="11" fill="#100804"/>
-            {/* 끝 마감 하이라이트 */}
-            <ellipse cx="148" cy="97" rx="8" ry="5" fill="rgba(255,255,255,0.04)"/>
-
-            {/* ─── 배팅 글러브 ─── */}
-            {/* 왼손 (그립 위쪽 손) */}
-            <ellipse cx="179" cy="466" rx="25" ry="20" fill="#1a1a1a"/>
-            <path d="M166,473 Q175,485 198,476 Q194,462 175,456 Z" fill="#212121"/>
-            <path d="M168,465 Q174,456 182,454" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2"/>
-            {/* 왼손 손가락 줄 */}
-            <line x1="170" y1="464" x2="194" y2="459" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5"/>
-
-            {/* 오른손 (그립 아래쪽 손) */}
-            <ellipse cx="192" cy="484" rx="24" ry="19" fill="#161616"/>
-            <path d="M179,491 Q188,503 211,494 Q207,480 188,474 Z" fill="#1d1d1d"/>
-            <path d="M181,483 Q187,474 196,472" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="2"/>
-            {/* 오른손 손가락 줄 */}
-            <line x1="183" y1="482" x2="207" y2="477" stroke="rgba(255,255,255,0.04)" strokeWidth="1.5"/>
-          </g>
-
-          {/* 스윙 시 배트 모션블러 효과 */}
-          {swinging && (
-            <g opacity="0.18" style={{ transformOrigin: '185px 484px', transform: 'rotate(-40deg)' }}>
-              <line x1="182" y1="428" x2="177" y2="355" stroke="#ffffff" strokeWidth="18" strokeLinecap="round"/>
-              <line x1="177" y1="355" x2="168" y2="262" stroke="#ffffff" strokeWidth="25" strokeLinecap="round"/>
-              <line x1="168" y1="262" x2="160" y2="170" stroke="#ffffff" strokeWidth="28" strokeLinecap="round"/>
-            </g>
-          )}
-        </svg>
 
         {/* 카운트다운 */}
         {phase === 'countdown' && (
