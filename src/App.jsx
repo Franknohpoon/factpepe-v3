@@ -521,39 +521,47 @@ const FactNewsTab = () => {
           </button>
         ))}
       </div>
-      <div className="divide-y divide-zinc-800/60">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-red-600 border-t-transparent" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-zinc-600">게시물이 없습니다</p>
-          </div>
-        ) : filtered.map(post => (
-          <div key={post.id} className="py-4 group">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${categoryColor(post.category)}`}>
-                {post.category}
-              </span>
-              <span className="text-zinc-600 text-xs">{new Date(post.date).toLocaleDateString('ko-KR')}</span>
-            </div>
-            <h2 className="text-white font-black text-base mb-1.5 leading-snug">{post.title}</h2>
-            {post.imageUrl && (
-              <div className="mb-2.5 rounded-lg overflow-hidden aspect-video bg-zinc-900">
-                <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-red-600 border-t-transparent" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-zinc-600">게시물이 없습니다</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5 mt-3">
+          {filtered.map(post => (
+            <div key={post.id} className="bg-zinc-900 rounded-xl overflow-hidden flex flex-col">
+              {/* 썸네일 */}
+              {post.imageUrl ? (
+                <div className="aspect-[4/3] bg-zinc-800 flex-shrink-0">
+                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="aspect-[4/3] bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                  <span className="text-3xl opacity-30">🐸</span>
+                </div>
+              )}
+              {/* 텍스트 */}
+              <div className="p-2.5 flex flex-col gap-1 flex-1">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded self-start ${categoryColor(post.category)}`}>
+                  {post.category}
+                </span>
+                <p className="text-white font-bold text-xs leading-snug line-clamp-2">{post.title}</p>
+                <p className="text-zinc-500 text-[10px] mt-auto">{new Date(post.date).toLocaleDateString('ko-KR')}</p>
               </div>
-            )}
-            <p className="text-zinc-400 text-sm leading-relaxed mb-2.5 whitespace-pre-line">{post.summary}</p>
-            {post.tweetUrl && (
-              <a href={post.tweetUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-bold transition-colors">
-                𝕏 트윗 보기 →
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
+              {/* 트윗 링크 */}
+              {post.tweetUrl && (
+                <a href={post.tweetUrl} target="_blank" rel="noopener noreferrer"
+                  className="px-2.5 pb-2.5 text-red-400 text-[10px] font-bold">
+                  𝕏 트윗 보기 →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
