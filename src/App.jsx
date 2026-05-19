@@ -274,65 +274,56 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black">
-      <header className="bg-gradient-to-r from-red-900 to-red-700 border-b-4 border-red-500 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-col items-center md:items-start gap-1">
-              <div className="cursor-pointer select-none" onClick={handleLogoTap}>
-                <h1 className="text-3xl lg:text-4xl font-black text-white mb-0.5">🐸 팩트페페</h1>
-                <p className="text-red-200 text-sm">으쓱이들의 놀이터</p>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
-                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">𝕏</a>
-                <span className="text-red-700 text-xs">·</span>
-                <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
-                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">YouTube</a>
-                <span className="text-red-700 text-xs">·</span>
-                <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
-                  className="text-red-200 hover:text-white text-xs font-bold transition-colors">TikTok</a>
-              </div>
+      <header className="bg-[#1a0000] sticky top-0 z-50">
+        {/* 상단 타이틀 바 */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="cursor-pointer select-none flex items-center gap-3" onClick={handleLogoTap}>
+            <span className="text-2xl leading-none">🐸</span>
+            <div>
+              <span className="text-white font-black text-lg tracking-tight leading-none">팩트페페</span>
+              <span className="text-red-400 text-xs ml-2 font-normal hidden sm:inline">으쓱이들의 놀이터</span>
             </div>
-            <nav className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide justify-center md:justify-end">
-              {tabs.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-white text-red-700 shadow-lg scale-105'
-                      : 'bg-red-800 text-red-200 hover:bg-red-700'
-                  }`}>
-                  {tab.emoji} {tab.name}
-                </button>
-              ))}
-            </nav>
           </div>
+          <div className="flex items-center gap-3">
+            <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">𝕏</a>
+            <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">YouTube</a>
+            <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">TikTok</a>
+          </div>
+        </div>
+        {/* 탭 내비게이션 */}
+        <div className="border-t border-red-950">
+          <nav className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-hide">
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${
+                  activeTab === tab.id
+                    ? 'border-red-500 text-white'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                }`}>
+                {tab.name}
+              </button>
+            ))}
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {ActiveComponent && <ActiveComponent isAdmin={isAdmin} />}
       </main>
 
-      <footer className="bg-zinc-900 border-t border-zinc-800 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-          <p className="text-gray-400 text-sm mb-1">🐸 팩트페페 | SSG 랜더스 팬 서비스</p>
-          <p className="text-gray-600 text-xs mb-4">© 2026 FactPepe. All rights reserved.</p>
-          <div className="flex items-center justify-center gap-4">
+      <footer className="border-t border-zinc-800/60 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+          <p className="text-zinc-600 text-xs">팩트페페 · SSG 랜더스 팬 서비스</p>
+          <div className="flex items-center gap-4">
             <a href="https://x.com/factpepe_" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
-              <span className="text-base">𝕏</span>
-              <span className="text-zinc-300">@factpepe_</span>
-            </a>
+              className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">𝕏</a>
             <a href="https://www.youtube.com/@factpepe" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
-              <span className="text-red-500 text-base">▶</span>
-              <span className="text-zinc-300">YouTube</span>
-            </a>
+              className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">YouTube</a>
             <a href="https://www.tiktok.com/@pepe_noh" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-all">
-              <span className="text-base">♪</span>
-              <span className="text-zinc-300">TikTok</span>
-            </a>
+              className="text-zinc-600 hover:text-zinc-400 text-xs transition-colors">TikTok</a>
           </div>
         </div>
       </footer>
@@ -403,22 +394,15 @@ const FactPepeCard = () => {
 
   return (
     <>
-      <div className="mb-6 bg-gradient-to-br from-red-900/40 via-zinc-900 to-zinc-900 border-2 border-red-600/50 rounded-2xl p-5 relative overflow-hidden">
-        <div className="absolute -top-6 -right-6 text-9xl opacity-10">🐸</div>
-        <div className="flex items-start gap-3 relative">
-          <div className="text-5xl flex-shrink-0">🐸</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider">FACT</span>
-              <span className="text-red-300 font-black text-sm">팩트페페</span>
-            </div>
-            {latest.gameInfo && <p className="text-red-200/80 text-xs mb-2 font-bold">📌 {latest.gameInfo}</p>}
-            <p className="text-white text-base leading-relaxed whitespace-pre-wrap">{latest.text}</p>
-            <div className="flex items-center justify-between mt-3">
-              <p className="text-zinc-500 text-xs">{new Date(latest.createdAt).toLocaleDateString('ko-KR')}</p>
-              <button onClick={() => setShowHistory(true)} className="text-red-400 hover:text-red-300 text-xs font-bold">지난 팩트 보기 →</button>
-            </div>
-          </div>
+      <div className="mb-5 border-l-[3px] border-red-600 bg-zinc-900 rounded-r-lg px-4 py-3.5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-red-500 text-xs font-black tracking-widest uppercase">팩트페페</span>
+          {latest.gameInfo && <span className="text-zinc-500 text-xs">· {latest.gameInfo}</span>}
+        </div>
+        <p className="text-gray-100 text-[15px] leading-relaxed whitespace-pre-wrap">{latest.text}</p>
+        <div className="flex items-center justify-between mt-3">
+          <p className="text-zinc-600 text-xs">{new Date(latest.createdAt).toLocaleDateString('ko-KR')}</p>
+          <button onClick={() => setShowHistory(true)} className="text-red-400 hover:text-red-300 text-xs font-bold transition-colors">지난 팩트 →</button>
         </div>
       </div>
       {showHistory && (
@@ -472,49 +456,48 @@ const FactNewsTab = () => {
   return (
     <div>
       <FactPepeCard />
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+      <div className="flex gap-1 overflow-x-auto pb-0 mb-1 scrollbar-hide border-b border-zinc-800">
         {categories.map(c => (
           <button key={c.id} onClick={() => setFilter(c.id)}
-            className={`px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all ${filter === c.id ? 'bg-red-600 text-white border-2 border-red-400' : 'bg-zinc-800 text-gray-400 border-2 border-zinc-700 hover:border-zinc-600'}`}>
-            {c.emoji} {c.name}
+            className={`px-3 py-2 font-bold text-sm whitespace-nowrap transition-colors border-b-2 -mb-px ${
+              filter === c.id
+                ? 'border-red-500 text-white'
+                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            }`}>
+            {c.name}
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="divide-y divide-zinc-800/60">
         {loading ? (
-          <div className="col-span-full text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent" />
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-red-600 border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="col-span-full text-center py-12 bg-zinc-900 rounded-2xl border border-zinc-800">
-            <p className="text-gray-400">게시물이 없습니다</p>
+          <div className="text-center py-12">
+            <p className="text-zinc-600">게시물이 없습니다</p>
           </div>
         ) : filtered.map(post => (
-          <div key={post.id} className="bg-gradient-to-br from-zinc-900 to-black border-2 border-zinc-800 rounded-2xl overflow-hidden hover:border-red-600 transition-all duration-300 hover:scale-[1.02]">
-            {/* 카테고리 배지 — 이미지 위 아닌 카드 상단에 독립 배치 */}
-            <div className="px-4 pt-4">
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border-2 ${categoryColor(post.category)}`}>
+          <div key={post.id} className="py-4 group">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${categoryColor(post.category)}`}>
                 {post.category}
               </span>
+              <span className="text-zinc-600 text-xs">{new Date(post.date).toLocaleDateString('ko-KR')}</span>
             </div>
+            <h2 className="text-white font-black text-base mb-1.5 leading-snug">{post.title}</h2>
             {post.imageUrl && (
-              <div className="mt-3 aspect-video bg-zinc-900">
+              <div className="mb-2.5 rounded-lg overflow-hidden aspect-video bg-zinc-900">
                 <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
               </div>
             )}
-            <div className="p-5">
-              <h2 className="text-xl font-black text-white mb-3">{post.title}</h2>
-              <p className="text-gray-400 text-sm mb-4 whitespace-pre-line leading-relaxed">{post.summary}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 text-xs">📅 {new Date(post.date).toLocaleDateString('ko-KR')}</span>
-                {post.tweetUrl && (
-                  <a href={post.tweetUrl} target="_blank" rel="noopener noreferrer"
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all">
-                    𝕏 트윗 보기 →
-                  </a>
-                )}
-              </div>
-            </div>
+            <p className="text-zinc-400 text-sm leading-relaxed mb-2.5 whitespace-pre-line">{post.summary}</p>
+            {post.tweetUrl && (
+              <a href={post.tweetUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-bold transition-colors">
+                𝕏 트윗 보기 →
+              </a>
+            )}
           </div>
         ))}
       </div>
@@ -599,18 +582,18 @@ const ScheduleTab = () => {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-black text-white">⚾ 승요체크</h2>
-          <p className="text-zinc-500 text-xs mt-0.5">나만의 직관 기록 · 이 기기에 저장됩니다</p>
+          <h2 className="text-lg font-black text-white">승요체크</h2>
+          <p className="text-zinc-600 text-xs mt-0.5">나만의 직관 기록 · 이 기기에 저장됩니다</p>
         </div>
         <button onClick={openNew}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95">
+          className="text-red-400 hover:text-red-300 text-sm font-bold transition-colors">
           + 기록 추가
         </button>
       </div>
 
       {/* 통계 요약 */}
       {total > 0 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-5">
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4 mb-5">
           <div className="grid grid-cols-4 gap-2 mb-3">
             {[['총 직관', total, 'text-white'], ['승', wins, 'text-red-400'], ['패', losses, 'text-zinc-400'], ['무', draws, 'text-yellow-400']].map(([label, val, tc]) => (
               <div key={label} className="text-center">
@@ -657,8 +640,8 @@ const ScheduleTab = () => {
 
       {/* 기록 추가/수정 폼 */}
       {showForm && (
-        <div className="bg-zinc-900 border-2 border-red-600 rounded-2xl p-5 mb-5">
-          <h3 className="text-white font-black mb-4">{editingId ? '✏️ 기록 수정' : '✏️ 새 직관 기록'}</h3>
+        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4 mb-5">
+          <h3 className="text-white font-bold text-sm mb-4">{editingId ? '기록 수정' : '새 직관 기록'}</h3>
           <div className="space-y-4">
             {/* 날짜 + 상대팀 */}
             <div className="grid grid-cols-2 gap-3">
@@ -727,21 +710,19 @@ const ScheduleTab = () => {
 
       {/* 기록 없음 */}
       {total === 0 && !showForm && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center">
-          <p className="text-5xl mb-4">⚾</p>
-          <p className="text-white font-black text-lg mb-1">직관 기록을 시작해보세요</p>
-          <p className="text-zinc-500 text-sm mb-5">날짜, 결과, 착장, 코멘트를 기록하면<br/>나만의 직관 승률을 확인할 수 있어요</p>
-          <button onClick={openNew} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all">
-            첫 직관 기록 추가 +
+        <div className="border border-dashed border-zinc-700 rounded-lg p-8 text-center">
+          <p className="text-zinc-500 text-sm mb-3">아직 직관 기록이 없어요.<br/>날짜, 결과, 착장을 기록해두면 나만의 직관 승률을 볼 수 있어요.</p>
+          <button onClick={openNew} className="text-red-400 hover:text-red-300 text-sm font-bold transition-colors">
+            + 첫 기록 추가하기
           </button>
         </div>
       )}
 
       {/* 기록 리스트 */}
       {total > 0 && (
-        <div className="space-y-3">
+        <div className="divide-y divide-zinc-800/60">
           {records.map(r => (
-            <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-zinc-700 transition-all">
+            <div key={r.id} className="py-3.5">
               <div className="flex items-start gap-3">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl flex-shrink-0 ${resultColor(r.result)}`}>
                   {r.result || '-'}
@@ -3248,6 +3229,9 @@ const AdminLineupForm = () => {
   const [confirm, setConfirm] = useState(false);
   // 선수별 포지션 빈도 맵: { '최정': { '3루수': 12, ... }, ... }
   const [posFreqMap, setPosFreqMap] = useState({});
+  // 네이버 자동 불러오기
+  const [autoFetching, setAutoFetching] = useState(false);
+  const [autoFetchMsg, setAutoFetchMsg] = useState('');
 
   // 라인업 히스토리 로드 → 시드 + Firebase 히스토리 합산
   useEffect(() => {
@@ -3303,6 +3287,44 @@ const AdminLineupForm = () => {
 
   const [saveError, setSaveError] = useState('');
 
+  // ── 네이버스포츠 API 자동 불러오기 ──────────────────────────────────────
+  const handleAutoFetch = async () => {
+    setAutoFetching(true);
+    setAutoFetchMsg('');
+    try {
+      const res = await fetch('/api/lineup-auto?preview=1&token=factpepe-lineup-2026');
+      const data = await res.json();
+
+      if (!data.ok) {
+        const msgs = {
+          no_game: '오늘 SSG 경기가 없습니다.',
+          lineup_not_ready: '라인업이 아직 발표되지 않았습니다. 경기 1~2시간 전에 다시 시도해주세요.',
+          parse_failed: '라인업 파싱에 실패했습니다. 수동으로 입력해주세요.',
+        };
+        setAutoFetchMsg('⚠️ ' + (msgs[data.reason] || data.message || data.error || '불러오기 실패'));
+        return;
+      }
+
+      // 폼 자동 채우기
+      if (data.opponent) setOpponent(data.opponent);
+      if (data.pitcher) { setPitcher(data.pitcher); setPitcherQuery(''); }
+      if (data.players?.length) {
+        const filled = data.players.slice(0, 9).map(p => ({
+          name: p.name || '',
+          pos: p.pos || '',
+        }));
+        while (filled.length < 9) filled.push({ name: '', pos: '' });
+        setPlayers(filled);
+        setQuery(Array(9).fill(''));
+      }
+      setAutoFetchMsg(`✅ ${data.gameId} 라인업을 불러왔어요! 확인 후 저장해주세요.`);
+    } catch (err) {
+      setAutoFetchMsg('❌ 서버 오류: ' + err.message);
+    } finally {
+      setAutoFetching(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
@@ -3324,6 +3346,31 @@ const AdminLineupForm = () => {
 
   return (
     <div className="space-y-4 max-w-lg">
+
+      {/* 네이버 자동 불러오기 버튼 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-gray-400 text-xs mb-3">
+          네이버스포츠 API에서 오늘 SSG 라인업을 자동으로 불러옵니다.<br />
+          <span className="text-zinc-600">경기 약 1~2시간 전 발표 이후에 사용하세요.</span>
+        </p>
+        <button
+          onClick={handleAutoFetch}
+          disabled={autoFetching}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl font-black text-base transition-all flex items-center justify-center gap-2"
+        >
+          {autoFetching ? (
+            <><span className="animate-spin inline-block">⚙️</span> 불러오는 중...</>
+          ) : (
+            <>⚡ 네이버 자동 불러오기</>
+          )}
+        </button>
+        {autoFetchMsg && (
+          <p className={`mt-2 text-sm font-bold text-center ${autoFetchMsg.startsWith('✅') ? 'text-green-400' : 'text-yellow-400'}`}>
+            {autoFetchMsg}
+          </p>
+        )}
+      </div>
+
       {/* 날짜 + 상대팀 */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <div>
