@@ -3194,112 +3194,96 @@ const HomerunGame = () => {
           <div style={{ position: 'absolute', top: '66.66%', left: 0, right: 0, height: '1px', background: `rgba(255,255,255,${phase === 'pitching' && bp > 0.5 ? 0.2 : 0.06})`, transition: 'background 0.15s' }}/>
         </div>
 
-        {/* 야구 게임 카메라: 타자 뒷모습 (좌측 크게, 컴프야 스타일) */}
-        <div style={{ position: 'absolute', bottom: '-4%', left: '-1%', zIndex: 25, pointerEvents: 'none', perspective: '600px' }}>
-          <svg width="240" height="500" viewBox="0 0 240 500" fill="none" style={{ filter: 'drop-shadow(4px 6px 18px rgba(0,0,0,0.75))', transform: 'rotateY(30deg)', transformOrigin: 'center center' }}>
-            {/* 전체 몸통 — 스윙 시 살짝 회전 */}
-            <g style={{
-              transformOrigin: '120px 280px',
-              transform: swinging ? 'rotate(-8deg) translateX(6px)' : 'rotate(0deg)',
-              transition: swinging
-                ? 'transform 0.14s cubic-bezier(0.3,0,0.1,1)'
-                : 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
-            }}>
-              {/* ─── 헬멧 ─── */}
-              <ellipse cx="118" cy="48" rx="30" ry="33" fill="#111"/>
-              <ellipse cx="108" cy="40" rx="33" ry="24" fill="#CE0E2D" opacity="0.93"/>
-              {/* 헬멧 챙 */}
-              <path d="M78,46 Q72,58 80,66 L98,58 Q90,50 84,42 Z" fill="#0a0a0a"/>
-              {/* 헬멧 귀보호대 (좌측) */}
-              <path d="M80,50 Q74,66 80,80 L90,78 Q86,64 88,50 Z" fill="#CE0E2D" opacity="0.85"/>
-              {/* 헬멧 하이라이트 */}
-              <ellipse cx="104" cy="34" rx="16" ry="8" fill="rgba(255,255,255,0.06)"/>
-              {/* SSG 로고 자리 */}
-              <ellipse cx="104" cy="42" rx="8" ry="6" fill="rgba(255,255,255,0.04)"/>
+        {/* ── 1인칭 타자 시점: 양팔 + 배트 ── */}
+        <svg
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 25 }}
+          viewBox="0 0 360 520"
+        >
+          <defs>
+            <linearGradient id="batWood" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#1c0e06"/>
+              <stop offset="40%" stopColor="#2e1a09"/>
+              <stop offset="70%" stopColor="#1a0c05"/>
+              <stop offset="100%" stopColor="#0e0804"/>
+            </linearGradient>
+          </defs>
 
-              {/* ─── 목 ─── */}
-              <path d="M106,76 Q110,74 120,76 L122,92 L104,92 Z" fill="#c8956a"/>
+          {/* ── 팔 고정 레이어 (스윙과 무관) ── */}
+          {/* 왼팔 소매: 화면 왼쪽 밖에서 그립 쪽으로 */}
+          <path d="M-40,555 Q30,535 145,492" fill="none" stroke="#CE0E2D" strokeWidth="36" strokeLinecap="round"/>
+          {/* 왼팔 피부 (소매 끝 ~ 손목) */}
+          <path d="M82,524 Q118,510 145,492" fill="none" stroke="#b87d52" strokeWidth="24" strokeLinecap="round"/>
 
-              {/* ─── 몸통 (빨간 유니폼 뒷면) ─── */}
-              <path d="M68,92 Q60,98 64,112 L58,258 L176,258 L170,112 Q174,98 166,92 Z" fill="#CE0E2D"/>
-              {/* 유니폼 음영 (오른쪽이 약간 어둡게) */}
-              <path d="M120,92 L176,258 L170,112 Q174,98 166,92 Z" fill="rgba(0,0,0,0.08)"/>
-              {/* 등 중심선 */}
-              <line x1="117" y1="96" x2="117" y2="258" stroke="rgba(0,0,0,0.06)" strokeWidth="1"/>
-              {/* LANDERS 등 텍스트 */}
-              <text x="117" y="158" textAnchor="middle" fill="rgba(255,255,255,0.88)" fontSize="22" fontWeight="800" fontFamily="sans-serif" letterSpacing="4">LANDERS</text>
-              {/* 등번호 */}
-              <text x="117" y="218" textAnchor="middle" fill="rgba(255,255,255,0.82)"
-                fontSize={selectedBatter && String(selectedBatter.number).length >= 3 ? "42" : "56"}
-                fontWeight="900" fontFamily="sans-serif">
-                {selectedBatter ? selectedBatter.number : '1'}
-              </text>
+          {/* 오른팔 소매: 화면 오른쪽 밖에서 그립 쪽으로 */}
+          <path d="M400,555 Q330,535 220,495" fill="none" stroke="#CE0E2D" strokeWidth="36" strokeLinecap="round"/>
+          {/* 오른팔 피부 */}
+          <path d="M285,524 Q255,510 220,495" fill="none" stroke="#b87d52" strokeWidth="24" strokeLinecap="round"/>
 
-              {/* ─── 어깨 (빨간 소매) ─── */}
-              <path d="M68,92 Q52,98 42,110 L50,122 Q58,110 68,104" fill="#CE0E2D"/>
-              <path d="M166,92 Q182,98 192,110 L184,122 Q176,110 166,104" fill="#CE0E2D"/>
-              {/* 소매 하단 흰색 라인 */}
-              <path d="M42,110 L50,122" stroke="rgba(255,255,255,0.35)" strokeWidth="2"/>
-              <path d="M192,110 L184,122" stroke="rgba(255,255,255,0.35)" strokeWidth="2"/>
+          {/* ── 배트 + 손 그룹: 그립 중심 회전 ── */}
+          {/* 대기 자세(ready): 우타자 기준 배트를 오른쪽 어깨 위로 세운 포지션 → rotate(32deg) */}
+          {/* 스윙(swing): 배트가 왼쪽으로 휩쓸리며 팔로우스루 → rotate(-58deg) */}
+          <g style={{
+            transformOrigin: '185px 484px',
+            transform: swinging ? 'rotate(-58deg)' : 'rotate(32deg)',
+            transition: swinging
+              ? 'transform 0.13s cubic-bezier(0.1, 0, 0.04, 1)'
+              : 'transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}>
+            {/* ─── 배트 본체 (아래 노브 → 위 배럴 끝) ─── */}
+            {/* 노브 */}
+            <ellipse cx="185" cy="498" rx="12" ry="8" fill="#0d0706"/>
+            {/* 그립 (손잡이 얇은 부분) */}
+            <line x1="185" y1="492" x2="182" y2="428" stroke="#2c1409" strokeWidth="13" strokeLinecap="round"/>
+            {/* 그립 테이프 — 대각선 줄 */}
+            {[0,1,2,3,4,5].map(i => (
+              <line key={i}
+                x1={188} y1={486 - i * 10}
+                x2={180} y2={482 - i * 10}
+                stroke="#3a3a3a" strokeWidth="3.2" strokeLinecap="round"
+              />
+            ))}
+            {/* 테이퍼 구간 */}
+            <line x1="182" y1="428" x2="177" y2="355" stroke="#2a1208" strokeWidth="18" strokeLinecap="round"/>
+            {/* 배럴 하단 */}
+            <line x1="177" y1="355" x2="168" y2="262" stroke="url(#batWood)" strokeWidth="25" strokeLinecap="round"/>
+            {/* 배럴 중간 */}
+            <line x1="168" y1="262" x2="160" y2="170" stroke="#180e06" strokeWidth="28" strokeLinecap="round"/>
+            {/* 배럴 상단 */}
+            <line x1="160" y1="170" x2="153" y2="108" stroke="#120a04" strokeWidth="29" strokeLinecap="round"/>
+            {/* 나뭇결 하이라이트 */}
+            <line x1="173" y1="250" x2="157" y2="120" stroke="rgba(140,75,30,0.22)" strokeWidth="5" strokeLinecap="round"/>
+            {/* 반대쪽 나뭇결 */}
+            <line x1="162" y1="245" x2="148" y2="115" stroke="rgba(0,0,0,0.15)" strokeWidth="3" strokeLinecap="round"/>
+            {/* 배트 끝 마감 */}
+            <ellipse cx="151" cy="100" rx="16" ry="11" fill="#100804"/>
+            {/* 끝 마감 하이라이트 */}
+            <ellipse cx="148" cy="97" rx="8" ry="5" fill="rgba(255,255,255,0.04)"/>
 
-              {/* ─── 벨트 ─── */}
-              <rect x="58" y="254" width="118" height="12" rx="3" fill="#1a1a1a"/>
-              <rect x="108" y="254" width="18" height="12" rx="2" fill="#555"/>
+            {/* ─── 배팅 글러브 ─── */}
+            {/* 왼손 (그립 위쪽 손) */}
+            <ellipse cx="179" cy="466" rx="25" ry="20" fill="#1a1a1a"/>
+            <path d="M166,473 Q175,485 198,476 Q194,462 175,456 Z" fill="#212121"/>
+            <path d="M168,465 Q174,456 182,454" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2"/>
+            {/* 왼손 손가락 줄 */}
+            <line x1="170" y1="464" x2="194" y2="459" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5"/>
 
-              {/* ─── 바지 (흰색) ─── */}
-              {/* 왼다리 (앞발) — 약간 벌린 스탠스 */}
-              <path d="M68,266 L46,410 L72,414 L90,266 Z" fill="#f2f2f2"/>
-              <path d="M52,355 Q60,350 70,355" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="1.5"/>
-              {/* 오른다리 (축발) */}
-              <path d="M132,266 L144,410 L170,408 L156,266 Z" fill="#e8e8e8"/>
-              <path d="M148,355 Q156,350 164,355" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="1.5"/>
+            {/* 오른손 (그립 아래쪽 손) */}
+            <ellipse cx="192" cy="484" rx="24" ry="19" fill="#161616"/>
+            <path d="M179,491 Q188,503 211,494 Q207,480 188,474 Z" fill="#1d1d1d"/>
+            <path d="M181,483 Q187,474 196,472" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="2"/>
+            {/* 오른손 손가락 줄 */}
+            <line x1="183" y1="482" x2="207" y2="477" stroke="rgba(255,255,255,0.04)" strokeWidth="1.5"/>
+          </g>
 
-              {/* ─── 스타킹 (빨간색) ─── */}
-              <path d="M46,395 L42,435 L74,432 L72,398 Z" fill="#CE0E2D" opacity="0.85"/>
-              <path d="M144,393 L146,433 L176,430 L170,396 Z" fill="#CE0E2D" opacity="0.85"/>
-
-              {/* ─── 스파이크 ─── */}
-              <path d="M38,432 L26,442 L30,454 L78,448 L74,432 Z" fill="#111"/>
-              <path d="M142,430 L140,444 L184,438 L178,426 Z" fill="#111"/>
-              <line x1="34" y1="448" x2="68" y2="444" stroke="#2a2a2a" strokeWidth="1.5"/>
-              <line x1="146" y1="440" x2="176" y2="434" stroke="#2a2a2a" strokeWidth="1.5"/>
-
-              {/* ─── 팔 + 배트 스윙 그룹 ─── */}
-              <g style={{
-                transformOrigin: '117px 130px',
-                transform: swinging ? 'rotate(-140deg)' : 'rotate(0deg)',
-                transition: swinging
-                  ? 'transform 0.15s cubic-bezier(0.2,0,0.05,1)'
-                  : 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
-              }}>
-                {/* 오른팔 소매 (어깨→팔꿈치) */}
-                <path d="M172,108 Q186,96 194,78" fill="none" stroke="#CE0E2D" strokeWidth="18" strokeLinecap="round"/>
-                {/* 오른팔 피부 (팔꿈치→손목) */}
-                <path d="M194,78 Q198,68 200,58" fill="none" stroke="#c8956a" strokeWidth="14" strokeLinecap="round"/>
-
-                {/* 왼팔 소매 */}
-                <path d="M162,118 Q180,104 190,84" fill="none" stroke="#CE0E2D" strokeWidth="16" strokeLinecap="round"/>
-                {/* 왼팔 피부 */}
-                <path d="M190,84 Q194,74 196,64" fill="none" stroke="#c8956a" strokeWidth="13" strokeLinecap="round"/>
-
-                {/* 배팅 글러브 (양손 겹침) */}
-                <ellipse cx="200" cy="56" rx="12" ry="11" fill="#1a1a1a"/>
-                <ellipse cx="197" cy="60" rx="11" ry="10" fill="#222"/>
-
-                {/* 배트 — 그립 (손잡이) */}
-                <line x1="200" y1="50" x2="205" y2="26" stroke="#3d2b10" strokeWidth="7" strokeLinecap="round"/>
-                {/* 배트 — 테이핑 */}
-                <line x1="200" y1="50" x2="202" y2="40" stroke="#333" strokeWidth="8" strokeLinecap="round"/>
-                {/* 배트 — 배럴 (점점 두꺼워짐, 위로 올라감) */}
-                <line x1="205" y1="26" x2="210" y2="-4" stroke="#1a1a1a" strokeWidth="9" strokeLinecap="round"/>
-                <line x1="210" y1="-4" x2="214" y2="-28" stroke="#222" strokeWidth="10" strokeLinecap="round"/>
-                <line x1="214" y1="-28" x2="216" y2="-46" stroke="#2a2a2a" strokeWidth="11" strokeLinecap="round"/>
-                {/* 배트 끝 마감 */}
-                <ellipse cx="216" cy="-48" rx="6.5" ry="4" fill="#1a1a1a"/>
-              </g>
+          {/* 스윙 시 배트 모션블러 효과 */}
+          {swinging && (
+            <g opacity="0.18" style={{ transformOrigin: '185px 484px', transform: 'rotate(-40deg)' }}>
+              <line x1="182" y1="428" x2="177" y2="355" stroke="#ffffff" strokeWidth="18" strokeLinecap="round"/>
+              <line x1="177" y1="355" x2="168" y2="262" stroke="#ffffff" strokeWidth="25" strokeLinecap="round"/>
+              <line x1="168" y1="262" x2="160" y2="170" stroke="#ffffff" strokeWidth="28" strokeLinecap="round"/>
             </g>
-          </svg>
-        </div>
+          )}
+        </svg>
 
         {/* 카운트다운 */}
         {phase === 'countdown' && (
