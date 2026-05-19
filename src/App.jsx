@@ -260,18 +260,18 @@ function App() {
     }
   };
 
-  // 하단 탭바에 표시할 주요 탭 (5개)
+  // 하단 탭바에 표시할 주요 탭 (4개)
   const primaryTabs = [
-    { id: 'news',     name: '뉴스',    emoji: '🐸', component: FactNewsTab },
-    { id: 'schedule', name: '승요체크', emoji: '📅', component: ScheduleTab },
-    { id: 'lineup',   name: '라인업',  emoji: '📋', component: LineupTab },
-    { id: 'report',   name: '제보',    emoji: '📬', component: ReportTab },
+    { id: 'news',   name: '뉴스',    emoji: '🐸', component: FactNewsTab },
+    { id: 'game',   name: '미니게임', emoji: '🎮', component: GameTab },
+    { id: 'lineup', name: '라인업',  emoji: '📋', component: LineupTab },
+    { id: 'report', name: '제보',    emoji: '📬', component: ReportTab },
   ];
   // 더보기 메뉴에 들어갈 보조 탭
   const moreTabs = [
-    { id: 'game',  name: '미니게임', emoji: '🎮', component: GameTab },
-    { id: 'chant', name: '응원가',  emoji: '🎵', component: ChantTab },
-    { id: 'comic', name: '4컷',     emoji: '🎨', component: ComicTab },
+    { id: 'schedule', name: '승요체크', emoji: '📅', component: ScheduleTab },
+    { id: 'chant',    name: '응원가',  emoji: '🎵', component: ChantTab },
+    { id: 'comic',    name: '4컷',     emoji: '🎨', component: ComicTab },
   ];
   const baseTabs = [...primaryTabs, ...moreTabs];
   const adminTab = { id: 'admin', name: '관리', emoji: '🔧', component: AdminPage };
