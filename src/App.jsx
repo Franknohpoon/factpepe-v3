@@ -2808,460 +2808,7 @@ const HR_TITLES = [
 ];
 
 // ─── Canvas 2D 야구장 렌더러 ──────────────────────────────────────
-const HRCanvas = ({ phase, bp, swinging, countdown, selectedBatter, ballSize, ballX, ballY, ballBlur }) => {
-  const canvasRef = useRef(null);
-  const frameRef = useRef(0);
-
-  useEffect(() => {
-    const cvs = canvasRef.current;
-    if (!cvs) return;
-    const ctx = cvs.getContext('2d');
-    const W = 720, H = 1040; // 2x for retina
-    cvs.width = W; cvs.height = H;
-
-    const draw = () => {
-      ctx.save();
-      ctx.clearRect(0, 0, W, H);
-
-      // ── 1. 하늘 (그라데이션) ──
-      const sky = ctx.createLinearGradient(0, 0, 0, H);
-      sky.addColorStop(0, '#010510');
-      sky.addColorStop(0.3, '#040c22');
-      sky.addColorStop(0.6, '#071430');
-      sky.addColorStop(1, '#0c1e3a');
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, W, H);
-
-      // ── 2. 조명 글로우 ──
-      const drawLampGlow = (cx, cy, r) => {
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        g.addColorStop(0, 'rgba(255,245,200,0.25)');
-        g.addColorStop(0.5, 'rgba(255,240,180,0.08)');
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-      };
-      drawLampGlow(60, 10, 280);
-      drawLampGlow(660, 10, 280);
-
-      // ── 3. 관중석 ──
-      const standGrad = ctx.createLinearGradient(0, 0, 0, 216);
-      standGrad.addColorStop(0, '#030614');
-      standGrad.addColorStop(1, '#080e20');
-      ctx.fillStyle = standGrad;
-      ctx.fillRect(0, 0, W, 216);
-
-      // 관중 줄
-      for (let y = 30; y < 200; y += 28) {
-        ctx.fillStyle = `rgba(40,35,60,${0.25 + Math.sin(y * 0.1) * 0.1})`;
-        ctx.fillRect(0, y, W, 16);
-      }
-      // 관중 불빛
-      const lights = [[70,60],[180,100],[290,40],[420,130],[550,56],[640,110],[110,160],[380,70],[510,150]];
-      lights.forEach(([lx,ly], i) => {
-        const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 6);
-        g.addColorStop(0, `rgba(255,${230+i*3},${200+i*5},${0.3+i*0.04})`);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(lx-8, ly-8, 16, 16);
-      });
-
-      // ── 4. 조명탑 ──
-      ctx.fillStyle = '#0c0e22';
-      ctx.fillRect(28, 0, 10, 216);
-      ctx.fillRect(682, 0, 10, 216);
-      // 조명 패널
-      ctx.fillStyle = '#1e2040';
-      ctx.fillRect(4, 0, 60, 22); ctx.fillRect(656, 0, 60, 22);
-      // 발광
-      const lamp = ctx.createRadialGradient(34, 10, 0, 34, 10, 30);
-      lamp.addColorStop(0, 'rgba(255,245,200,0.7)');
-      lamp.addColorStop(1, 'rgba(255,245,200,0)');
-      ctx.fillStyle = lamp;
-      ctx.fillRect(0, 0, 70, 40);
-      const lamp2 = ctx.createRadialGradient(686, 10, 0, 686, 10, 30);
-      lamp2.addColorStop(0, 'rgba(255,245,200,0.7)');
-      lamp2.addColorStop(1, 'rgba(255,245,200,0)');
-      ctx.fillStyle = lamp2;
-      ctx.fillRect(650, 0, 70, 40);
-
-      // 빛줄기
-      ctx.fillStyle = 'rgba(255,245,180,0.018)';
-      ctx.beginPath(); ctx.moveTo(4,22); ctx.lineTo(64,22); ctx.lineTo(400,216); ctx.lineTo(0,216); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(656,22); ctx.lineTo(716,22); ctx.lineTo(720,216); ctx.lineTo(320,216); ctx.fill();
-
-      // ── 5. 외야 펜스 ──
-      ctx.fillStyle = '#141428';
-      ctx.fillRect(0, 210, W, 32);
-      // 펜스 패딩 (노란 라인)
-      ctx.fillStyle = 'rgba(196,168,32,0.55)';
-      ctx.fillRect(0, 210, W, 5);
-      // SSG 광고판
-      const adGrad = ctx.createLinearGradient(260, 214, 460, 240);
-      adGrad.addColorStop(0, 'rgba(206,14,45,0.5)');
-      adGrad.addColorStop(1, 'rgba(206,14,45,0.25)');
-      ctx.fillStyle = adGrad;
-      ctx.fillRect(260, 214, 200, 26);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = '700 16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('SSG LANDERS', 360, 234);
-
-      // ── 6. 외야 잔디 ──
-      for (let i = 0; i < 7; i++) {
-        ctx.fillStyle = i % 2 === 0 ? '#176610' : '#125008';
-        ctx.fillRect(0, 242 + i * 22, W, 22);
-      }
-
-      // ── 7. 내야 잔디 다이아몬드 ──
-      ctx.fillStyle = '#1a6e12';
-      ctx.beginPath(); ctx.moveTo(400,340); ctx.lineTo(120,660); ctx.lineTo(400,980); ctx.lineTo(680,660); ctx.closePath(); ctx.fill();
-
-      // 내야 흙 (그라데이션 타원)
-      const dirtGrad = ctx.createRadialGradient(400, 680, 80, 400, 680, 310);
-      dirtGrad.addColorStop(0, '#8a6030');
-      dirtGrad.addColorStop(0.6, '#7a4e22');
-      dirtGrad.addColorStop(1, '#6b3a18');
-      ctx.fillStyle = dirtGrad;
-      ctx.beginPath(); ctx.ellipse(400, 680, 310, 270, 0, 0, Math.PI * 2); ctx.fill();
-
-      // 내야 잔디 (클로버)
-      ctx.fillStyle = '#1e7214';
-      ctx.beginPath(); ctx.moveTo(400,370); ctx.lineTo(164,640); ctx.lineTo(400,910); ctx.lineTo(636,640); ctx.closePath(); ctx.fill();
-
-      // 잔디깎기 줄무늬
-      for (let i = 0; i < 10; i++) {
-        const y = 400 + i * 56;
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.03)';
-        ctx.fillRect(164, y, 472, 28);
-      }
-
-      // ── 8. 파울라인 ──
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(400, 1040); ctx.lineTo(0, 242); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(400, 1040); ctx.lineTo(720, 242); ctx.stroke();
-
-      // ── 9. 베이스 ──
-      const drawBase = (cx, cy, sz) => {
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.PI/4);
-        ctx.fillRect(-sz/2, -sz/2, sz, sz);
-        ctx.restore();
-      };
-      drawBase(400, 372, 16); // 2루
-      drawBase(602, 620, 20); // 1루
-      drawBase(198, 620, 20); // 3루
-
-      // ── 10. 투수 마운드 ──
-      const mndGlow = ctx.createRadialGradient(400, 536, 0, 400, 536, 56);
-      mndGlow.addColorStop(0, 'rgba(180,140,80,0.35)');
-      mndGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = mndGlow;
-      ctx.beginPath(); ctx.ellipse(400, 536, 56, 24, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#8a5a22';
-      ctx.beginPath(); ctx.ellipse(400, 536, 48, 20, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#9a6a2a';
-      ctx.beginPath(); ctx.ellipse(400, 532, 36, 14, 0, 0, Math.PI*2); ctx.fill();
-      // 고무판
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fillRect(388, 526, 24, 8);
-
-      // ── 11. 투수 실루엣 ──
-      if (phase !== 'swung') {
-        ctx.globalAlpha = 0.85;
-        ctx.fillStyle = '#1a1a30';
-        ctx.strokeStyle = '#1a1a30';
-        ctx.lineWidth = 5;
-        ctx.lineCap = 'round';
-        if (phase === 'countdown') {
-          // 세트 포지션
-          ctx.beginPath(); ctx.ellipse(400, 476, 10, 12, 0, 0, Math.PI*2); ctx.fill(); // 머리
-          ctx.fillRect(390, 488, 20, 30); // 몸통
-          ctx.beginPath(); ctx.moveTo(396,518); ctx.lineTo(390,544); ctx.stroke(); // 왼다리
-          ctx.beginPath(); ctx.moveTo(404,518); ctx.lineTo(410,544); ctx.stroke(); // 오른다리
-          ctx.beginPath(); ctx.moveTo(390,498); ctx.lineTo(376,512); ctx.stroke(); // 왼팔
-          ctx.beginPath(); ctx.moveTo(410,498); ctx.lineTo(424,512); ctx.stroke(); // 오른팔
-        } else {
-          // 투구 모션
-          ctx.beginPath(); ctx.ellipse(404, 474, 10, 12, 0, 0, Math.PI*2); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(392,486); ctx.lineTo(384,512); ctx.lineTo(416,516); ctx.lineTo(420,486); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(420,496); ctx.lineTo(440,480); ctx.stroke(); // 던지는 팔
-          if (phase === 'pitching' && bp < 0.05) {
-            ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
-            ctx.beginPath(); ctx.arc(442, 478, 4, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#1a1a30'; ctx.globalAlpha = 0.85;
-          }
-          ctx.beginPath(); ctx.moveTo(388,512); ctx.lineTo(372,544); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(412,516); ctx.lineTo(424,542); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(392,496); ctx.lineTo(368,504); ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-      }
-
-      // ── 12. 홈플레이트 영역 ──
-      const homeGrad = ctx.createRadialGradient(400, 900, 20, 400, 900, 160);
-      homeGrad.addColorStop(0, '#7a5028');
-      homeGrad.addColorStop(1, 'rgba(107,58,24,0)');
-      ctx.fillStyle = homeGrad;
-      ctx.beginPath(); ctx.ellipse(400, 900, 150, 64, 0, 0, Math.PI*2); ctx.fill();
-
-      // 홈플레이트
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.beginPath();
-      ctx.moveTo(380,920); ctx.lineTo(420,920); ctx.lineTo(430,936); ctx.lineTo(400,948); ctx.lineTo(370,936);
-      ctx.closePath(); ctx.fill();
-
-      // 타석 박스
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(296, 876, 68, 76);
-      ctx.strokeRect(436, 876, 68, 76);
-
-      // ── 13. 타자 (우타자 뒷모습) ──
-      const batterNum = selectedBatter ? String(selectedBatter.number) : '1';
-      ctx.save();
-      const bx = 190, by = 800; // 타자 중심
-      ctx.translate(bx, by);
-      if (swinging) {
-        ctx.rotate(-0.14);
-        ctx.translate(8, 0);
-      }
-
-      // 헬멧
-      ctx.fillStyle = '#0e0e0e';
-      ctx.beginPath(); ctx.ellipse(0, -180, 44, 50, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#CE0E2D';
-      ctx.globalAlpha = 0.93;
-      ctx.beginPath(); ctx.ellipse(-12, -194, 50, 36, 0, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-      // 챙
-      ctx.fillStyle = '#0a0a0a';
-      ctx.beginPath(); ctx.moveTo(-56,-186); ctx.quadraticCurveTo(-64,-164,-52,-148); ctx.lineTo(-28,-160); ctx.quadraticCurveTo(-36,-176,-44,-192); ctx.fill();
-      // 귀보호대
-      ctx.fillStyle = 'rgba(206,14,45,0.82)';
-      ctx.beginPath(); ctx.moveTo(-52,-168); ctx.quadraticCurveTo(-60,-140,-52,-120); ctx.lineTo(-36,-124); ctx.quadraticCurveTo(-40,-148,-40,-168); ctx.fill();
-
-      // 목
-      ctx.fillStyle = '#b87d52';
-      ctx.beginPath(); ctx.moveTo(-12,-128); ctx.lineTo(16,-128); ctx.lineTo(20,-100); ctx.lineTo(-16,-100); ctx.fill();
-
-      // 유니폼 상의
-      const jerseyGrad = ctx.createLinearGradient(-88, -100, 104, 120);
-      jerseyGrad.addColorStop(0, '#d01030');
-      jerseyGrad.addColorStop(0.5, '#CE0E2D');
-      jerseyGrad.addColorStop(1, '#a00820');
-      ctx.fillStyle = jerseyGrad;
-      ctx.beginPath();
-      ctx.moveTo(-76,-100); ctx.quadraticCurveTo(-88,-88,-84,-68);
-      ctx.lineTo(-92,120); ctx.lineTo(124,120);
-      ctx.lineTo(116,-68); ctx.quadraticCurveTo(120,-88,108,-100);
-      ctx.closePath(); ctx.fill();
-      // 음영
-      ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.beginPath(); ctx.moveTo(20,-100); ctx.lineTo(124,120); ctx.lineTo(116,-68); ctx.quadraticCurveTo(120,-88,108,-100); ctx.fill();
-      // 중심선
-      ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0,-96); ctx.lineTo(0,120); ctx.stroke();
-
-      // LANDERS
-      ctx.fillStyle = 'rgba(255,255,255,0.88)';
-      ctx.font = '800 28px sans-serif';
-      ctx.letterSpacing = '4px';
-      ctx.textAlign = 'center';
-      ctx.fillText('LANDERS', 0, -16);
-      // 등번호
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
-      ctx.font = `900 ${batterNum.length >= 2 ? 64 : 76}px sans-serif`;
-      ctx.fillText(batterNum, 0, 68);
-
-      // 어깨
-      ctx.fillStyle = '#CE0E2D';
-      ctx.beginPath(); ctx.moveTo(-76,-100); ctx.quadraticCurveTo(-100,-88,-116,-68); ctx.lineTo(-104,-48); ctx.quadraticCurveTo(-92,-68,-76,-80); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(108,-100); ctx.quadraticCurveTo(132,-88,148,-68); ctx.lineTo(136,-48); ctx.quadraticCurveTo(124,-68,108,-80); ctx.fill();
-
-      // 벨트
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(-92, 116, 216, 16);
-      ctx.fillStyle = '#555';
-      ctx.fillRect(-4, 116, 24, 16);
-
-      // 바지
-      ctx.fillStyle = '#f0f0f0';
-      ctx.beginPath(); ctx.moveTo(-76,132); ctx.lineTo(-108,300); ctx.lineTo(-60,308); ctx.lineTo(-36,132); ctx.fill();
-      ctx.fillStyle = '#e4e4e4';
-      ctx.beginPath(); ctx.moveTo(56,132); ctx.lineTo(76,300); ctx.lineTo(124,296); ctx.lineTo(96,132); ctx.fill();
-
-      // ── 팔 + 배트 ──
-      ctx.save();
-      ctx.translate(0, -70); // 어깨 피봇
-      if (swinging) {
-        ctx.rotate(-2.27); // ~-130deg
-      }
-
-      // 오른팔 (소매)
-      ctx.strokeStyle = '#CE0E2D'; ctx.lineWidth = 30; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(100,-16); ctx.quadraticCurveTo(124,-32,136,-52); ctx.stroke();
-      // 오른팔 (피부)
-      ctx.strokeStyle = '#b87d52'; ctx.lineWidth = 24;
-      ctx.beginPath(); ctx.moveTo(136,-52); ctx.quadraticCurveTo(144,-72,148,-88); ctx.stroke();
-      // 왼팔 (소매)
-      ctx.strokeStyle = '#CE0E2D'; ctx.lineWidth = 26;
-      ctx.beginPath(); ctx.moveTo(80,4); ctx.quadraticCurveTo(112,-12,126,-36); ctx.stroke();
-      ctx.strokeStyle = '#b87d52'; ctx.lineWidth = 22;
-      ctx.beginPath(); ctx.moveTo(126,-36); ctx.quadraticCurveTo(132,-52,136,-66); ctx.stroke();
-
-      // 글러브
-      ctx.fillStyle = '#1a1a1a';
-      ctx.beginPath(); ctx.ellipse(148, -92, 20, 18, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#282828';
-      ctx.beginPath(); ctx.ellipse(144, -84, 18, 16, 0, 0, Math.PI*2); ctx.fill();
-
-      // 배트
-      ctx.lineCap = 'round';
-      // 그립
-      ctx.strokeStyle = '#333'; ctx.lineWidth = 14;
-      ctx.beginPath(); ctx.moveTo(148,-92); ctx.lineTo(156,-144); ctx.stroke();
-      ctx.strokeStyle = '#2c1409'; ctx.lineWidth = 12;
-      ctx.beginPath(); ctx.moveTo(148,-92); ctx.lineTo(152,-120); ctx.stroke();
-      // 테이퍼
-      ctx.strokeStyle = '#2a1208'; ctx.lineWidth = 16;
-      ctx.beginPath(); ctx.moveTo(156,-144); ctx.lineTo(164,-208); ctx.stroke();
-      // 배럴
-      const barrelGrad = ctx.createLinearGradient(164,-208,180,-340);
-      barrelGrad.addColorStop(0, '#2a1608');
-      barrelGrad.addColorStop(0.5, '#1a0e06');
-      barrelGrad.addColorStop(1, '#120a04');
-      ctx.strokeStyle = barrelGrad; ctx.lineWidth = 20;
-      ctx.beginPath(); ctx.moveTo(164,-208); ctx.lineTo(172,-276); ctx.stroke();
-      ctx.lineWidth = 22;
-      ctx.beginPath(); ctx.moveTo(172,-276); ctx.lineTo(176,-332); ctx.stroke();
-      ctx.lineWidth = 24;
-      ctx.beginPath(); ctx.moveTo(176,-332); ctx.lineTo(180,-376); ctx.stroke();
-      // 끝
-      ctx.fillStyle = '#0d0704';
-      ctx.beginPath(); ctx.ellipse(180, -380, 13, 9, 0, 0, Math.PI*2); ctx.fill();
-      // 나뭇결
-      ctx.strokeStyle = 'rgba(140,75,30,0.2)'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(168,-220); ctx.lineTo(178,-360); ctx.stroke();
-
-      ctx.restore(); // 팔+배트 피봇 복원
-
-      ctx.restore(); // 타자 위치 복원
-
-      // ── 14. 포수 ──
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = '#222';
-      ctx.beginPath(); ctx.ellipse(436, 916, 28, 24, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#1a1a2a';
-      ctx.fillRect(416, 936, 40, 36);
-      ctx.fillStyle = '#6b3a18';
-      ctx.beginPath(); ctx.ellipse(452, 948, 16, 14, 0, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-
-      // ── 15. 심판 ──
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = '#111';
-      ctx.beginPath(); ctx.ellipse(460, 880, 16, 18, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillRect(448, 896, 24, 28);
-      ctx.globalAlpha = 1;
-
-      // ── 16. 공 ──
-      if ((phase === 'pitching' || phase === 'swung') && bp > 0) {
-        const cx = (ballX / 100) * W;
-        const cy = (ballY / 100) * H;
-        const r = ballSize;
-
-        ctx.save();
-        if (ballBlur > 0) ctx.filter = `blur(${ballBlur}px)`;
-
-        // 그림자
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(cx + r*0.06, cy + r*0.12, r*0.9, r*0.7, 0, 0, Math.PI*2); ctx.fill();
-
-        // 공 본체
-        const ballGrad = ctx.createRadialGradient(cx - r*0.2, cy - r*0.25, r*0.1, cx, cy, r);
-        ballGrad.addColorStop(0, '#ffffff');
-        ballGrad.addColorStop(0.5, '#f0f0f0');
-        ballGrad.addColorStop(1, '#c0c0c0');
-        ctx.fillStyle = ballGrad;
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-
-        // 솔기
-        if (r > 12) {
-          ctx.strokeStyle = 'rgba(200,20,20,0.65)';
-          ctx.lineWidth = Math.max(1.5, r * 0.07);
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(cx - r*0.35, cy - r*0.7);
-          ctx.quadraticCurveTo(cx - r*0.1, cy - r*0.1, cx - r*0.35, cy + r*0.5);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx + r*0.35, cy - r*0.7);
-          ctx.quadraticCurveTo(cx + r*0.1, cy - r*0.1, cx + r*0.35, cy + r*0.5);
-          ctx.stroke();
-        }
-
-        // 하이라이트
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.beginPath(); ctx.ellipse(cx - r*0.2, cy - r*0.3, r*0.3, r*0.2, -0.4, 0, Math.PI*2); ctx.fill();
-
-        ctx.restore();
-      }
-
-      // ── 17. 스트라이크존 ──
-      const szX = W * 0.56 - 105;
-      const szY = H * 0.76 - 80;
-      const szW = 210, szH = 160;
-      const szAlpha = phase === 'pitching' && bp > 0.4 ? Math.min((bp - 0.4) * 0.85, 0.5) : 0.1;
-      ctx.strokeStyle = `rgba(255,255,255,${szAlpha})`;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(szX, szY, szW, szH);
-      // 격자
-      const gridAlpha = phase === 'pitching' && bp > 0.5 ? 0.18 : 0.05;
-      ctx.strokeStyle = `rgba(255,255,255,${gridAlpha})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(szX + szW/3, szY); ctx.lineTo(szX + szW/3, szY+szH); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(szX + szW*2/3, szY); ctx.lineTo(szX + szW*2/3, szY+szH); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(szX, szY+szH/3); ctx.lineTo(szX+szW, szY+szH/3); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(szX, szY+szH*2/3); ctx.lineTo(szX+szW, szY+szH*2/3); ctx.stroke();
-
-      // ── 18. 스윙 모션블러 ──
-      if (swinging) {
-        ctx.save();
-        ctx.globalAlpha = 0.12;
-        ctx.translate(190, 730);
-        ctx.rotate(-1.4);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 20; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(156,-144); ctx.lineTo(172,-276); ctx.stroke();
-        ctx.lineWidth = 24;
-        ctx.beginPath(); ctx.moveTo(172,-276); ctx.lineTo(180,-376); ctx.stroke();
-        ctx.restore();
-      }
-
-      // ── 19. 전체 비네트 효과 ──
-      const vig = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.75);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.restore();
-      frameRef.current = requestAnimationFrame(draw);
-    };
-
-    draw();
-    return () => cancelAnimationFrame(frameRef.current);
-  }, [phase, bp, swinging, countdown, selectedBatter, ballSize, ballX, ballY, ballBlur]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-    />
-  );
-};
+/* ── 심플 SVG 야구장 (브로드캐스트 뷰) ── */
 
 const HomerunGame = () => {
   const resultRef = useRef(null);
@@ -3279,10 +2826,10 @@ const HomerunGame = () => {
 
   // 공 궤적: 투수 마운드(작고 멀리) → 홈플레이트(크고 가까이)
   const bp = ballProgress;
-  const ballSize = 4 + bp * bp * 88;                  // 4px → 92px
-  const ballX = 56 + bp * 1.5;                        // 스트라이크존 중심으로
-  const ballY = 38 + bp * bp * 40;                     // 38% → 78% (마운드 → 스트라이크존)
-  const ballBlur = bp > 0.82 ? (bp - 0.82) * 12 : 0;
+  const ballSize = 2 + bp * bp * 22;                   // SVG 단위: 2 → 24
+  const ballX = 180 + bp * 1;                          // 거의 중앙
+  const ballY = 245 + bp * bp * 200;                   // 마운드(245) → 홈플레이트(445)
+  const ballBlur = 0;
 
   const startGame = (batter) => {
     setSelectedBatter(batter);
@@ -3480,24 +3027,110 @@ const HomerunGame = () => {
       </div>
 
 
-      {/* ══ Canvas 2D 야구장 렌더링 ══ */}
+      {/* ══ 심플 SVG 야구장 ══ */}
       <div
         className="relative w-full overflow-hidden select-none"
-        style={{ height: '520px', borderRadius: '16px', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
+        style={{ height: '480px', borderRadius: '16px', background: '#0a1628', cursor: phase === 'pitching' ? 'crosshair' : 'default', touchAction: 'manipulation', userSelect: 'none' }}
         onClick={handleSwing}
         onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
       >
-        <HRCanvas
-          phase={phase}
-          bp={bp}
-          swinging={swinging}
-          countdown={countdown}
-          selectedBatter={selectedBatter}
-          ballSize={ballSize}
-          ballX={ballX}
-          ballY={ballY}
-          ballBlur={ballBlur}
-        />
+        <svg viewBox="0 0 360 480" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+          {/* 하늘 */}
+          <rect width="360" height="480" fill="#0a1628" />
+
+          {/* 관중석 */}
+          <rect y="0" width="360" height="100" fill="#060d1a" />
+          <rect y="20" width="360" height="10" fill="#0c1222" rx="0" />
+          <rect y="40" width="360" height="10" fill="#0e1428" rx="0" />
+          <rect y="60" width="360" height="10" fill="#0c1222" rx="0" />
+          <rect y="80" width="360" height="10" fill="#0e1428" rx="0" />
+
+          {/* 외야 펜스 */}
+          <rect y="98" width="360" height="16" fill="#141e32" />
+          <line x1="0" y1="98" x2="360" y2="98" stroke="#c4a820" strokeWidth="2" opacity="0.5" />
+          <rect x="130" y="100" width="100" height="12" rx="2" fill="rgba(206,14,45,0.45)" />
+          <text x="180" y="110" textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="8" fontWeight="800">SSG LANDERS</text>
+
+          {/* 외야 잔디 */}
+          <rect y="114" width="360" height="80" fill="#1a6e14" />
+          <rect y="114" width="360" height="20" fill="#187012" />
+          <rect y="154" width="360" height="20" fill="#187012" />
+
+          {/* 내야 흙 */}
+          <ellipse cx="180" cy="320" rx="155" ry="130" fill="#7a4e22" />
+
+          {/* 내야 잔디 */}
+          <polygon points="180,170 80,310 180,440 280,310" fill="#1e7214" />
+
+          {/* 파울 라인 */}
+          <line x1="180" y1="480" x2="0" y2="114" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+          <line x1="180" y1="480" x2="360" y2="114" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+
+          {/* 베이스 */}
+          <rect x="176" y="172" width="8" height="8" fill="white" opacity="0.7" transform="rotate(45,180,176)" />
+          <rect x="276" y="296" width="10" height="10" fill="white" opacity="0.7" transform="rotate(45,281,301)" />
+          <rect x="76" y="296" width="10" height="10" fill="white" opacity="0.7" transform="rotate(45,81,301)" />
+
+          {/* 투수 마운드 */}
+          <ellipse cx="180" cy="255" rx="22" ry="10" fill="#8a5a22" />
+          <rect x="173" y="252" width="14" height="4" rx="1" fill="rgba(255,255,255,0.7)" />
+
+          {/* 투수 실루엣 */}
+          {phase !== 'swung' && (
+            <g opacity="0.7">
+              <circle cx="180" cy="228" r="6" fill="#1a1a30" />
+              <rect x="174" y="234" width="12" height="16" rx="2" fill="#1a1a30" />
+              <line x1="178" y1="250" x2="175" y2="264" stroke="#1a1a30" strokeWidth="3" strokeLinecap="round" />
+              <line x1="182" y1="250" x2="185" y2="264" stroke="#1a1a30" strokeWidth="3" strokeLinecap="round" />
+            </g>
+          )}
+
+          {/* 홈플레이트 영역 */}
+          <ellipse cx="180" cy="430" rx="70" ry="28" fill="#6b3a18" opacity="0.5" />
+          <polygon points="172,430 188,430 192,438 180,444 168,438" fill="rgba(255,255,255,0.65)" />
+
+          {/* 타석 박스 */}
+          <rect x="135" y="416" width="30" height="34" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <rect x="195" y="416" width="30" height="34" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+
+          {/* 타자 (심플) */}
+          <g transform={`translate(148, 400) ${swinging ? 'rotate(-8)' : ''}`}>
+            {/* 헬멧 */}
+            <ellipse cx="0" cy="-44" rx="10" ry="11" fill="#CE0E2D" />
+            <ellipse cx="0" cy="-44" rx="8" ry="9" fill="#1a1a1a" />
+            {/* 몸통 (유니폼) */}
+            <rect x="-12" y="-32" width="24" height="28" rx="4" fill="#CE0E2D" />
+            {/* 등번호 */}
+            <text x="0" y="-12" textAnchor="middle" fill="rgba(255,255,255,0.85)" fontSize="14" fontWeight="900">{selectedBatter ? selectedBatter.number : '1'}</text>
+            {/* 바지 */}
+            <rect x="-10" y="-4" width="8" height="18" rx="2" fill="#e8e8e8" />
+            <rect x="2" y="-4" width="8" height="18" rx="2" fill="#ddd" />
+            {/* 배트 */}
+            <line x1="10" y1="-30" x2={swinging ? '34' : '16'} y2={swinging ? '-14' : '-68'} stroke="#3d2010" strokeWidth="3" strokeLinecap="round" />
+          </g>
+
+          {/* 포수 */}
+          <g opacity="0.5">
+            <circle cx="195" cy="440" r="6" fill="#222" />
+            <rect x="189" y="446" width="12" height="10" rx="2" fill="#1a1a2a" />
+          </g>
+
+          {/* 스트라이크존 */}
+          <rect x="160" y="378" width="40" height="50" fill="none" stroke={`rgba(255,255,255,${phase === 'pitching' && bp > 0.4 ? 0.4 : 0.1})`} strokeWidth="1" />
+
+          {/* 공 */}
+          {(phase === 'pitching' || phase === 'swung') && bp > 0 && (
+            <circle
+              cx={180 + bp * 1}
+              cy={245 + bp * bp * 200}
+              r={2 + bp * bp * 22}
+              fill="white"
+              stroke="#ccc"
+              strokeWidth="0.5"
+              opacity={bp > 0.85 && phase === 'swung' ? 0.4 : 1}
+            />
+          )}
+        </svg>
 
 
 
