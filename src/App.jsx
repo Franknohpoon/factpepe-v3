@@ -3035,26 +3035,76 @@ const HomerunGame = () => {
         onTouchStart={(e) => { if (phase === 'pitching') { e.preventDefault(); handleSwing(); } }}
       >
         <svg viewBox="0 0 360 480" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+          <defs>
+            {/* 조명 글로우 */}
+            <radialGradient id="lampL" cx="10%" cy="0%" r="40%">
+              <stop offset="0%" stopColor="#fff5c8" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#fff5c8" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="lampR" cx="90%" cy="0%" r="40%">
+              <stop offset="0%" stopColor="#fff5c8" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#fff5c8" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="vignette" cx="50%" cy="50%" r="50%">
+              <stop offset="50%" stopColor="black" stopOpacity="0" />
+              <stop offset="100%" stopColor="black" stopOpacity="0.3" />
+            </radialGradient>
+          </defs>
+
           {/* 하늘 */}
           <rect width="360" height="480" fill="#0a1628" />
 
-          {/* 관중석 */}
-          <rect y="0" width="360" height="100" fill="#060d1a" />
-          <rect y="20" width="360" height="10" fill="#0c1222" rx="0" />
-          <rect y="40" width="360" height="10" fill="#0e1428" rx="0" />
-          <rect y="60" width="360" height="10" fill="#0c1222" rx="0" />
-          <rect y="80" width="360" height="10" fill="#0e1428" rx="0" />
+          {/* 조명 글로우 */}
+          <rect width="360" height="200" fill="url(#lampL)" />
+          <rect width="360" height="200" fill="url(#lampR)" />
 
-          {/* 외야 펜스 */}
-          <rect y="98" width="360" height="16" fill="#141e32" />
+          {/* 관중석 — 랜더스 레드 섹션 포함 */}
+          <rect y="0" width="360" height="100" fill="#060d1a" />
+          <rect y="20" width="360" height="10" fill="#0c1222" />
+          <rect y="40" width="360" height="10" fill="#0e1428" />
+          <rect y="60" width="360" height="10" fill="#0c1222" />
+          <rect y="80" width="360" height="10" fill="#0e1428" />
+          {/* 레드 응원석 (1루쪽) */}
+          <rect x="80" y="15" width="200" height="80" rx="4" fill="rgba(206,14,45,0.12)" />
+          {/* 관중 불빛 점들 */}
+          <circle cx="60" cy="30" r="1.5" fill="#ffe0a0" opacity="0.4" />
+          <circle cx="130" cy="50" r="1" fill="#ffd080" opacity="0.35" />
+          <circle cx="210" cy="25" r="1.5" fill="#ffe0a0" opacity="0.45" />
+          <circle cx="280" cy="55" r="1" fill="#ffd080" opacity="0.3" />
+          <circle cx="320" cy="35" r="1.5" fill="#ffe0a0" opacity="0.35" />
+          <circle cx="100" cy="70" r="1" fill="#ff8080" opacity="0.3" />
+          <circle cx="180" cy="75" r="1" fill="#ff8080" opacity="0.25" />
+          <circle cx="260" cy="68" r="1" fill="#ff8080" opacity="0.3" />
+
+          {/* 조명탑 */}
+          <rect x="12" y="0" width="4" height="100" fill="#0a0e1a" />
+          <rect x="344" y="0" width="4" height="100" fill="#0a0e1a" />
+          <rect x="4" y="0" width="22" height="8" rx="1" fill="#141830" />
+          <rect x="334" y="0" width="22" height="8" rx="1" fill="#141830" />
+          {/* 조명 발광 */}
+          <circle cx="15" cy="4" r="3" fill="#fff5c8" opacity="0.6" />
+          <circle cx="345" cy="4" r="3" fill="#fff5c8" opacity="0.6" />
+
+          {/* 외야 펜스 — 랜더스 광고판 확대 */}
+          <rect y="98" width="360" height="18" fill="#141e32" />
           <line x1="0" y1="98" x2="360" y2="98" stroke="#c4a820" strokeWidth="2" opacity="0.5" />
-          <rect x="130" y="100" width="100" height="12" rx="2" fill="rgba(206,14,45,0.45)" />
-          <text x="180" y="110" textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="8" fontWeight="800">SSG LANDERS</text>
+          {/* 메인 SSG 광고 */}
+          <rect x="105" y="100" width="150" height="14" rx="2" fill="rgba(206,14,45,0.55)" />
+          <text x="180" y="111" textAnchor="middle" fill="rgba(255,255,255,0.75)" fontSize="9" fontWeight="900" letterSpacing="1">SSG LANDERS</text>
+          {/* 좌측 광고 */}
+          <rect x="10" y="101" width="60" height="12" rx="2" fill="rgba(206,14,45,0.25)" />
+          <text x="40" y="111" textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="6" fontWeight="700">HOMERUN</text>
+          {/* 우측 광고 */}
+          <rect x="290" y="101" width="60" height="12" rx="2" fill="rgba(206,14,45,0.25)" />
+          <text x="320" y="111" textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="6" fontWeight="700">DERBY</text>
 
           {/* 외야 잔디 */}
-          <rect y="114" width="360" height="80" fill="#1a6e14" />
-          <rect y="114" width="360" height="20" fill="#187012" />
-          <rect y="154" width="360" height="20" fill="#187012" />
+          <rect y="116" width="360" height="78" fill="#1a6e14" />
+          <rect y="116" width="360" height="20" fill="#187012" />
+          <rect y="156" width="360" height="20" fill="#187012" />
+
+          {/* 외야 잔디 위 SSG 로고 (잔디 깎기 패턴) */}
+          <text x="180" y="148" textAnchor="middle" fill="#1f7a16" fontSize="18" fontWeight="900" opacity="0.35" letterSpacing="6">SSG</text>
 
           {/* 내야 흙 */}
           <ellipse cx="180" cy="320" rx="155" ry="130" fill="#7a4e22" />
@@ -3065,6 +3115,10 @@ const HomerunGame = () => {
           {/* 파울 라인 */}
           <line x1="180" y1="480" x2="0" y2="114" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
           <line x1="180" y1="480" x2="360" y2="114" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+
+          {/* 1루/3루 코칭 박스 라인 */}
+          <rect x="68" y="290" width="18" height="24" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
+          <rect x="274" y="290" width="18" height="24" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
 
           {/* 베이스 */}
           <rect x="176" y="172" width="8" height="8" fill="white" opacity="0.7" transform="rotate(45,180,176)" />
@@ -3130,7 +3184,25 @@ const HomerunGame = () => {
               opacity={bp > 0.85 && phase === 'swung' ? 0.4 : 1}
             />
           )}
+
+          {/* 스코어보드 (우상단) */}
+          <g>
+            <rect x="290" y="6" width="62" height="28" rx="4" fill="rgba(0,0,0,0.6)" stroke="rgba(206,14,45,0.4)" strokeWidth="0.8" />
+            <rect x="292" y="8" width="58" height="10" rx="2" fill="rgba(206,14,45,0.5)" />
+            <text x="321" y="16" textAnchor="middle" fill="white" fontSize="7" fontWeight="800">SSG</text>
+            <text x="321" y="29" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="8" fontWeight="900">{round > 0 ? `R${round}` : 'READY'}</text>
+          </g>
+
+          {/* 비네트 (가장자리 어둡게) */}
+          <rect width="360" height="480" fill="url(#vignette)" />
         </svg>
+
+        {/* 우상단 팀 마크 */}
+        <div style={{ position: 'absolute', top: 8, left: 10, zIndex: 20, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(206,14,45,0.8)', border: '1.5px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'white', fontSize: 8, fontWeight: 900, lineHeight: 1 }}>SSG</span>
+          </div>
+        </div>
 
 
 
