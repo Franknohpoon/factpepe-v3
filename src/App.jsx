@@ -1242,6 +1242,7 @@ const LineupTab = () => {
                   background: isHL ? `${ac}20` : currentStyle.row,
                   borderRadius: '8px',
                   border: isHL ? `1.5px solid ${ac}50` : '1.5px solid transparent',
+                  ...(cardRatio === 'wide' && isHL ? { gridColumn: 'span 2' } : {}),
                   transition: 'all 0.2s',
                 }}>
                   <span style={{ color: ac, fontWeight: 900, fontSize: isHL ? '13px' : '12px', width: '18px', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
