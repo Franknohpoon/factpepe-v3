@@ -1263,9 +1263,16 @@ const LineupTab = () => {
           )}
 
           {/* 하단 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: `1px solid ${currentStyle.border}` }}>
-            <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600, letterSpacing: '1px' }}>FACTPEPE</span>
-            <span style={{ color: currentStyle.sub, fontSize: '9px' }}>{myWatermark || '@factpepe_'}</span>
+          <div style={{ paddingTop: '10px', borderTop: `1px solid ${currentStyle.border}` }}>
+            {myWatermark && (
+              <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+                <span style={{ color: currentStyle.text, fontSize: '10px', fontWeight: 700, opacity: 0.6 }}>{myWatermark}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600, letterSpacing: '1px' }}>FACTPEPE</span>
+              <span style={{ color: currentStyle.sub, fontSize: '9px' }}>@factpepe_</span>
+            </div>
           </div>
         </div>
       </div>
