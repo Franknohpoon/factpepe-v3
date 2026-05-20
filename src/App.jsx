@@ -974,15 +974,19 @@ const LineupTab = () => {
   const [customSubtitle, setCustomSubtitle] = useState('');
   const [specialMsg, setSpecialMsg] = useState('');
   const [customMsg, setCustomMsg] = useState('');
-  const [bgPlayerImage, setBgPlayerImage] = useState(null); // 선수 배경 이미지 (ObjectURL)
-  const [bgPlayerName, setBgPlayerName] = useState(''); // 오늘의 주인공 이름
+  const [bgPlayerImage, setBgPlayerImage] = useState(null);
+  const [bgPlayerName, setBgPlayerName] = useState('');
+  const [highlightIdx, setHighlightIdx] = useState(-1); // 최애 선수 하이라이트
+  const [myComment, setMyComment] = useState(''); // 한줄 코멘트
+  const [cardRatio, setCardRatio] = useState('story'); // 'story' | 'square' | 'wide'
+  const [accentColor, setAccentColor] = useState(''); // 포인트 컬러 (빈 문자열=프리셋 기본)
+  const [myWatermark, setMyWatermark] = useState(''); // 나만의 워터마크
   const [busy, setBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [savePreview, setSavePreview] = useState(null);
   const [matchupBusy, setMatchupBusy] = useState(false);
   const [matchupSaveMsg, setMatchupSaveMsg] = useState('');
   const [matchupSavePreview, setMatchupSavePreview] = useState(null);
-  // 라인업 탭 내 카드 선택: 'lineup' | 'matchup'
   const [activeCard, setActiveCard] = useState('lineup');
 
   useEffect(() => {
@@ -1066,6 +1070,9 @@ const LineupTab = () => {
   const displaySubtitle = subtitle === 'custom' ? customSubtitle : subtitle;
   const displayMsg = specialMsg === 'custom' ? customMsg : specialMsg;
   const currentStyle = STYLE_PRESETS[stylePreset];
+  const ac = accentColor || currentStyle.accent; // 유저 커스텀 or 프리셋 기본
+  const RATIOS = { story: { w: 340, h: 'auto', label: '스토리' }, square: { w: 340, h: '340px', label: '정사각' }, wide: { w: 340, h: '200px', label: '와이드' } };
+  const ratio = RATIOS[cardRatio] || RATIOS.story;
 
   const generateCanvas = () => html2canvas(cardRef.current, { scale: 2, backgroundColor: null, logging: false, useCORS: true });
 
@@ -1172,25 +1179,26 @@ const LineupTab = () => {
         </div>
       )}
 
-      {/* ── 카드 미리보기 (상단, 풀 너비) ── */}
+      {/* ── 카드 미리보기 ── */}
       <div className="flex justify-center mb-4">
         <div ref={cardRef} style={{
           background: bgPlayerImage
             ? `${currentStyle.overlay}, url(${bgPlayerImage}) center top / cover no-repeat`
             : currentStyle.gradient,
           boxShadow: currentStyle.shadow,
-          width: '340px',
+          width: `${ratio.w}px`,
+          minHeight: ratio.h === 'auto' ? undefined : ratio.h,
           borderRadius: '16px',
-          padding: '24px 20px',
+          padding: cardRatio === 'wide' ? '16px 20px' : '24px 20px',
           fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
           position: 'relative',
           overflow: 'hidden',
         }}>
           {/* 상단 헤더 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cardRatio === 'wide' ? '10px' : '16px' }}>
             <div>
-              <div style={{ color: currentStyle.accent, fontSize: '10px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>{displaySubtitle}</div>
-              <div style={{ color: currentStyle.text, fontWeight: 900, fontSize: '22px', lineHeight: 1.2, marginTop: '2px' }}>SSG <span style={{ color: currentStyle.sub, fontWeight: 400 }}>vs</span> {lineupData.opponent}</div>
+              <div style={{ color: ac, fontSize: '10px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>{displaySubtitle}</div>
+              <div style={{ color: currentStyle.text, fontWeight: 900, fontSize: cardRatio === 'wide' ? '18px' : '22px', lineHeight: 1.2, marginTop: '2px' }}>SSG <span style={{ color: currentStyle.sub, fontWeight: 400 }}>vs</span> {lineupData.opponent}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 600 }}>{lineupData.date}</div>
@@ -1201,7 +1209,7 @@ const LineupTab = () => {
           {/* 선발 투수 */}
           {lineupData.pitcher && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', marginBottom: '12px', background: currentStyle.row, borderRadius: '10px', border: `1px solid ${currentStyle.border}` }}>
-              <span style={{ color: currentStyle.accent, fontSize: '9px', fontWeight: 800, letterSpacing: '1px' }}>SP</span>
+              <span style={{ color: ac, fontSize: '9px', fontWeight: 800, letterSpacing: '1px' }}>SP</span>
               <span style={{ color: currentStyle.text, fontSize: '13px', fontWeight: 700, flex: 1 }}>{lineupData.pitcher}</span>
               <span style={{ color: currentStyle.sub, fontSize: '9px' }}>선발투수</span>
             </div>
@@ -1210,37 +1218,53 @@ const LineupTab = () => {
           {/* 특별 메시지 */}
           {displayMsg && (
             <div style={{ textAlign: 'center', padding: '6px', marginBottom: '12px' }}>
-              <span style={{ color: currentStyle.accent, fontSize: '11px', fontWeight: 800, letterSpacing: '1px' }}>{displayMsg}</span>
+              <span style={{ color: ac, fontSize: '11px', fontWeight: 800, letterSpacing: '1px' }}>{displayMsg}</span>
             </div>
           )}
 
           {/* 오늘의 주인공 */}
           {bgPlayerName && (
             <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-              <span style={{ background: `${currentStyle.accent}18`, border: `1px solid ${currentStyle.accent}40`, borderRadius: '20px', padding: '3px 12px', color: currentStyle.accent, fontSize: '10px', fontWeight: 800, letterSpacing: '0.5px' }}>
+              <span style={{ background: `${ac}18`, border: `1px solid ${ac}40`, borderRadius: '20px', padding: '3px 12px', color: ac, fontSize: '10px', fontWeight: 800 }}>
                 MVP {bgPlayerName}
               </span>
             </div>
           )}
 
           {/* 라인업 리스트 */}
-          <div style={{ marginBottom: '14px' }}>
-            {lineupData.players.map((p, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', padding: '7px 10px', marginBottom: '2px',
-                background: currentStyle.row, borderRadius: '8px',
-              }}>
-                <span style={{ color: currentStyle.accent, fontWeight: 900, fontSize: '12px', width: '18px', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-                <span style={{ color: currentStyle.text, fontWeight: 700, fontSize: '13px', flex: 1, letterSpacing: '-0.2px' }}>{p.name}</span>
-                <span style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 500 }}>{p.pos}</span>
-              </div>
-            ))}
+          <div style={{ marginBottom: '14px', ...(cardRatio === 'wide' ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px' } : {}) }}>
+            {lineupData.players.map((p, i) => {
+              const isHL = i === highlightIdx;
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: isHL ? '8px 10px' : '7px 10px', marginBottom: cardRatio === 'wide' ? '0' : '2px',
+                  background: isHL ? `${ac}20` : currentStyle.row,
+                  borderRadius: '8px',
+                  border: isHL ? `1.5px solid ${ac}50` : '1.5px solid transparent',
+                  transition: 'all 0.2s',
+                }}>
+                  <span style={{ color: ac, fontWeight: 900, fontSize: isHL ? '13px' : '12px', width: '18px', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+                  <span style={{ color: currentStyle.text, fontWeight: isHL ? 900 : 700, fontSize: isHL ? '14px' : '13px', flex: 1, letterSpacing: '-0.2px' }}>{p.name}</span>
+                  {isHL && <span style={{ color: ac, fontSize: '10px', marginRight: '4px', fontWeight: 800 }}>MY PICK</span>}
+                  <span style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 500 }}>{p.pos}</span>
+                </div>
+              );
+            })}
           </div>
+
+          {/* 한줄 코멘트 */}
+          {myComment && (
+            <div style={{ padding: '8px 12px', marginBottom: '12px', borderLeft: `2px solid ${ac}`, background: currentStyle.row, borderRadius: '0 8px 8px 0' }}>
+              <span style={{ color: currentStyle.sub, fontSize: '8px', fontWeight: 700, letterSpacing: '1px', display: 'block', marginBottom: '2px' }}>MY COMMENT</span>
+              <span style={{ color: currentStyle.text, fontSize: '12px', fontWeight: 600, fontStyle: 'italic' }}>"{myComment}"</span>
+            </div>
+          )}
 
           {/* 하단 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: `1px solid ${currentStyle.border}` }}>
             <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600, letterSpacing: '1px' }}>FACTPEPE</span>
-            <span style={{ color: currentStyle.sub, fontSize: '9px' }}>@factpepe_</span>
+            <span style={{ color: currentStyle.sub, fontSize: '9px' }}>{myWatermark || '@factpepe_'}</span>
           </div>
         </div>
       </div>
@@ -1260,31 +1284,89 @@ const LineupTab = () => {
 
       {/* ── 커스터마이즈 패널 ── */}
       <div className="space-y-3">
-        {/* 스타일 */}
-        <div className="flex gap-1.5">
-          {Object.entries(STYLE_PRESETS).map(([k, v]) => (
-            <button key={k} onClick={() => setStylePreset(k)}
-              className={`flex-1 py-2 rounded-xl text-xs font-black tracking-wider transition-all ${stylePreset === k ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
-              {v.label}
-            </button>
-          ))}
+
+        {/* 1) 최애 선수 하이라이트 — 라인업에서 탭 */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider mb-2">MY PICK — 최애 선수를 탭하세요</p>
+          <div className="flex flex-wrap gap-1.5">
+            {lineupData.players.map((p, i) => (
+              <button key={i} onClick={() => setHighlightIdx(highlightIdx === i ? -1 : i)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${highlightIdx === i ? 'text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                style={highlightIdx === i ? { background: ac } : {}}>
+                {i + 1}. {p.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* 로고 + 텍스트 (한 줄씩) */}
+        {/* 2) 한줄 코멘트 */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider mb-2">MY COMMENT</p>
+          <input type="text" value={myComment} onChange={e => setMyComment(e.target.value)}
+            placeholder="오늘 최정 5타점 간다"
+            maxLength={40}
+            className="w-full bg-zinc-800 text-white text-sm border-none rounded-lg py-2 px-3 placeholder-zinc-600" />
+          <p className="text-zinc-700 text-[10px] text-right mt-1">{myComment.length}/40</p>
+        </div>
+
+        {/* 3) 카드 비율 */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider mb-2">CARD SIZE</p>
+          <div className="flex gap-1.5">
+            {[
+              { key: 'story', label: '스토리 9:16', icon: '📱' },
+              { key: 'square', label: '정사각 1:1', icon: '⬜' },
+              { key: 'wide', label: '와이드 16:9', icon: '🖥️' },
+            ].map(({ key, label, icon }) => (
+              <button key={key} onClick={() => setCardRatio(key)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${cardRatio === key ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4) 포인트 컬러 */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider mb-2">ACCENT COLOR</p>
+          <div className="flex gap-1.5 items-center">
+            {/* 프리셋 기본 (리셋) */}
+            <button onClick={() => setAccentColor('')}
+              className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center text-[9px] font-bold ${!accentColor ? 'border-white scale-110' : 'border-zinc-700'}`}
+              style={{ background: currentStyle.accent }}>
+              {!accentColor && '✓'}
+            </button>
+            {/* 컬러 옵션들 */}
+            {['#ff2244', '#ff6b35', '#fbbf24', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6', '#ffffff'].map(c => (
+              <button key={c} onClick={() => setAccentColor(c)}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${accentColor === c ? 'border-white scale-110' : 'border-zinc-700'}`}
+                style={{ background: c }} />
+            ))}
+          </div>
+        </div>
+
+        {/* 스타일 프리셋 + 로고 + 텍스트 */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2.5">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider">STYLE</p>
+          <div className="flex gap-1.5">
+            {Object.entries(STYLE_PRESETS).map(([k, v]) => (
+              <button key={k} onClick={() => { setStylePreset(k); setAccentColor(''); }}
+                className={`flex-1 py-2 rounded-lg text-xs font-black tracking-wider transition-all ${stylePreset === k ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+
           {/* 로고 선택 */}
           <div className="flex gap-1.5">
             {[
-              { val: '🐸', label: '페페' },
-              { val: 'SSG', label: 'SSG' },
-              { val: '⚾', label: '야구' },
-              { val: 'L', label: 'L' },
-              { val: '🏆', label: '우승' },
-              { val: '👊', label: '파이팅' },
-            ].map(({ val, label }) => (
+              { val: '🐸' }, { val: 'SSG' }, { val: '⚾' },
+              { val: 'L' }, { val: '🏆' }, { val: '👊' },
+            ].map(({ val }) => (
               <button key={val} onClick={() => setLogo(val)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${logo === val ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-                {val.length > 1 ? <span className="text-[10px]">{val}</span> : <span>{val}</span>}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${logo === val ? 'text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                style={logo === val ? { background: ac } : {}}>
+                {val}
               </button>
             ))}
           </div>
@@ -1320,8 +1402,13 @@ const LineupTab = () => {
           )}
         </div>
 
-        {/* 배경 사진 */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+        {/* 5) 나만의 워터마크 + 배경사진 */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2.5">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider">MY CARD</p>
+          <input type="text" value={myWatermark} onChange={e => setMyWatermark(e.target.value)}
+            placeholder="내 닉네임 / @SNS계정"
+            maxLength={25}
+            className="w-full bg-zinc-800 text-white text-sm border-none rounded-lg py-2 px-3 placeholder-zinc-600" />
           <div className="flex gap-2 items-center">
             <input type="text" value={bgPlayerName} onChange={e => setBgPlayerName(e.target.value)}
               placeholder="오늘의 주인공 이름"
