@@ -1282,7 +1282,7 @@ const LineupTab = () => {
       </div>
 
       {/* 저장/공유 버튼 */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-2">
         <button onClick={downloadImage} disabled={busy}
           className="flex-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white py-2.5 rounded-xl font-bold text-sm transition-all">
           저장
@@ -1292,6 +1292,36 @@ const LineupTab = () => {
           𝕏 공유
         </button>
       </div>
+
+      {/* 텍스트 복사 */}
+      {(() => {
+        const lineupText = [
+          `⚾ SSG vs ${lineupData.opponent} | ${lineupData.date}`,
+          lineupData.pitcher ? `\n🔥 선발 ${lineupData.pitcher}\n` : '',
+          ...lineupData.players.map((p, i) => `${i + 1}번 ${p.name} (${p.pos})`),
+          myComment ? `\n💬 ${myComment}` : '',
+          `\n#SSG랜더스 #팩트페페 #KBO`,
+        ].filter(Boolean).join('\n');
+
+        return (
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-zinc-500 text-[10px] font-bold tracking-wider">TEXT VERSION</span>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(lineupText);
+                  setSaveMsg('✅ 텍스트 복사 완료!');
+                }}
+                className="bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 text-white text-xs font-bold px-3 py-1 rounded-lg transition-all"
+              >
+                복사
+              </button>
+            </div>
+            <pre className="text-zinc-300 text-xs leading-relaxed whitespace-pre-wrap font-sans select-all">{lineupText}</pre>
+          </div>
+        );
+      })()}
+
       {saveMsg && <p className="text-center text-xs text-zinc-400 mb-3">{saveMsg}</p>}
 
       {/* ── 커스터마이즈 패널 ── */}
