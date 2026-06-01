@@ -3503,6 +3503,80 @@ const PLAYER_POS_SEEDS = {
   '최정':    { '3루수': 4, '좌익수': 4 },
 };
 
+// 포지션 약어 → 정식 명칭 (트윗/OCR 텍스트 파싱용)
+const POS_ALIASES = {
+  '포수': '포수', '포': '포수', 'C': '포수',
+  '1루수': '1루수', '1루': '1루수', '1B': '1루수', '일루수': '1루수', '일루': '1루수', '1': '1루수', '일': '1루수',
+  '2루수': '2루수', '2루': '2루수', '2B': '2루수', '이루수': '2루수', '이루': '2루수', '2': '2루수', '이': '2루수',
+  '3루수': '3루수', '3루': '3루수', '3B': '3루수', '삼루수': '3루수', '삼루': '3루수', '3': '3루수', '삼': '3루수',
+  '유격수': '유격수', '유격': '유격수', '유': '유격수', 'SS': '유격수',
+  '좌익수': '좌익수', '좌익': '좌익수', '좌': '좌익수', 'LF': '좌익수',
+  '중견수': '중견수', '중견': '중견수', '중': '중견수', 'CF': '중견수',
+  '우익수': '우익수', '우익': '우익수', '우': '우익수', 'RF': '우익수',
+  '지명타자': '지명타자', '지명': '지명타자', '지': '지명타자', 'DH': '지명타자',
+  '투수': '투수', '투': '투수', 'P': '투수', '선발': '투수', '선발투수': '투수',
+};
+
+const CIRCLED_NUM = { '①': '1', '②': '2', '③': '3', '④': '4', '⑤': '5', '⑥': '6', '⑦': '7', '⑧': '8', '⑨': '9' };
+
+const detectPos = (token) => {
+  if (!token) return '';
+  const clean = token.replace(/[()[\]·\-:：.\s]/g, '').trim();
+  return POS_ALIASES[clean] || POS_ALIASES[clean.toUpperCase()] || '';
+};
+
+/**
+ * 트윗/OCR 라인업 텍스트 → { pitcher, players: [{name, pos}] }
+ * 지원 포맷: "1. 최지훈 (중)", "1번 최지훈 중견수", "① 최지훈 중", "1) 최지훈-중견수" 등
+ */
+const parseLineupText = (raw) => {
+  const text = (raw || '').replace(/[①②③④⑤⑥⑦⑧⑨]/g, (m) => CIRCLED_NUM[m]);
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const players = [];
+  let pitcher = '';
+  const NON_NAME = /^(라인업|엔트리|명단|타선|오더|선발|투수)$/;
+
+  for (const line of lines) {
+    // 선발투수 탐지 (타순/순서와 무관하게 모든 줄에서)
+    if (!pitcher) {
+      const pm = line.match(/(?:선발투수|선발|SP)\s*[:：\-]?\s*([가-힣A-Za-z·]{2,12})/);
+      if (pm && !NON_NAME.test(pm[1].trim())) pitcher = pm[1].trim();
+    }
+
+    // 9명 다 채웠으면 (선발 탐지만 계속)
+    if (players.length >= 9) continue;
+
+    // 타순 라인: 시작 숫자 1~9
+    const m = line.match(/^([1-9])\s*[.)번\]]*\s*(.+)$/);
+    if (!m) continue;
+    let rest = m[2].trim();
+
+    // 포지션 추출 — 괄호 안 우선
+    let pos = '';
+    const paren = rest.match(/[([]([^)\]]+)[)\]]/);
+    if (paren) {
+      pos = detectPos(paren[1]);
+      rest = rest.replace(paren[0], ' ').trim();
+    }
+    // 괄호 없으면 마지막 토큰부터 역순으로 포지션 탐색
+    if (!pos) {
+      const toks = rest.split(/[\s\-·]+/).filter(Boolean);
+      for (let i = toks.length - 1; i >= 0; i--) {
+        const p = detectPos(toks[i]);
+        if (p) { pos = p; toks.splice(i, 1); rest = toks.join(' '); break; }
+      }
+    }
+
+    // 이름 — 등번호 숫자 제거 후 한글/영문 추출 (외국인 성+이름 공백 허용)
+    rest = rest.replace(/\b\d{1,3}\b/g, ' ').trim();
+    const nameM = rest.match(/[가-힣A-Za-z]{2,}(?:\s[가-힣A-Za-z]+)?/);
+    const name = nameM ? nameM[0].trim() : '';
+    if (name && !NON_NAME.test(name)) players.push({ name, pos });
+  }
+
+  return { pitcher, players };
+};
+
 const AdminLineupForm = () => {
   const today = new Date();
   const todayStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
@@ -3523,6 +3597,11 @@ const AdminLineupForm = () => {
   // 네이버 자동 불러오기
   const [autoFetching, setAutoFetching] = useState(false);
   const [autoFetchMsg, setAutoFetchMsg] = useState('');
+  // 붙여넣기 파싱 / 이미지 OCR
+  const [pasteText, setPasteText] = useState('');
+  const [pasteMsg, setPasteMsg] = useState('');
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
 
   // 라인업 히스토리 로드 → 시드 + Firebase 히스토리 합산
   useEffect(() => {
@@ -3616,6 +3695,69 @@ const AdminLineupForm = () => {
     }
   };
 
+  // ── 파싱 결과를 폼에 채우기 (붙여넣기/OCR 공용) ──
+  const fillFromParsed = ({ pitcher: pPitcher, players: pPlayers }) => {
+    if (!pPlayers?.length) return 0;
+    const filled = pPlayers.slice(0, 9).map((p) => ({
+      name: p.name || '',
+      pos: p.pos || getAutoPos(p.name) || '',
+    }));
+    while (filled.length < 9) filled.push({ name: '', pos: '' });
+    setPlayers(filled);
+    setQuery(Array(9).fill(''));
+    if (pPitcher) { setPitcher(pPitcher); setPitcherQuery(''); }
+    return pPlayers.length;
+  };
+
+  // ── 붙여넣기 텍스트 파싱 ──
+  const handlePasteParse = () => {
+    setPasteMsg('');
+    const parsed = parseLineupText(pasteText);
+    const n = fillFromParsed(parsed);
+    if (n === 0) {
+      setPasteMsg('⚠️ 라인업을 인식하지 못했어요. "1. 최지훈 (중)" 형식인지 확인해주세요.');
+    } else {
+      setPasteMsg(`✅ ${n}명 인식 완료${parsed.pitcher ? ` · 선발 ${parsed.pitcher}` : ''} — 확인 후 저장하세요.`);
+    }
+  };
+
+  // ── 이미지 OCR (Tesseract.js, CDN 동적 로드) ──
+  const loadTesseract = () =>
+    new Promise((resolve, reject) => {
+      if (window.Tesseract) return resolve(window.Tesseract);
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = () => resolve(window.Tesseract);
+      s.onerror = () => reject(new Error('OCR 라이브러리 로드 실패'));
+      document.head.appendChild(s);
+    });
+
+  const handleOcrImage = async (file) => {
+    if (!file) return;
+    setOcrBusy(true);
+    setOcrProgress(0);
+    setPasteMsg('📷 이미지 분석 중...');
+    try {
+      const Tesseract = await loadTesseract();
+      const { data } = await Tesseract.recognize(file, 'kor', {
+        logger: (m) => { if (m.status === 'recognizing text') setOcrProgress(Math.round(m.progress * 100)); },
+      });
+      const ocrText = data?.text || '';
+      setPasteText(ocrText); // 텍스트 박스에도 채워서 수동 보정 가능
+      const parsed = parseLineupText(ocrText);
+      const n = fillFromParsed(parsed);
+      if (n === 0) {
+        setPasteMsg('⚠️ 사진에서 라인업을 못 읽었어요. 텍스트 박스에서 직접 보정해주세요.');
+      } else {
+        setPasteMsg(`✅ OCR ${n}명 인식 — 오탐이 있을 수 있으니 꼭 확인 후 저장하세요.`);
+      }
+    } catch (err) {
+      setPasteMsg('❌ OCR 실패: ' + err.message);
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
@@ -3658,6 +3800,45 @@ const AdminLineupForm = () => {
         {autoFetchMsg && (
           <p className={`mt-2 text-sm font-bold text-center ${autoFetchMsg.startsWith('✅') ? 'text-green-400' : 'text-yellow-400'}`}>
             {autoFetchMsg}
+          </p>
+        )}
+      </div>
+
+      {/* 붙여넣기 / 이미지 OCR — X·인스타 라인업 빠른 입력 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-gray-400 text-xs mb-1">
+          ⚡ <span className="text-white font-bold">더 빠르게</span> — X(트위터)·인스타에 올라온 라인업을
+        </p>
+        <p className="text-zinc-600 text-xs mb-3">텍스트로 붙여넣거나, 라인업 카드 사진을 올리면 자동으로 채워줍니다.</p>
+
+        <textarea
+          value={pasteText}
+          onChange={(e) => setPasteText(e.target.value)}
+          placeholder={'트윗 라인업 텍스트 붙여넣기\n예)\n1. 최지훈 (중)\n2. 박성한 (유)\n3. 최정 (지)\n...\n선발: 앤더슨'}
+          rows={5}
+          className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600 resize-y mb-2"
+        />
+
+        <div className="flex gap-2">
+          <button
+            onClick={handlePasteParse}
+            disabled={ocrBusy || !pasteText.trim()}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white py-2.5 rounded-xl font-black text-sm transition-all"
+          >
+            📋 텍스트 파싱
+          </button>
+          <label className={`flex-1 ${ocrBusy ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+            <div className="bg-zinc-700 hover:bg-zinc-600 text-white py-2.5 rounded-xl font-black text-sm transition-all text-center">
+              {ocrBusy ? `📷 분석 ${ocrProgress}%` : '📷 사진에서 읽기'}
+            </div>
+            <input type="file" accept="image/*" className="hidden" disabled={ocrBusy}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; handleOcrImage(f); }} />
+          </label>
+        </div>
+
+        {pasteMsg && (
+          <p className={`mt-2 text-sm font-bold text-center ${pasteMsg.startsWith('✅') ? 'text-green-400' : pasteMsg.startsWith('📷') ? 'text-blue-400' : 'text-yellow-400'}`}>
+            {pasteMsg}
           </p>
         )}
       </div>
