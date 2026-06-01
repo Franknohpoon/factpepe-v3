@@ -6,7 +6,19 @@
     },
     {
       "path": "/api/lineup-auto",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/lineup-auto",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/lineup-auto",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/lineup-auto",
+      "schedule": "30 7 * * *"
     },
     {
       "path": "/api/lineup-auto",

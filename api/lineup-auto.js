@@ -1,16 +1,21 @@
 /**
- * Vercel Serverless Function: 네이버스포츠 API → SSG 라인업 자동 수집
+ * Vercel Serverless Function: 네이버스포츠 API → SSG 라인업 자동 수집 (v2)
+ *
+ * [동작 흐름]
+ * 1. 네이버 스포츠 KBO 일정 API에서 오늘 SSG(SK) 경기 검색 → 실제 gameId 획득
+ * 2. 해당 경기 /preview 엔드포인트에서 발표된 선발 라인업 파싱
+ *    - previewData.{away|home}TeamLineUp.fullLineUp : 타순 9명 + 선발투수
+ *    - previewData.{away|home}Starter.playerInfo.name : 선발투수명
+ * 3. Firebase lineup/latest + history 에 저장 (크론 자동 또는 ?save=1)
  *
  * [호출 방법]
- * 1. Vercel Cron (자동): x-vercel-cron 헤더로 인증
- * 2. 관리자 미리보기: GET /api/lineup-auto?token=TOKEN&preview=1
- *    → Firebase 저장 안 하고 파싱 결과만 반환
- * 3. 관리자 강제 저장: GET /api/lineup-auto?token=TOKEN&save=1
- *    → Firebase lineup/latest 에 즉시 저장
+ * - Vercel Cron (자동): x-vercel-cron 헤더로 인증 → 자동 저장
+ * - 관리자 미리보기:  GET /api/lineup-auto?token=TOKEN&preview=1  (저장 안 함)
+ * - 관리자 강제 저장:  GET /api/lineup-auto?token=TOKEN&save=1
  *
  * [환경변수]
  * FIREBASE_DATABASE_URL  - Firebase Realtime DB URL
- * LINEUP_API_TOKEN       - 수동 호출 인증 토큰 (아무 문자열)
+ * LINEUP_API_TOKEN       - 수동 호출 인증 토큰
  */
 
 const FIREBASE_URL =
@@ -19,44 +24,18 @@ const FIREBASE_URL =
 
 const API_TOKEN = process.env.LINEUP_API_TOKEN || 'factpepe-lineup-2026';
 
+const SSG_CODE = 'SK'; // 네이버 SSG 팀 코드
+
 // 네이버스포츠 API 헤더 (브라우저 흉내)
 const NAVER_HEADERS = {
-  'Origin': 'https://m.sports.naver.com',
-  'Referer': 'https://m.sports.naver.com/',
+  Origin: 'https://m.sports.naver.com',
+  Referer: 'https://m.sports.naver.com/',
   'User-Agent':
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-  'Accept': 'application/json, */*',
+  Accept: 'application/json, */*',
 };
 
-// KBO 팀 코드 → 짧은 팀명 (App.jsx KBO_TEAMS 기준)
-const TEAM_CODE_TO_NAME = {
-  LG: 'LG',
-  KT: 'KT',
-  NC: 'NC',
-  OB: '두산',
-  HH: '한화',
-  HT: 'KIA',
-  LT: '롯데',
-  WO: '키움',
-  SS: '삼성',
-  SK: 'SSG', // 혹시 팀명에 SK가 오면
-};
-
-// 네이버 포지션 표기 → App.jsx POSITIONS 기준 변환
-const POS_NORMALIZE = {
-  포수: '포수', C: '포수', CA: '포수',
-  '1루수': '1루수', '1B': '1루수',
-  '2루수': '2루수', '2B': '2루수',
-  '3루수': '3루수', '3B': '3루수',
-  유격수: '유격수', SS: '유격수',
-  좌익수: '좌익수', LF: '좌익수',
-  중견수: '중견수', CF: '중견수',
-  우익수: '우익수', RF: '우익수',
-  지명타자: '지명타자', DH: '지명타자',
-  투수: '투수', P: '투수', SP: '투수',
-};
-
-/** KST 기준 오늘 날짜 YYYYMMDD 반환 */
+/** KST 기준 오늘 날짜 */
 function getKSTDate() {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -64,107 +43,95 @@ function getKSTDate() {
   const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
   const d = String(kst.getUTCDate()).padStart(2, '0');
   return {
-    compact: `${y}${m}${d}`,
-    year: String(y),
-    display: `${y}.${m}.${d}`,
+    iso: `${y}-${m}-${d}`,     // 2026-06-01 (네이버 API용)
+    display: `${y}.${m}.${d}`, // 2026.06.01 (앱 표시용)
   };
 }
 
-/**
- * 오늘 SSG 경기 gameId 브루트포스 탐색
- * 네이버 gameId 형식: YYYYMMDD{원정코드}{홈코드}0{연도}
- * SK = SSG 팀 코드
- */
-async function findSSGGameId(dateCompact, year) {
-  const OPPONENT_CODES = ['LG', 'KT', 'NC', 'OB', 'HH', 'HT', 'LT', 'WO', 'SS'];
+/** 네이버 일정 API에서 특정 날짜의 SSG 경기 검색 */
+async function findSSGGame(dateIso) {
+  const url = `https://api-gw.sports.naver.com/schedule/games?upperCategoryId=kbaseball&categoryId=kbo&fromDate=${dateIso}&toDate=${dateIso}`;
+  const res = await fetch(url, { headers: NAVER_HEADERS, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`schedule API HTTP ${res.status}`);
+  const data = await res.json();
+  const games = data?.result?.games || [];
 
-  const candidates = [
-    ...OPPONENT_CODES.map(t => `${dateCompact}${t}SK0${year}`), // SK 홈 1경기
-    ...OPPONENT_CODES.map(t => `${dateCompact}${t}SK1${year}`), // SK 홈 2경기 (더블헤더)
-    ...OPPONENT_CODES.map(t => `${dateCompact}SK${t}0${year}`), // SK 원정 1경기
-    ...OPPONENT_CODES.map(t => `${dateCompact}SK${t}1${year}`), // SK 원정 2경기 (더블헤더)
-  ];
-
-  const checks = await Promise.allSettled(
-    candidates.map(async (id) => {
-      const res = await fetch(
-        `https://api-gw.sports.naver.com/schedule/games/${id}`,
-        { headers: NAVER_HEADERS, signal: AbortSignal.timeout(5000) }
-      );
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data?.success ? id : null;
-    })
+  const ssgGames = games.filter(
+    (g) => g.homeTeamCode === SSG_CODE || g.awayTeamCode === SSG_CODE
   );
+  if (!ssgGames.length) return null;
 
-  return checks
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value);
+  // 더블헤더 등 복수 경기 시: 아직 끝나지 않은(RESULT 아닌) 경기 우선, 없으면 첫 경기
+  const upcoming = ssgGames.find((g) => g.statusCode !== 'RESULT');
+  const game = upcoming || ssgGames[0];
+
+  const isAway = game.awayTeamCode === SSG_CODE;
+  return {
+    gameId: game.gameId,
+    side: isAway ? 'away' : 'home',
+    opponent: isAway ? game.homeTeamName : game.awayTeamName,
+    statusCode: game.statusCode,
+  };
 }
 
-/** 게임 엔드포인트에서 lineUpData 가져오기 */
-async function fetchGameLineup(gameId) {
-  const res = await fetch(
-    `https://api-gw.sports.naver.com/schedule/games/${gameId}`,
-    {
-      headers: {
-        ...NAVER_HEADERS,
-        Referer: `https://m.sports.naver.com/game/${gameId}/lineup`,
-      },
-      signal: AbortSignal.timeout(8000),
-    }
-  );
-  if (!res.ok) throw new Error(`Naver API HTTP ${res.status}`);
-  return res.json();
-}
-
-/**
- * lineUpData에서 SSG 타순 파싱
- * @returns { players: [{name, pos, order}], opponentName, startingPitcher }
- */
-function parseLineup(gameId, lineUpData) {
-  // SK가 원정(away)이면 gameId[8:10] === 'SK'
-  const isSkAway = gameId.slice(8, 10) === 'SK';
-  const ssgSide = isSkAway ? 'away' : 'home';
-  const oppSide = isSkAway ? 'home' : 'away';
-
-  const ssgData = lineUpData[ssgSide];
-  const oppData = lineUpData[oppSide];
-
-  const batters = ssgData?.batters || ssgData?.batterList || [];
-  if (!batters.length) return null;
-
-  // 타순 정렬
-  const sorted = [...batters].sort((a, b) => {
-    const oa = a.orderNum ?? a.order ?? a.battingOrder ?? 0;
-    const ob = b.orderNum ?? b.order ?? b.battingOrder ?? 0;
-    return oa - ob;
+/** /preview 엔드포인트에서 라인업 파싱 */
+async function fetchPreviewLineup(gameId, side) {
+  const url = `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`;
+  const res = await fetch(url, {
+    headers: { ...NAVER_HEADERS, Referer: `https://m.sports.naver.com/game/${gameId}` },
+    signal: AbortSignal.timeout(8000),
   });
+  if (!res.ok) throw new Error(`preview API HTTP ${res.status}`);
+  const data = await res.json();
 
-  const players = sorted.slice(0, 9).map((b, i) => {
-    const rawPos = b.posName ?? b.positionName ?? b.position ?? b.pos ?? '';
-    const pos = POS_NORMALIZE[rawPos] || rawPos;
-    const name = b.name ?? b.playerName ?? b.fullName ?? '';
-    return { name, pos, order: i + 1 };
-  });
+  const pd = data?.result?.previewData;
+  if (!pd) return { ready: false };
 
-  // 상대팀명
-  const oppCode = isSkAway
-    ? gameId.slice(10, 12)  // home code
-    : gameId.slice(8, 10);  // away code
-  const opponentName =
-    TEAM_CODE_TO_NAME[oppCode] ||
-    oppData?.teamName ||
-    oppCode;
+  const fullLineUp = pd?.[`${side}TeamLineUp`]?.fullLineUp || [];
 
-  // SSG 선발투수
-  const pitcherRaw = ssgData?.pitcher ?? ssgData?.startPitcher ?? ssgData?.pitcherList?.[0];
-  const startingPitcher = pitcherRaw?.name ?? pitcherRaw?.playerName ?? '';
+  // 타순(batorder) 있는 선수만 = 발표된 타자 9명
+  const batters = fullLineUp
+    .filter((b) => b.batorder)
+    .sort((a, b) => Number(a.batorder) - Number(b.batorder))
+    .map((b, i) => ({
+      name: b.playerName || '',
+      pos: b.positionName || '',
+      order: i + 1,
+    }));
 
-  return { players, opponentName, startingPitcher };
+  // 선발투수
+  const starter = pd?.[`${side}Starter`]?.playerInfo?.name || '';
+
+  // 라인업이 완전히 발표되었는지(타자 9명) 판단
+  const ready = batters.length >= 9;
+
+  return { ready, players: batters, pitcher: starter };
 }
 
-/** Firebase REST API에 라인업 저장 */
+/** 현재 저장된 latest 라인업 조회 (중복 저장 방지용) */
+async function fetchCurrentLatest() {
+  try {
+    const res = await fetch(`${FIREBASE_URL}/lineup/latest.json`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** 두 라인업이 동일한지 비교 (gameId + 타순 선수명 + 선발투수) */
+function isSameLineup(prev, players, pitcher, gameId) {
+  if (!prev) return false;
+  if (prev.gameId && prev.gameId !== gameId) return false;
+  if ((prev.pitcher || '') !== (pitcher || '')) return false;
+  const prevNames = Object.values(prev.players || {}).map((p) => p.name).join(',');
+  const newNames = players.map((p) => p.name).join(',');
+  return prevNames === newNames;
+}
+
+/** Firebase REST API에 저장 (latest 갱신 + history 누적) */
 async function saveToFirebase(record) {
   const now = Date.now();
   await Promise.all([
@@ -181,99 +148,84 @@ async function saveToFirebase(record) {
   ]);
 }
 
-// ─── Main Handler ─────────────────────────────────────────────────────────────
+// ─── Main Handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  // CORS (관리자 UI에서 직접 호출할 때)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   // 인증
   const isCron = !!req.headers['x-vercel-cron'];
-  const token = req.query.token;
-  if (!isCron && token !== API_TOKEN) {
+  if (!isCron && req.query.token !== API_TOKEN) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
 
-  const isPreview = req.query.preview === '1';  // 저장 안 하고 데이터만 반환
-  const forceSave = req.query.save === '1';     // 미리보기 없이 즉시 저장
-
-  const { compact: dateCompact, year, display: dateDisplay } = getKSTDate();
+  const isPreview = req.query.preview === '1';
+  const forceSave = req.query.save === '1';
+  const { iso: dateIso, display: dateDisplay } = getKSTDate();
 
   try {
-    // ── 1. 오늘 SSG 경기 gameId 탐색 ─────────────────────────────────────
-    const gameIds = await findSSGGameId(dateCompact, year);
-
-    if (!gameIds.length) {
+    // 1. 오늘 SSG 경기 찾기
+    const game = await findSSGGame(dateIso);
+    if (!game) {
       return res.status(200).json({
         ok: false,
         reason: 'no_game',
-        message: `오늘(${dateDisplay}) SSG 경기 없음`,
+        message: `오늘(${dateDisplay}) SSG 경기가 없습니다.`,
       });
     }
 
-    const gameId = gameIds[0];
-
-    // ── 2. 라인업 데이터 요청 ─────────────────────────────────────────────
-    const raw = await fetchGameLineup(gameId);
-
-    // 구조 디버그 로그 (초기 1~2회 실행 시 실제 필드명 파악용)
-    const lineUpData = raw?.result?.lineUpData;
-
-    if (!lineUpData) {
+    // 2. preview에서 라인업 파싱
+    const { ready, players, pitcher } = await fetchPreviewLineup(game.gameId, game.side);
+    if (!ready) {
       return res.status(200).json({
         ok: false,
         reason: 'lineup_not_ready',
-        message: '라인업 미발표 상태입니다 (경기 1~2시간 전 재시도)',
-        gameId,
-        // 구조 확인용: 처음 실행 시 여기서 실제 응답 구조를 확인하세요
-        debugKeys: raw?.result ? Object.keys(raw.result) : [],
+        message: '라인업이 아직 발표되지 않았습니다. 경기 1~2시간 전에 다시 시도해주세요.',
+        gameId: game.gameId,
+        opponent: game.opponent,
       });
     }
 
-    // ── 3. 타순 파싱 ──────────────────────────────────────────────────────
-    const parsed = parseLineup(gameId, lineUpData);
-
-    if (!parsed) {
-      return res.status(200).json({
-        ok: false,
-        reason: 'parse_failed',
-        message: '타자 데이터를 파싱하지 못했습니다',
-        gameId,
-        debugLineUpData: JSON.stringify(lineUpData).slice(0, 500),
-      });
+    // 3. Firebase 저장 (크론 자동 또는 ?save=1, 단 preview 모드 제외)
+    const shouldSave = (isCron || forceSave) && !isPreview;
+    let saved = false;
+    let skipped = false;
+    if (shouldSave) {
+      // 이미 동일 라인업이 저장돼 있으면 중복 저장 방지 (반복 크론 대응)
+      const current = await fetchCurrentLatest();
+      if (isSameLineup(current, players, pitcher, game.gameId)) {
+        skipped = true;
+      } else {
+        const playersObj = players.reduce(
+          (acc, p, i) => ({ ...acc, [i]: { name: p.name, pos: p.pos } }),
+          {}
+        );
+        const record = {
+          date: dateDisplay,
+          opponent: game.opponent,
+          pitcher,
+          players: playersObj,
+          source: 'naver-auto',
+          gameId: game.gameId,
+          updatedAt: Date.now(),
+        };
+        await saveToFirebase(record);
+        saved = true;
+      }
     }
 
-    const { players, opponentName, startingPitcher } = parsed;
-
-    // ── 4. Firebase 저장 (크론 자동 또는 ?save=1) ─────────────────────────
-    const shouldSave = isCron || forceSave;
-
-    if (shouldSave && !isPreview) {
-      const playersObj = players.reduce((acc, p, i) => ({ ...acc, [i]: p }), {});
-      const record = {
-        date: dateDisplay,
-        opponent: opponentName,
-        pitcher: startingPitcher,
-        players: playersObj,
-        source: 'naver-auto',
-        updatedAt: Date.now(),
-      };
-      await saveToFirebase(record);
-    }
-
-    // ── 5. 응답 ──────────────────────────────────────────────────────────
     return res.status(200).json({
       ok: true,
-      saved: shouldSave && !isPreview,
-      gameId,
+      saved,
+      skipped, // 이미 동일 라인업이라 저장 건너뜀
+      gameId: game.gameId,
       date: dateDisplay,
-      opponent: opponentName,
-      pitcher: startingPitcher,
-      players,  // [{ name, pos, order }]
+      opponent: game.opponent,
+      pitcher,
+      players, // [{ name, pos, order }]
     });
-
   } catch (err) {
     console.error('[lineup-auto] error:', err);
     return res.status(500).json({ ok: false, error: err.message });
