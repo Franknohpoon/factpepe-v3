@@ -108,6 +108,55 @@ async function fetchPreviewLineup(gameId, side) {
   return { ready, players: batters, pitcher: starter };
 }
 
+/**
+ * KBO 공식 백업 소스 (네이버 보조용)
+ * GetKboGameList WebMethod → 상대팀 + SSG 선발투수
+ * (타순 9명은 KBO가 구조화 제공하지 않으므로 네이버가 담당)
+ */
+async function fetchKBOGame(dateCompact) {
+  try {
+    const res = await fetch('https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        Referer: 'https://www.koreabaseball.com/',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      },
+      body: JSON.stringify({ leId: '1', srId: '0,9,6', date: dateCompact }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    // KBO WebMethod는 JSON 뒤에 HTML 페이지를 덧붙여 반환 → JSON 부분만 추출
+    let txt = (await res.text()).replace(/^﻿/, '').trim();
+    const cut = ['<!DOCTYPE', '<!--', '<html']
+      .map((m) => txt.indexOf(m))
+      .filter((i) => i >= 0);
+    if (cut.length) txt = txt.slice(0, Math.min(...cut)).trim();
+    const data = JSON.parse(txt);
+    const games = data?.game || [];
+    const g = games.find((x) => x.AWAY_ID === 'SK' || x.HOME_ID === 'SK');
+    if (!g) return null;
+    const isAway = g.AWAY_ID === 'SK';
+    // T_=원정 선발, B_=홈 선발
+    const pitcher = ((isAway ? g.T_PIT_P_NM : g.B_PIT_P_NM) || '').trim();
+    const opponent = ((isAway ? g.HOME_NM : g.AWAY_NM) || '').trim();
+    return { opponent, pitcher };
+  } catch {
+    return null;
+  }
+}
+
+/** KST 오늘 날짜 YYYYMMDD (KBO API용) */
+function getKSTCompact() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+}
+
 /** 현재 저장된 latest 라인업 조회 (중복 저장 방지용) */
 async function fetchCurrentLatest() {
   try {
@@ -177,15 +226,25 @@ export default async function handler(req, res) {
     }
 
     // 2. preview에서 라인업 파싱
-    const { ready, players, pitcher } = await fetchPreviewLineup(game.gameId, game.side);
+    let { ready, players, pitcher } = await fetchPreviewLineup(game.gameId, game.side);
+
     if (!ready) {
+      // 라인업 미발표 — KBO 백업으로 선발투수/상대팀이라도 제공
+      const kbo = await fetchKBOGame(getKSTCompact());
       return res.status(200).json({
         ok: false,
         reason: 'lineup_not_ready',
-        message: '라인업이 아직 발표되지 않았습니다. 경기 1~2시간 전에 다시 시도해주세요.',
+        message: '타순은 아직 미발표예요. 선발투수/상대만 KBO에서 가져왔어요. (트윗 붙여넣기로 타순 입력 가능)',
         gameId: game.gameId,
-        opponent: game.opponent,
+        opponent: game.opponent || kbo?.opponent || '',
+        pitcher: kbo?.pitcher || '',
       });
+    }
+
+    // 선발투수가 네이버에 비어 있으면 KBO 공식에서 보강
+    if (!pitcher) {
+      const kbo = await fetchKBOGame(getKSTCompact());
+      if (kbo?.pitcher) pitcher = kbo.pitcher;
     }
 
     // 3. Firebase 저장 (크론 자동 또는 ?save=1, 단 preview 모드 제외)

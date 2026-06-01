@@ -3666,10 +3666,14 @@ const AdminLineupForm = () => {
       const data = await res.json();
 
       if (!data.ok) {
+        // 라인업 미발표라도 KBO 백업이 준 선발투수/상대팀은 채워줌
+        if (data.reason === 'lineup_not_ready') {
+          if (data.opponent) setOpponent(data.opponent);
+          if (data.pitcher) { setPitcher(data.pitcher); setPitcherQuery(''); }
+        }
         const msgs = {
           no_game: '오늘 SSG 경기가 없습니다.',
-          lineup_not_ready: '라인업이 아직 발표되지 않았습니다. 경기 1~2시간 전에 다시 시도해주세요.',
-          parse_failed: '라인업 파싱에 실패했습니다. 수동으로 입력해주세요.',
+          lineup_not_ready: '타순 미발표 — 선발/상대만 채웠어요. 트윗 붙여넣기로 타순을 입력하세요.',
         };
         setAutoFetchMsg('⚠️ ' + (msgs[data.reason] || data.message || data.error || '불러오기 실패'));
         return;
