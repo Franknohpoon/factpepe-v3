@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { database } from './App.jsx';
-import { ref as dbRef, onValue, runTransaction, push, set } from 'firebase/database';
+import { ref as dbRef, onValue, runTransaction, push, set, query, limitToLast } from 'firebase/database';
 import { getUserId, getTodayKey } from './tossAuth.js';
+import { validateMessage, checkRateLimit, markSent, MAX_LEN_CHAT } from './chatFilter.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -129,10 +130,12 @@ const LineupBoard = ({ lineup }) => {
 };
 
 // ─── 1초 투표 ──────────────────────────────────────────────────────
-const VoteCard = ({ todayKey, opponent }) => {
+const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
   const [counts, setCounts] = useState({ win: 0, lose: 0 });
   const [myVote, setMyVote] = useState(null);
   const userId = useRef(getUserId()).current;
+
+  useEffect(() => { onVoteChange?.(myVote); }, [myVote, onVoteChange]);
 
   useEffect(() => {
     const unsubCounts = onValue(dbRef(database, `vote/${todayKey}/counts`), (snap) => {
@@ -206,12 +209,152 @@ const VoteCard = ({ todayKey, opponent }) => {
   );
 };
 
+// ─── 응원 톡 (투표 참여자만, 분당 1회 제한, 욕설 필터) ─────────────
+const ChatCard = ({ todayKey, hasVoted }) => {
+  const userId = useRef(getUserId()).current;
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(0);
+  const [banned, setBanned] = useState(false);
+
+  // 최신 20개 구독 (실시간)
+  useEffect(() => {
+    const q = query(dbRef(database, `chat/${todayKey}/messages`), limitToLast(20));
+    const unsub = onValue(q, (snap) => {
+      const data = snap.val() || {};
+      const list = Object.entries(data)
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => (b.at || 0) - (a.at || 0)); // 최신순
+      setMessages(list);
+    });
+    return unsub;
+  }, [todayKey]);
+
+  // 내가 차단되었는지 체크
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, `chat/banned/${userId}`), (snap) => {
+      setBanned(!!snap.val());
+    });
+    return unsub;
+  }, [userId]);
+
+  // 쿨다운 카운트다운
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const t = setTimeout(() => setCooldownSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [cooldownSec]);
+
+  const send = async () => {
+    setError('');
+    if (banned) {
+      setError('일시적으로 응원 톡 작성이 제한되었어요.');
+      return;
+    }
+    if (!hasVoted) {
+      setError('먼저 오늘 결과를 투표해주세요.');
+      return;
+    }
+    const v = validateMessage(draft);
+    if (!v.ok) { setError(v.reason); return; }
+    const rl = checkRateLimit();
+    if (!rl.ok) {
+      setCooldownSec(rl.waitSec);
+      setError(`잠시만 — ${rl.waitSec}초 후에 다시 보낼 수 있어요.`);
+      return;
+    }
+
+    setSending(true);
+    try {
+      const msgRef = push(dbRef(database, `chat/${todayKey}/messages`));
+      await set(msgRef, {
+        userId,
+        text: v.text,
+        at: Date.now(),
+      });
+      markSent();
+      setDraft('');
+      setCooldownSec(60);
+    } catch (e) {
+      setError('전송 실패: ' + e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-black text-zinc-500 tracking-widest">실시간 응원 톡</span>
+        <span className="text-zinc-700 text-[10px]">최신 20개 · 50자</span>
+      </div>
+
+      {/* 메시지 리스트 (최신이 위) */}
+      <div className="space-y-1.5 mb-3 max-h-72 overflow-y-auto">
+        {messages.length === 0 ? (
+          <p className="text-zinc-600 text-xs text-center py-6">첫 번째 응원을 남겨주세요</p>
+        ) : (
+          messages.map((m) => {
+            const isMine = m.userId === userId;
+            const ago = (() => {
+              const sec = Math.floor((Date.now() - (m.at || 0)) / 1000);
+              if (sec < 60) return '방금';
+              if (sec < 3600) return `${Math.floor(sec / 60)}분`;
+              return `${Math.floor(sec / 3600)}시간`;
+            })();
+            return (
+              <div key={m.id}
+                className={`flex items-start gap-2 px-3 py-2 rounded-lg ${isMine ? 'bg-red-600/8 border border-red-900/30' : 'bg-white/[0.02]'}`}>
+                <span className="text-xs flex-1 leading-snug break-all"
+                  style={{ color: isMine ? '#ff8088' : '#e5e5e5' }}>
+                  {m.text}
+                </span>
+                <span className="text-zinc-600 text-[9px] flex-shrink-0 mt-0.5">{ago}</span>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 입력 */}
+      <div className="flex gap-2 items-start">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value.slice(0, MAX_LEN_CHAT)); setError(''); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !sending) send(); }}
+          placeholder={banned ? '작성 제한 중' : hasVoted ? '응원의 한마디 (50자)' : '투표 후 작성 가능'}
+          disabled={banned || !hasVoted || sending || cooldownSec > 0}
+          maxLength={MAX_LEN_CHAT}
+          className="flex-1 bg-zinc-800 text-white text-sm border-none rounded-lg py-2.5 px-3 placeholder-zinc-600 disabled:opacity-40"
+        />
+        <button
+          onClick={send}
+          disabled={banned || !hasVoted || sending || cooldownSec > 0 || !draft.trim()}
+          className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-black text-xs px-4 py-2.5 rounded-lg transition-all">
+          {cooldownSec > 0 ? `${cooldownSec}s` : '전송'}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between mt-1.5">
+        <span className={`text-[10px] ${error ? 'text-red-400 font-bold' : 'text-zinc-600'}`}>
+          {error || '욕설/링크는 차단됩니다 · 분당 1회'}
+        </span>
+        <span className="text-zinc-700 text-[10px]">{draft.length}/{MAX_LEN_CHAT}</span>
+      </div>
+    </div>
+  );
+};
+
 // ─── 메인 대시보드 ─────────────────────────────────────────────────
 function TossApp() {
   const todayKey = getTodayKey();
   const [prediction, setPrediction] = useState(null);
   const [lineup, setLineup] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [myVote, setMyVote] = useState(null);
 
   useEffect(() => {
     const unsubP = onValue(dbRef(database, `prediction/${todayKey}`), (snap) => {
@@ -273,12 +416,8 @@ function TossApp() {
             <PredictionCard prediction={prediction} />
             <VideoCard videoUrl={prediction?.videoUrl} />
             <LineupBoard lineup={lineup} />
-            <VoteCard todayKey={todayKey} opponent={opponent} />
-
-            {/* 응원 톡 placeholder — Phase 2 */}
-            <div className="bg-zinc-900/40 border border-dashed border-zinc-800 rounded-2xl p-4 text-center">
-              <p className="text-zinc-600 text-xs">💬 실시간 응원 톡 준비 중</p>
-            </div>
+            <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
+            <ChatCard todayKey={todayKey} hasVoted={!!myVote} />
           </>
         )}
 

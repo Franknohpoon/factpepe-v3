@@ -3454,6 +3454,7 @@ const AdminPage = () => {
     { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'matchup',    label: '⚔️ 상대전적 입력' },
     { id: 'prediction', label: '📊 오늘의 분석' },
+    { id: 'chat',       label: '💬 응원 톡 관리' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'pending',    label: '🔍 사진 검토' },
     { id: 'seatview',   label: '💬 제보 목록' },
@@ -3476,6 +3477,7 @@ const AdminPage = () => {
       {section === 'lineup'     && <AdminLineupForm />}
       {section === 'matchup'    && <AdminMatchupForm />}
       {section === 'prediction' && <AdminPredictionForm />}
+      {section === 'chat'       && <AdminChatModeration />}
       {section === 'seatphoto'  && <AdminSeatPhotoUpload />}
       {section === 'pending'    && <AdminPendingPhotos />}
       {section === 'seatview'   && <AdminSeatReports />}
@@ -4320,6 +4322,110 @@ const AdminPredictionForm = () => {
           className="w-full mt-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-black text-base transition-all">
           {saving ? '저장 중...' : saved ? '✅ 저장 완료' : '💾 저장'}
         </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── 어드민: 응원 톡 모더레이션 ───────────────────────────────────────
+const AdminChatModeration = () => {
+  const today = new Date();
+  const [dateKey, setDateKey] = useState(`${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`);
+  const [messages, setMessages] = useState([]);
+  const [bannedUsers, setBannedUsers] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const unsub = onValue(dbRef(database, `chat/${dateKey}/messages`), (snap) => {
+      const data = snap.val() || {};
+      const list = Object.entries(data)
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a, b) => (b.at || 0) - (a.at || 0));
+      setMessages(list);
+      setLoading(false);
+    });
+    const unsubBanned = onValue(dbRef(database, `chat/banned`), (snap) => {
+      setBannedUsers(snap.val() || {});
+    });
+    return () => { unsub(); unsubBanned(); };
+  }, [dateKey]);
+
+  const deleteMessage = async (id) => {
+    if (!confirm('이 메시지를 삭제할까요?')) return;
+    await remove(dbRef(database, `chat/${dateKey}/messages/${id}`));
+  };
+
+  const banUser = async (userId) => {
+    if (!confirm(`이 유저(${userId.slice(0, 12)}...)를 차단할까요?`)) return;
+    await set(dbRef(database, `chat/banned/${userId}`), { at: Date.now() });
+  };
+
+  const unbanUser = async (userId) => {
+    await remove(dbRef(database, `chat/banned/${userId}`));
+  };
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-gray-400 text-xs">날짜 (YYYYMMDD)</label>
+          <input type="text" value={dateKey} onChange={(e) => setDateKey(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            className="flex-1 bg-zinc-800 text-white border border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono" />
+        </div>
+        <p className="text-zinc-500 text-xs">
+          총 {messages.length}개 메시지 · 차단된 유저 {Object.keys(bannedUsers).length}명
+        </p>
+      </div>
+
+      {/* 차단된 유저 */}
+      {Object.keys(bannedUsers).length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">🚫 차단된 유저</p>
+          <div className="space-y-1">
+            {Object.entries(bannedUsers).map(([uid, info]) => (
+              <div key={uid} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg">
+                <span className="text-zinc-300 text-xs font-mono flex-1">{uid}</span>
+                <span className="text-zinc-600 text-[10px]">{new Date(info.at).toLocaleDateString()}</span>
+                <button onClick={() => unbanUser(uid)} className="text-zinc-500 hover:text-white text-xs">해제</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 메시지 리스트 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-3 uppercase tracking-wider">💬 응원 톡 ({dateKey})</p>
+        {loading ? (
+          <p className="text-zinc-600 text-sm text-center py-6">로딩 중...</p>
+        ) : messages.length === 0 ? (
+          <p className="text-zinc-600 text-sm text-center py-6">메시지 없음</p>
+        ) : (
+          <div className="space-y-1.5">
+            {messages.map((m) => {
+              const isBanned = !!bannedUsers[m.userId];
+              return (
+                <div key={m.id} className={`flex items-start gap-2 px-3 py-2 rounded-lg ${isBanned ? 'bg-red-900/30 border border-red-900/50' : 'bg-zinc-800'}`}>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-bold leading-snug">{m.text}</p>
+                    <p className="text-zinc-500 text-[10px] mt-1 font-mono">
+                      {new Date(m.at).toLocaleTimeString()} · {m.userId}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button onClick={() => deleteMessage(m.id)}
+                      className="bg-red-600/80 hover:bg-red-700 text-white text-[10px] font-bold px-2 py-1 rounded">삭제</button>
+                    {!isBanned && (
+                      <button onClick={() => banUser(m.userId)}
+                        className="bg-zinc-700 hover:bg-zinc-600 text-white text-[10px] font-bold px-2 py-1 rounded">차단</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
