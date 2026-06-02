@@ -40,7 +40,7 @@ const SSG_PLAYERS = [
   // 타자
   '박성한', '정준재', '최정', '에레디아', '한유섬', '최지훈', '류효승', '오태곤', '고종욱',
   '김성현', '이재원', '최주환', '박지환', '문한울', '기예르모 에레디아',
-  '김민식', '이지영', '조형우', '김재환', '고명준', '안상현', '채현우', '이정범',
+  '김민식', '이지영', '조형우', '김재환', '고명준', '안상현', '채현우', '이정범', '전의산', '오태곤',
   // 투수
   '베니지아노', '화이트', '김건우', '최민준', '타케다', '긴지로',
   '김광현', '오원석', '윌커슨', '이태양', '서진용', '노경은', '조병현',
@@ -1296,11 +1296,10 @@ const LineupTab = () => {
       {/* 텍스트 복사 */}
       {(() => {
         const lineupText = [
-          `⚾ SSG vs ${lineupData.opponent} | ${lineupData.date}`,
-          lineupData.pitcher ? `\n🔥 선발 ${lineupData.pitcher}\n` : '',
-          ...lineupData.players.map((p, i) => `${i + 1}번 ${p.name} (${p.pos})`),
-          myComment ? `\n💬 ${myComment}` : '',
-          `\n#SSG랜더스 #팩트페페 #KBO`,
+          `[${lineupData.date} SSG 라인업]`,
+          lineupData.pitcher ? `\n선발 ${lineupData.pitcher}\n` : '',
+          ...lineupData.players.map((p, i) => `${i + 1}. ${p.name} (${p.pos})`),
+          myComment ? `\n${myComment}` : '',
         ].filter(Boolean).join('\n');
 
         return (
@@ -3495,6 +3494,8 @@ const PLAYER_POS_SEEDS = {
   '한유섬':  { '우익수': 10, '지명타자': 4 },
   '고명준':  { '1루수': 10 },
   '이정범':  { '1루수': 10 },
+  '전의산':  { '1루수': 10 },
+  '오태곤':  { '우익수': 10 },
   '안상현':  { '2루수': 5, '유격수': 5, '3루수': 5 },
   '채현우':  { '우익수': 10, '중견수': 6 },
   '정준재':  { '2루수': 10 },
