@@ -3453,6 +3453,7 @@ const AdminPage = () => {
     { id: 'news',       label: '📰 뉴스 작성' },
     { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'matchup',    label: '⚔️ 상대전적 입력' },
+    { id: 'prediction', label: '📊 오늘의 분석' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'pending',    label: '🔍 사진 검토' },
     { id: 'seatview',   label: '💬 제보 목록' },
@@ -3470,14 +3471,15 @@ const AdminPage = () => {
           </button>
         ))}
       </div>
-      {section === 'factpepe'  && <AdminFactPepe />}
-      {section === 'news'      && <AdminNewsForm />}
-      {section === 'lineup'    && <AdminLineupForm />}
-      {section === 'matchup'   && <AdminMatchupForm />}
-      {section === 'seatphoto' && <AdminSeatPhotoUpload />}
-      {section === 'pending'   && <AdminPendingPhotos />}
-      {section === 'seatview'  && <AdminSeatReports />}
-      {section === 'food'      && <AdminFoodManager />}
+      {section === 'factpepe'   && <AdminFactPepe />}
+      {section === 'news'       && <AdminNewsForm />}
+      {section === 'lineup'     && <AdminLineupForm />}
+      {section === 'matchup'    && <AdminMatchupForm />}
+      {section === 'prediction' && <AdminPredictionForm />}
+      {section === 'seatphoto'  && <AdminSeatPhotoUpload />}
+      {section === 'pending'    && <AdminPendingPhotos />}
+      {section === 'seatview'   && <AdminSeatReports />}
+      {section === 'food'       && <AdminFoodManager />}
     </div>
   );
 };
@@ -4208,6 +4210,117 @@ const AdminSeatApproval = () => {
         ? <PendingList items={seatPending} onApprove={approveSeat} onReject={rejectSeat} labelFn={i => `${i.zone} ${i.row} ${i.seat}번`} />
         : <PendingList items={goodsPending} onApprove={approveGoods} onReject={rejectGoods} labelFn={i => `${i.goodsType}${i.itemName ? ' · ' + i.itemName : ''}`} />
       }
+    </div>
+  );
+};
+
+// ─── 어드민: 오늘의 분석 (승률 + 숏폼 영상) — 토스 미니앱 대시보드용 ──
+const AdminPredictionForm = () => {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  const todayDisplay = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+  const [winRate, setWinRate] = useState('');
+  const [reason, setReason] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [opponent, setOpponent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    onValue(dbRef(database, `prediction/${todayKey}`), (snap) => {
+      const d = snap.val();
+      if (d) {
+        setWinRate(String(d.winRate ?? ''));
+        setReason(d.reason || '');
+        setVideoUrl(d.videoUrl || '');
+        setOpponent(d.opponent || '');
+      }
+      setLoading(false);
+    }, { onlyOnce: true });
+  }, [todayKey]);
+
+  const handleSave = async () => {
+    const rate = parseInt(winRate, 10);
+    if (Number.isNaN(rate) || rate < 0 || rate > 100) {
+      alert('승률은 0~100 사이 정수로 입력해주세요.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await set(dbRef(database, `prediction/${todayKey}`), {
+        date: todayDisplay,
+        winRate: rate,
+        reason: reason.trim(),
+        videoUrl: videoUrl.trim(),
+        opponent: opponent.trim(),
+        updatedAt: Date.now(),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      alert('저장 실패: ' + e.message);
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-600 border-t-transparent" /></div>;
+
+  // YouTube Shorts URL → embed src 변환 (미리보기용)
+  const ytShortsId = (() => {
+    const m = videoUrl.match(/(?:shorts\/|youtu\.be\/|v=)([\w-]{11})/);
+    return m ? m[1] : '';
+  })();
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">📊 오늘의 분석 ({todayDisplay})</p>
+        <p className="text-zinc-500 text-xs mb-4">토스 미니앱 대시보드에 표시될 승률과 영상을 등록합니다.</p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">상대팀</label>
+            <input type="text" value={opponent} onChange={(e) => setOpponent(e.target.value)}
+              placeholder="예: 두산"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-base placeholder-zinc-600" />
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">SSG 승리 확률 (%) — 0~100</label>
+            <input type="number" min="0" max="100" value={winRate} onChange={(e) => setWinRate(e.target.value)}
+              placeholder="62"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-2xl font-black placeholder-zinc-600" />
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">한 줄 근거 (선택)</label>
+            <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
+              maxLength={60}
+              placeholder="예: 상대 선발 ERA 6.8, SSG 홈 7연승"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+            <p className="text-zinc-700 text-[10px] text-right mt-1">{reason.length}/60</p>
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">숏폼 분석 영상 URL (YouTube Shorts 권장)</label>
+            <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://www.youtube.com/shorts/xxxxxxxxxxx"
+              className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-sm placeholder-zinc-600" />
+            {ytShortsId && (
+              <div className="mt-2 rounded-lg overflow-hidden bg-black" style={{ aspectRatio: '9/16', maxWidth: '180px' }}>
+                <iframe src={`https://www.youtube.com/embed/${ytShortsId}`}
+                  className="w-full h-full" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button onClick={handleSave} disabled={saving}
+          className="w-full mt-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-black text-base transition-all">
+          {saving ? '저장 중...' : saved ? '✅ 저장 완료' : '💾 저장'}
+        </button>
+      </div>
     </div>
   );
 };
