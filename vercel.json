@@ -1,32 +1,15 @@
 {
   "crons": [
-    {
-      "path": "/api/daily-report",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 3 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 4 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 6 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 7 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 8 * * *"
-    },
-    {
-      "path": "/api/lineup-auto",
-      "schedule": "30 9 * * *"
-    }
+    { "path": "/api/daily-report",  "schedule": "0 0 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 3 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 4 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 6 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 7 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 8 * * *" },
+    { "path": "/api/lineup-auto",   "schedule": "30 9 * * *" }
+  ],
+  "rewrites": [
+    { "source": "/toss/:path*", "destination": "/index.html" },
+    { "source": "/toss",        "destination": "/index.html" }
   ]
 }
