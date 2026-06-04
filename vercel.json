@@ -1,7 +1,10 @@
 {
   "crons": [
-    { "path": "/api/daily-report",  "schedule": "0 0 * * *" },
-    { "path": "/api/lineup-auto",   "schedule": "30 3 * * *" },
+    { "path": "/api/daily-report",     "schedule": "0 0 * * *" },
+    { "path": "/api/prediction-auto",  "schedule": "0 2 * * *" },
+    { "path": "/api/prediction-auto",  "schedule": "0 4 * * *" },
+    { "path": "/api/prediction-auto",  "schedule": "30 7 * * *" },
+    { "path": "/api/lineup-auto",      "schedule": "30 3 * * *" },
     { "path": "/api/lineup-auto",   "schedule": "30 4 * * *" },
     { "path": "/api/lineup-auto",   "schedule": "30 6 * * *" },
     { "path": "/api/lineup-auto",   "schedule": "30 7 * * *" },

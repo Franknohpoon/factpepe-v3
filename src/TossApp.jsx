@@ -34,9 +34,18 @@ const PredictionCard = ({ prediction }) => {
   const angle = (rate / 100) * 360;
   return (
     <div className="bg-gradient-to-br from-[#1a0008] via-zinc-900 to-black border border-red-900/40 rounded-2xl p-5 shadow-lg" style={{ boxShadow: `0 8px 32px ${RED}22` }}>
-      <div className="flex items-center gap-1 mb-3">
-        <span className="text-[10px] font-black text-red-400 tracking-widest">팩트 승률</span>
-        {prediction.opponent && <span className="text-[10px] text-zinc-500 ml-1">· vs {prediction.opponent}</span>}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-black text-red-400 tracking-widest">팩트 승률</span>
+          {prediction.opponent && <span className="text-[10px] text-zinc-500 ml-1">· vs {prediction.opponent}</span>}
+        </div>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+          prediction.source === 'manual'
+            ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30'
+            : 'bg-zinc-700/40 text-zinc-400 border border-zinc-600/30'
+        }`}>
+          {prediction.source === 'manual' ? '✏️ 운영자 분석' : '📊 자동 분석'}
+        </span>
       </div>
 
       <div className="flex items-center gap-5">

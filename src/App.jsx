@@ -4226,9 +4226,12 @@ const AdminPredictionForm = () => {
   const [reason, setReason] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [opponent, setOpponent] = useState('');
+  const [currentSource, setCurrentSource] = useState(''); // 'manual' | 'auto-stats' | ''
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoMsg, setAutoMsg] = useState('');
 
   useEffect(() => {
     onValue(dbRef(database, `prediction/${todayKey}`), (snap) => {
@@ -4238,10 +4241,37 @@ const AdminPredictionForm = () => {
         setReason(d.reason || '');
         setVideoUrl(d.videoUrl || '');
         setOpponent(d.opponent || '');
+        setCurrentSource(d.source || '');
       }
       setLoading(false);
     }, { onlyOnce: true });
   }, [todayKey]);
+
+  // 🤖 자동 승률 모델 결과를 폼에 채움 (저장은 안 함)
+  const handleLoadAuto = async () => {
+    setAutoLoading(true);
+    setAutoMsg('');
+    try {
+      const res = await fetch('/api/prediction-auto?preview=1&token=factpepe-lineup-2026');
+      const data = await res.json();
+      if (!data.ok) {
+        const map = {
+          no_game: '오늘 SSG 경기가 없습니다.',
+          stats_not_ready: '통계 데이터가 아직 발표되지 않았습니다.',
+        };
+        setAutoMsg('⚠️ ' + (map[data.reason] || data.message || '자동 계산 실패'));
+        return;
+      }
+      setOpponent(data.opponent || opponent);
+      setWinRate(String(data.winRate));
+      setReason(data.reason || '');
+      setAutoMsg(`✅ 자동 계산: ${data.winRate}% — 검수 후 저장하면 운영자 분석으로 표시됩니다.`);
+    } catch (err) {
+      setAutoMsg('❌ 서버 오류: ' + err.message);
+    } finally {
+      setAutoLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     const rate = parseInt(winRate, 10);
@@ -4257,8 +4287,10 @@ const AdminPredictionForm = () => {
         reason: reason.trim(),
         videoUrl: videoUrl.trim(),
         opponent: opponent.trim(),
+        source: 'manual', // 운영자가 저장하면 항상 manual로 라벨
         updatedAt: Date.now(),
       });
+      setCurrentSource('manual');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
@@ -4277,8 +4309,31 @@ const AdminPredictionForm = () => {
   return (
     <div className="space-y-4 max-w-lg">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-        <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">📊 오늘의 분석 ({todayDisplay})</p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-red-500 font-bold text-xs uppercase tracking-wider">📊 오늘의 분석 ({todayDisplay})</p>
+          {currentSource && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${currentSource === 'manual' ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30' : 'bg-zinc-700/40 text-zinc-400 border border-zinc-600/30'}`}>
+              {currentSource === 'manual' ? '✏️ 운영자 분석' : '📊 자동 분석'}
+            </span>
+          )}
+        </div>
         <p className="text-zinc-500 text-xs mb-4">토스 미니앱 대시보드에 표시될 승률과 영상을 등록합니다.</p>
+
+        {/* 자동 계산 불러오기 */}
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 mb-4">
+          <p className="text-zinc-300 text-xs mb-2">
+            🤖 <b>통계 기반 자동 계산</b> — 시즌 승률, 최근 5경기, 선발 ERA, 홈/원정 기반
+          </p>
+          <button onClick={handleLoadAuto} disabled={autoLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded-lg font-bold text-sm transition-all">
+            {autoLoading ? '⚙️ 계산 중...' : '🤖 자동 계산 결과 불러오기'}
+          </button>
+          {autoMsg && (
+            <p className={`mt-2 text-xs font-bold text-center ${autoMsg.startsWith('✅') ? 'text-green-400' : 'text-yellow-400'}`}>
+              {autoMsg}
+            </p>
+          )}
+        </div>
 
         <div className="space-y-3">
           <div>
