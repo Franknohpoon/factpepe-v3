@@ -13,14 +13,11 @@ import React from 'react';
 // ───────── 운영자 정보 (입점 전 반드시 수정) ─────────
 const OPERATOR = {
   serviceName: '팩트페페 (FactPepe)',
-  operatorName: '노정현',
-  contactEmail: 'factpepe@gmail.com', // ← 실제 운영 이메일로 교체
+  operatorName: 'Frank',
+  contactEmail: 'frank.noh8012@gmail.com',
   snsX: 'https://x.com/factpepe_',
-  // 사업자 정보 (입점 시 필수)
-  // businessName: '○○○ 개인사업자',
-  // businessNumber: '000-00-00000',
-  // businessAddress: '서울특별시 ...',
-  effectiveDate: '2026.06.02', // 약관 시행일
+  // 사업자 정보 (입점 심사 시 토스가 요구하면 그때 추가)
+  effectiveDate: '2026.06.04', // 약관 시행일
 };
 
 // ───────── 공통 레이아웃 ─────────
