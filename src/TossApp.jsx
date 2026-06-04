@@ -69,26 +69,93 @@ const PredictionCard = ({ prediction }) => {
   );
 };
 
-// ─── 영상 임베드 ───────────────────────────────────────────────────
-const VideoCard = ({ videoUrl }) => {
-  if (!videoUrl) return null;
-  const m = videoUrl.match(/(?:shorts\/|youtu\.be\/|v=)([\w-]{11})/);
-  const id = m ? m[1] : '';
-  if (!id) return null;
+// ─── 영상 카드 (메타데이터만 + 외부 링크 — 토스 정책 안전) ──────────
+const VideoCard = ({ prediction }) => {
+  if (!prediction) return null;
+
+  // 우선순위: 자동 수집 videoMeta > 운영자 수동 videoUrl
+  const meta = prediction.videoMeta;
+  const manualUrl = prediction.videoUrl;
+
+  if (!meta && !manualUrl) return null;
+
+  // 표시 데이터 결정
+  let videoId, title, thumbnail, channelName, publishedRelative;
+  if (meta?.videoId) {
+    videoId = meta.videoId;
+    title = meta.title || '오늘의 분석 영상';
+    thumbnail = meta.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    channelName = meta.channelName || '팩트페페';
+    publishedRelative = meta.publishedRelative || '';
+  } else if (manualUrl) {
+    const m = manualUrl.match(/(?:shorts\/|youtu\.be\/|v=)([\w-]{11})/);
+    videoId = m?.[1];
+    if (!videoId) return null;
+    title = '오늘의 분석 영상';
+    thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    channelName = '팩트페페';
+    publishedRelative = '';
+  } else {
+    return null;
+  }
+
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // 클릭 시 외부 사이트 이동 안내 (토스 정책 가시화)
+  const handleClick = (e) => {
+    // 명시적 외부 이동 — 토스가 가장 안전하게 보는 패턴
+    // (자동 자녀 임베드 아님, 사용자 명시적 탭)
+  };
+
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3">
+    <a
+      href={watchUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleClick}
+      className="block bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3 active:bg-zinc-800/60 transition-all"
+    >
       <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-[10px] font-black text-zinc-500 tracking-widest">숏폼 분석</span>
-        <span className="text-[10px] text-zinc-600">YouTube Shorts</span>
+        <span className="text-[10px] font-black text-zinc-500 tracking-widest">오늘의 분석 영상</span>
+        <span className="text-[10px] text-zinc-600">YouTube ↗</span>
       </div>
-      <div className="rounded-xl overflow-hidden bg-black mx-auto" style={{ aspectRatio: '9/16', maxWidth: '260px' }}>
-        <iframe src={`https://www.youtube.com/embed/${id}?playsinline=1&rel=0`}
-          className="w-full h-full"
-          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          title="Today's analysis" />
+
+      <div className="flex gap-3">
+        {/* 썸네일 16:9 */}
+        <div className="flex-shrink-0 rounded-lg overflow-hidden bg-black relative" style={{ width: '140px', aspectRatio: '16/9' }}>
+          <img src={thumbnail} alt={title}
+            className="w-full h-full object-cover"
+            loading="lazy" />
+          {/* 재생 버튼 오버레이 */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="w-10 h-10 rounded-full bg-white/95 flex items-center justify-center shadow-lg">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
+                <path d="M0 0L14 8L0 16V0Z" fill="#CE1141"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* 메타데이터 */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+          <div>
+            <p className="text-white text-xs font-bold leading-snug line-clamp-2 mb-1">
+              {title}
+            </p>
+            <p className="text-zinc-500 text-[10px]">
+              {channelName}{publishedRelative && ` · ${publishedRelative}`}
+            </p>
+          </div>
+          <span className="text-red-400 text-[10px] font-bold mt-1">
+            ▶ YouTube에서 보기
+          </span>
+        </div>
       </div>
-    </div>
+
+      <p className="text-zinc-700 text-[9px] text-center mt-2">
+        외부 사이트(YouTube)로 이동합니다
+      </p>
+    </a>
   );
 };
 
@@ -424,7 +491,7 @@ function TossDashboard() {
         ) : (
           <>
             <PredictionCard prediction={prediction} />
-            <VideoCard videoUrl={prediction?.videoUrl} />
+            <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
             <ChatCard todayKey={todayKey} hasVoted={!!myVote} />
