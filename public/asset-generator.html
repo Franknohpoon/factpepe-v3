@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>팩트페페 - 토스 미니앱 자산 생성기</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+    background: #0a0a0a;
+    color: #fff;
+    padding: 32px 16px;
+    min-height: 100vh;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+  .lead { color: #888; font-size: 14px; margin-bottom: 32px; }
+  .section {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .section h2 { font-size: 18px; margin-bottom: 4px; }
+  .section .meta { color: #888; font-size: 12px; margin-bottom: 20px; }
+  .preview {
+    background: #222;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+  }
+  .preview .scale { transform-origin: center center; }
+  button {
+    background: #CE1141;
+    color: #fff;
+    border: 0;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 8px;
+    transition: filter 0.15s;
+  }
+  button:hover { filter: brightness(1.15); }
+  button:active { filter: brightness(0.9); }
+  .secondary { background: #333; }
+  .info {
+    background: #1a1a0a;
+    border-left: 3px solid #fbbf24;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #ddd;
+    margin-top: 12px;
+  }
+  .info b { color: #fbbf24; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐸 팩트페페 — 토스 미니앱 자산 생성기</h1>
+    <p class="lead">버튼 누르면 정확한 규격의 PNG가 다운로드됩니다.</p>
+
+    <!-- ───────── 로고 ───────── -->
+    <div class="section">
+      <h2>① 앱 로고</h2>
+      <div class="meta">600 × 600 PNG · 다크모드 호환 · 배경색 포함</div>
+      <div class="preview">
+        <div class="scale" style="transform: scale(0.3);">
+          <svg id="logo-svg" width="600" height="600" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- 배경: SSG 레드 그라데이션 -->
+            <defs>
+              <radialGradient id="bgGrad" cx="50%" cy="40%" r="70%">
+                <stop offset="0%" stop-color="#E61E45" />
+                <stop offset="60%" stop-color="#CE1141" />
+                <stop offset="100%" stop-color="#8A0B2C" />
+              </radialGradient>
+              <radialGradient id="frogBody" cx="40%" cy="40%" r="70%">
+                <stop offset="0%" stop-color="#7DD957" />
+                <stop offset="60%" stop-color="#4FAF35" />
+                <stop offset="100%" stop-color="#2D7820" />
+              </radialGradient>
+              <radialGradient id="eyeWhite" cx="35%" cy="35%" r="70%">
+                <stop offset="0%" stop-color="#fff" />
+                <stop offset="100%" stop-color="#e0e0e0" />
+              </radialGradient>
+            </defs>
+
+            <rect width="600" height="600" fill="url(#bgGrad)" rx="0" />
+
+            <!-- 배경 광택 -->
+            <ellipse cx="300" cy="180" rx="240" ry="80" fill="#fff" opacity="0.05" />
+
+            <!-- 개구리 몸통 (둥근 머리) -->
+            <ellipse cx="300" cy="340" rx="180" ry="160" fill="url(#frogBody)" />
+
+            <!-- 눈 받침 (양쪽 봉긋한 모양) -->
+            <ellipse cx="220" cy="210" rx="78" ry="80" fill="url(#frogBody)" />
+            <ellipse cx="380" cy="210" rx="78" ry="80" fill="url(#frogBody)" />
+
+            <!-- 눈 흰자 -->
+            <circle cx="220" cy="210" r="60" fill="url(#eyeWhite)" />
+            <circle cx="380" cy="210" r="60" fill="url(#eyeWhite)" />
+
+            <!-- 검은 눈동자 -->
+            <circle cx="220" cy="218" r="34" fill="#0a0a0a" />
+            <circle cx="380" cy="218" r="34" fill="#0a0a0a" />
+
+            <!-- 눈 하이라이트 -->
+            <circle cx="210" cy="206" r="10" fill="#fff" />
+            <circle cx="370" cy="206" r="10" fill="#fff" />
+
+            <!-- 입 (특유의 페페 표정 — 살짝 비대칭 미소) -->
+            <path d="M 200 380
+                     Q 300 430 400 380"
+                  stroke="#1a3d0a" stroke-width="10" fill="none" stroke-linecap="round" />
+
+            <!-- 볼터치 -->
+            <ellipse cx="170" cy="350" rx="22" ry="14" fill="#E61E45" opacity="0.4" />
+            <ellipse cx="430" cy="350" rx="22" ry="14" fill="#E61E45" opacity="0.4" />
+
+            <!-- 하단 텍스트 -->
+            <text x="300" y="540" text-anchor="middle"
+                  fill="#fff" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+                  font-weight="900" font-size="48" letter-spacing="4">
+              팩트페페
+            </text>
+          </svg>
+        </div>
+      </div>
+      <button onclick="downloadPNG('logo-svg', 'factpepe-logo-600.png', 600, 600)">PNG 다운로드 (600×600)</button>
+      <button class="secondary" onclick="downloadSVG('logo-svg', 'factpepe-logo.svg')">SVG 다운로드</button>
+      <div class="info">
+        <b>토스 가이드:</b> 정사각형 600×600 PNG, 배경 필수(투명 X), 다크모드 자연스러움 ✅<br>
+        제출 전 600×600 정확한지 확인하세요.
+      </div>
+    </div>
+
+    <!-- ───────── 썸네일 ───────── -->
+    <div class="section">
+      <h2>② 썸네일 이미지</h2>
+      <div class="meta">1932 × 828 PNG · 토스 앱 내 노출용 배너</div>
+      <div class="preview" style="background: #0a0a0a;">
+        <div class="scale" style="transform: scale(0.35); transform-origin: center center;">
+          <svg id="thumb-svg" width="1932" height="828" viewBox="0 0 1932 828" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="tBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1a0008" />
+                <stop offset="50%" stop-color="#0a0004" />
+                <stop offset="100%" stop-color="#000" />
+              </linearGradient>
+              <radialGradient id="tGlow" cx="20%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#CE1141" stop-opacity="0.5" />
+                <stop offset="100%" stop-color="#CE1141" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="tGauge" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#E61E45" />
+                <stop offset="100%" stop-color="#CE1141" />
+              </radialGradient>
+              <linearGradient id="tFrog" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#7DD957" />
+                <stop offset="100%" stop-color="#4FAF35" />
+              </linearGradient>
+            </defs>
+
+            <!-- 배경 -->
+            <rect width="1932" height="828" fill="url(#tBg)" />
+            <rect width="1932" height="828" fill="url(#tGlow)" />
+
+            <!-- 좌측: 메인 카피 영역 -->
+            <text x="120" y="280" fill="#fff" font-family="-apple-system, sans-serif"
+                  font-weight="900" font-size="92" letter-spacing="-2">
+              오늘 우리 팀,
+            </text>
+            <text x="120" y="380" fill="#fff" font-family="-apple-system, sans-serif"
+                  font-weight="900" font-size="92" letter-spacing="-2">
+              어떻게 나올까?
+            </text>
+
+            <text x="120" y="450" fill="#CE1141" font-family="-apple-system, sans-serif"
+                  font-weight="800" font-size="32" letter-spacing="6">
+              FACTPEPE
+            </text>
+
+            <text x="120" y="510" fill="#aaa" font-family="-apple-system, sans-serif"
+                  font-weight="600" font-size="32">
+              실시간 라인업 · 팩트 승률 · 응원 톡
+            </text>
+
+            <!-- 페페 캐릭터 + 게이지 (우측) -->
+            <g transform="translate(1400, 414)">
+              <!-- 게이지 원 -->
+              <circle cx="0" cy="0" r="240" fill="none" stroke="#222" stroke-width="32" />
+              <circle cx="0" cy="0" r="240" fill="none" stroke="url(#tGauge)" stroke-width="32"
+                      stroke-dasharray="935 1508" stroke-linecap="round"
+                      transform="rotate(-90)" />
+
+              <!-- 게이지 내부 % -->
+              <text y="-10" text-anchor="middle" fill="#fff"
+                    font-family="-apple-system, sans-serif" font-weight="900" font-size="96">62%</text>
+              <text y="60" text-anchor="middle" fill="#CE1141"
+                    font-family="-apple-system, sans-serif" font-weight="800" font-size="26"
+                    letter-spacing="3">팩트 승률</text>
+
+              <!-- 작은 페페 (우상단 코너) -->
+              <g transform="translate(180, -180)">
+                <circle r="60" fill="url(#tFrog)" />
+                <ellipse cx="-22" cy="-22" rx="20" ry="22" fill="#fff" />
+                <ellipse cx="22" cy="-22" rx="20" ry="22" fill="#fff" />
+                <circle cx="-22" cy="-18" r="10" fill="#0a0a0a" />
+                <circle cx="22" cy="-18" r="10" fill="#0a0a0a" />
+                <circle cx="-26" cy="-22" r="3" fill="#fff" />
+                <circle cx="18" cy="-22" r="3" fill="#fff" />
+                <path d="M -22 10 Q 0 24 22 10" stroke="#1a3d0a" stroke-width="4" fill="none" stroke-linecap="round" />
+              </g>
+            </g>
+
+            <!-- 하단 인디케이터 점 -->
+            <circle cx="120" cy="700" r="6" fill="#CE1141" />
+            <text x="140" y="708" fill="#fff" font-family="-apple-system, sans-serif"
+                  font-weight="600" font-size="22">앱인토스에서 만나보세요</text>
+          </svg>
+        </div>
+      </div>
+      <button onclick="downloadPNG('thumb-svg', 'factpepe-thumb-1932.png', 1932, 828)">PNG 다운로드 (1932×828)</button>
+      <button class="secondary" onclick="downloadSVG('thumb-svg', 'factpepe-thumb.svg')">SVG 다운로드</button>
+      <div class="info">
+        <b>토스 가이드:</b> 1932×828 PNG, 핵심 기능 노출, 텍스트 과도하지 않음, 빈 공간/블러 없음 ✅<br>
+        실제 앱 UI 미리보기처럼 디자인되어 직관적입니다.
+      </div>
+    </div>
+
+    <!-- ───────── 스크린샷 가이드 ───────── -->
+    <div class="section">
+      <h2>③ 스크린샷</h2>
+      <div class="meta">636 × 1048 PNG × 최소 3장 · 실제 앱 화면 캡처</div>
+
+      <div style="background: #0a0a0a; padding: 20px; border-radius: 12px; border: 1px dashed #444; color: #ddd; font-size: 14px; line-height: 1.7;">
+        <p style="margin-bottom: 12px;">
+          <b style="color: #fff;">스크린샷은 자동 생성 안 됩니다.</b> 실제 앱 화면을 캡처해야 진정성 있습니다.
+        </p>
+        <p style="margin-bottom: 12px;"><b style="color: #CE1141;">방법 (Chrome 데스크탑 기준):</b></p>
+        <ol style="padding-left: 24px;">
+          <li>배포된 사이트의 <code style="background:#222;padding:2px 6px;border-radius:3px;">/toss</code> 접속</li>
+          <li>개발자 도구 열기 (F12 또는 ⌘+Option+I)</li>
+          <li>좌상단 모바일 아이콘 클릭 (Toggle device toolbar)</li>
+          <li>크기 수동 입력: <b>636 × 1048</b></li>
+          <li>대시보드를 적당한 위치에 스크롤</li>
+          <li>⌘+Shift+P → "Capture screenshot" 또는 "node screenshot"</li>
+        </ol>
+
+        <p style="margin-top: 16px;"><b style="color: #CE1141;">권장 3장:</b></p>
+        <ul style="padding-left: 24px;">
+          <li><b>1번:</b> 헤더 + 팩트 승률 카드 + 영상 일부 (가장 위)</li>
+          <li><b>2번:</b> 라인업 보드 전체 (1~9번 + SP)</li>
+          <li><b>3번:</b> 투표 + 응원 톡 영역</li>
+        </ul>
+
+        <p style="margin-top: 16px; font-size: 13px; color: #888;">
+          ※ 스크린샷 직전에 "오늘의 분석" 데이터를 미리 등록해두세요. 빈 상태로 캡처하면 매력 ↓
+        </p>
+      </div>
+    </div>
+
+    <p style="text-align: center; color: #555; font-size: 12px; margin-top: 32px;">
+      Generated for Toss mini-app submission · factpepe
+    </p>
+  </div>
+
+<script>
+  function downloadPNG(svgId, filename, w, h) {
+    const svg = document.getElementById(svgId);
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((pngBlob) => {
+        const dl = document.createElement('a');
+        dl.href = URL.createObjectURL(pngBlob);
+        dl.download = filename;
+        dl.click();
+        setTimeout(() => URL.revokeObjectURL(dl.href), 100);
+      }, 'image/png');
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function downloadSVG(svgId, filename) {
+    const svg = document.getElementById(svgId);
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const dl = document.createElement('a');
+    dl.href = URL.createObjectURL(blob);
+    dl.download = filename;
+    dl.click();
+    setTimeout(() => URL.revokeObjectURL(dl.href), 100);
+  }
+</script>
+</body>
+</html>
