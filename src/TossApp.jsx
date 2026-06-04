@@ -3,6 +3,7 @@ import { database } from './App.jsx';
 import { ref as dbRef, onValue, runTransaction, push, set, query, limitToLast } from 'firebase/database';
 import { getUserId, getTodayKey } from './tossAuth.js';
 import { validateMessage, checkRateLimit, markSent, MAX_LEN_CHAT } from './chatFilter.js';
+import { TossPrivacyPage, TossTermsPage, TossAboutPage } from './TossLegalPages.jsx';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -349,7 +350,7 @@ const ChatCard = ({ todayKey, hasVoted }) => {
 };
 
 // ─── 메인 대시보드 ─────────────────────────────────────────────────
-function TossApp() {
+function TossDashboard() {
   const todayKey = getTodayKey();
   const [prediction, setPrediction] = useState(null);
   const [lineup, setLineup] = useState(null);
@@ -421,12 +422,38 @@ function TossApp() {
           </>
         )}
 
-        <div className="text-center pt-2">
-          <span className="text-zinc-700 text-[10px]">FACTPEPE · @factpepe_</span>
+        <div className="pt-3">
+          <div className="flex gap-2 justify-center text-[10px] mb-2">
+            <a href="/toss/about"   className="text-zinc-500 hover:text-zinc-300">서비스 소개</a>
+            <span className="text-zinc-700">·</span>
+            <a href="/toss/privacy" className="text-zinc-500 hover:text-zinc-300">개인정보 처리방침</a>
+            <span className="text-zinc-700">·</span>
+            <a href="/toss/terms"   className="text-zinc-500 hover:text-zinc-300">이용약관</a>
+          </div>
+          <div className="text-center">
+            <span className="text-zinc-700 text-[10px]">FACTPEPE · @factpepe_</span>
+          </div>
         </div>
       </main>
     </div>
   );
+}
+
+// ─── 토스 라우터 (path 기반 분기) ───────────────────────────────────
+function TossApp() {
+  const [path, setPath] = useState(() => window.location.pathname);
+
+  // 뒤로/앞으로가기 + 다른 페이지 링크 이동 추적
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  if (path === '/toss/privacy') return <TossPrivacyPage />;
+  if (path === '/toss/terms')   return <TossTermsPage />;
+  if (path === '/toss/about')   return <TossAboutPage />;
+  return <TossDashboard />;
 }
 
 export default TossApp;

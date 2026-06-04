@@ -1,0 +1,195 @@
+{
+  "rules": {
+    "$other": { ".read": false, ".write": false },
+
+    "//──────────── 라인업/매치업/팩트페페/뉴스/먹거리/응원가 ────────────": "",
+    "// 운영자가 클라이언트에서 직접 쓰는 컬렉션. 익명 클라이언트 구조라 admin 인증 불가.",
+    "// → public read, write는 데이터 무결성 + 합리적 길이 검증으로 도배만 차단.",
+
+    "lineup": {
+      "latest": {
+        ".read": true,
+        ".write": true,
+        ".validate": "newData.hasChildren(['date', 'opponent']) && newData.child('date').isString() && newData.child('date').val().length <= 20"
+      },
+      "history": {
+        ".read": true,
+        "$ts": {
+          ".write": "!data.exists() && $ts.matches(/^[0-9]+$/) && newData.hasChild('date')"
+        }
+      }
+    },
+
+    "matchup": {
+      "latest": {
+        ".read": true,
+        ".write": true,
+        ".validate": "newData.hasChild('date')"
+      }
+    },
+
+    "factPepe": {
+      "latest": { ".read": true, ".write": true },
+      "history": {
+        ".read": true,
+        "$id": { ".write": "newData.hasChild('content') || !newData.exists()" }
+      }
+    },
+
+    "factNews": {
+      ".read": true,
+      "$id": {
+        ".write": true,
+        ".validate": "!newData.exists() || (newData.hasChildren(['title', 'date']) && newData.child('title').val().length <= 200)"
+      }
+    },
+
+    "roulette": {
+      "foods": {
+        ".read": true,
+        "$id": {
+          ".write": true,
+          ".validate": "!newData.exists() || newData.hasChild('name')"
+        }
+      }
+    },
+
+    "//──────────── 좌석 시야 ────────────": "",
+
+    "seatViews": {
+      "zonePhotos": {
+        ".read": true,
+        "$zoneId": {
+          "$photoId": {
+            ".write": "!newData.exists() || newData.hasChild('photoUrl')"
+          }
+        }
+      },
+      "pending": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() || !newData.exists()",
+          ".validate": "!newData.exists() || (newData.hasChild('photoUrl') && newData.child('photoUrl').val().length <= 2000000)"
+        }
+      },
+      "pendingPhotos": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() || !newData.exists()",
+          ".validate": "!newData.exists() || newData.hasChild('photoUrl')"
+        }
+      },
+      "approved": {
+        ".read": true,
+        "$id": { ".write": true }
+      },
+      "reports": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() || !newData.exists()",
+          ".validate": "!newData.exists() || (newData.hasChild('comment') && newData.child('comment').isString() && newData.child('comment').val().length <= 500)"
+        }
+      },
+      "stadiumMap": {
+        ".read": true,
+        ".write": true,
+        "hotspots": {
+          "$zoneId": { ".write": true }
+        }
+      }
+    },
+
+    "goods": {
+      "pending": {
+        ".read": true,
+        "$id": {
+          ".write": "!data.exists() || !newData.exists()",
+          ".validate": "!newData.exists() || (newData.hasChild('imageUrl') && (!newData.child('comment').exists() || newData.child('comment').val().length <= 500))"
+        }
+      },
+      "approved": {
+        ".read": true,
+        "$id": { ".write": true }
+      }
+    },
+
+    "//──────────── 토스 미니앱: 분석/투표/응원톡 ────────────": "",
+
+    "prediction": {
+      ".read": true,
+      "$date": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['winRate']) && newData.child('winRate').isNumber() && newData.child('winRate').val() >= 0 && newData.child('winRate').val() <= 100 && $date.matches(/^[0-9]{8}$/)"
+      }
+    },
+
+    "vote": {
+      ".read": true,
+      "$date": {
+        ".validate": "$date.matches(/^[0-9]{8}$/)",
+        "counts": {
+          "win": {
+            ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10000000"
+          },
+          "lose": {
+            ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10000000"
+          }
+        },
+        "users": {
+          "$uid": {
+            ".write": "newData.hasChildren(['choice', 'at']) && newData.child('choice').isString() && (newData.child('choice').val() === 'win' || newData.child('choice').val() === 'lose') && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)"
+          }
+        }
+      }
+    },
+
+    "chat": {
+      "banned": {
+        ".read": true,
+        "$uid": {
+          ".write": true,
+          ".validate": "!newData.exists() || newData.hasChild('at')"
+        }
+      },
+      "$date": {
+        ".validate": "$date.matches(/^[0-9]{8}$/)",
+        "messages": {
+          ".read": true,
+          "$msgId": {
+            ".write": "(!data.exists() && newData.hasChildren(['userId', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 50 && newData.child('userId').isString() && newData.child('userId').val().length >= 4 && newData.child('userId').val().length <= 80 && newData.child('at').isNumber() && !root.child('chat').child('banned').child(newData.child('userId').val()).exists()) || !newData.exists()",
+            ".validate": "newData.hasChildren(['userId', 'text', 'at'])"
+          }
+        }
+      }
+    },
+
+    "//──────────── 분석 / 트래킹 ────────────": "",
+
+    "analytics": {
+      ".read": false,
+      "daily": {
+        "$date": {
+          ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+          "sessions":   { ".write": "newData.isNumber() && newData.val() >= 0" },
+          "pageviews":  { ".write": "newData.isNumber() && newData.val() >= 0" },
+          "firstVisit": { ".write": "newData.isNumber()" },
+          "tabs": {
+            "$tab": { ".write": "newData.isNumber() && newData.val() >= 0" }
+          },
+          "toss": {
+            "sessions":  { ".write": "newData.isNumber() && newData.val() >= 0" },
+            "pageviews": { ".write": "newData.isNumber() && newData.val() >= 0" },
+            "tabs": {
+              "$tab": { ".write": "newData.isNumber() && newData.val() >= 0" }
+            }
+          }
+        }
+      },
+      "roulette": {
+        "$date": {
+          "$uid": { ".write": "newData.isNumber() && newData.val() >= 0" }
+        }
+      }
+    }
+  }
+}
