@@ -159,43 +159,215 @@ const VideoCard = ({ prediction }) => {
   );
 };
 
-// ─── 라인업 보드 ───────────────────────────────────────────────────
-const LineupBoard = ({ lineup }) => {
-  if (!lineup) {
+// ─── 라인업 보드 (4가지 상태: full / partial / fallback / no_game) ─────
+const LineupBoard = ({ lineup, lineupYesterday, noGame }) => {
+  // 오늘 정보로 추정되는 표시일
+  const todayDisplay = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  // 상태 판별
+  // 1) noGame이 오늘이면 → 비경기일
+  // 2) lineup 오늘 + partial=false → 정상 표시
+  // 3) lineup 오늘 + partial=true → 선발투수만 + 어제 타순 (C안)
+  // 4) lineup 어제 거 → 어제 라인업 fallback (전체 어두운 톤)
+  // 5) 둘 다 없음 → 빈 상태
+
+  const isNoGame = noGame?.date === todayDisplay;
+  const todayLineup = lineup?.date === todayDisplay ? lineup : null;
+  const yesterdayLineup = lineupYesterday || (lineup?.date !== todayDisplay ? lineup : null);
+
+  // ───── 상태 1: 비경기일 ─────
+  if (isNoGame) {
+    return <NoGameBox nextGame={noGame.nextGame} />;
+  }
+
+  // ───── 상태 2: 오늘 정상 라인업 (partial 아님) ─────
+  if (todayLineup && !todayLineup.partial) {
+    return <LineupContent lineup={todayLineup} tone="normal" />;
+  }
+
+  // ───── 상태 3: 오늘 부분 라인업 (선발투수만) + 어제 타순 보강 ─────
+  if (todayLineup?.partial && todayLineup.pitcher) {
     return (
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-center">
-        <p className="text-zinc-400 text-sm font-bold">오늘의 라인업을 불러오는 중입니다</p>
-        <p className="text-zinc-600 text-xs mt-1">경기 시작 1~2시간 전 자동 업데이트</p>
+      <div className="space-y-2">
+        <InfoBox
+          title="⏳ 타순 발표 대기 중"
+          message="선발투수만 발표됐어요. 타순은 어제 기준입니다."
+        />
+        <LineupContent
+          lineup={{
+            ...todayLineup,
+            // 어제 타순 가져오되 선발투수는 오늘 거 유지
+            players: yesterdayLineup?.players || {},
+          }}
+          tone="partial"
+          isFallback={true}
+          fallbackDate={yesterdayLineup?.date}
+        />
       </div>
     );
   }
-  const players = Object.values(lineup.players || {});
+
+  // ───── 상태 4: 어제 라인업만 (오늘 데이터 0) ─────
+  if (yesterdayLineup) {
+    return (
+      <div className="space-y-2">
+        <InfoBox
+          title="⏳ 오늘 라인업 발표 대기 중"
+          message={`${yesterdayLineup.date} 라인업을 표시합니다`}
+        />
+        <LineupContent lineup={yesterdayLineup} tone="fallback" isFallback={true} fallbackDate={yesterdayLineup.date} />
+      </div>
+    );
+  }
+
+  // ───── 상태 5: 완전 빈 상태 ─────
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-center">
+      <p className="text-zinc-400 text-sm font-bold">오늘의 라인업을 불러오는 중입니다</p>
+      <p className="text-zinc-600 text-xs mt-1">경기 시작 1~2시간 전 자동 업데이트</p>
+    </div>
+  );
+};
+
+// 안내 박스
+const InfoBox = ({ title, message }) => (
+  <div className="bg-yellow-950/30 border border-yellow-900/50 rounded-xl px-3 py-2.5">
+    <p className="text-yellow-300 text-xs font-bold">{title}</p>
+    <p className="text-yellow-400/70 text-[10px] mt-0.5">{message}</p>
+  </div>
+);
+
+// 비경기일 박스
+const NoGameBox = ({ nextGame }) => {
+  if (!nextGame) {
+    return (
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-center">
+        <p className="text-3xl mb-2">🌙</p>
+        <p className="text-zinc-300 text-sm font-bold">오늘 SSG 경기 없는 날</p>
+        <p className="text-zinc-500 text-xs mt-1">잘 쉬세요!</p>
+      </div>
+    );
+  }
+
+  const gameDateObj = new Date(nextGame.gameDateTime || nextGame.gameDate);
+  const daysAhead = Math.ceil((gameDateObj - new Date()) / (24 * 60 * 60 * 1000));
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][gameDateObj.getDay()];
+  const dateStr = `${gameDateObj.getMonth() + 1}.${gameDateObj.getDate()} (${weekday})`;
+  const timeStr = nextGame.gameDateTime
+    ? gameDateObj.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : '';
+
+  return (
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5">
+      <div className="text-center mb-4">
+        <p className="text-3xl mb-2">🌙</p>
+        <p className="text-zinc-300 text-sm font-bold">오늘 SSG 경기 없는 날</p>
+        <p className="text-zinc-500 text-xs mt-0.5">잘 쉬세요!</p>
+      </div>
+      <div className="bg-red-950/30 border border-red-900/40 rounded-xl p-3">
+        <p className="text-red-400 text-[10px] font-black tracking-widest mb-1">다음 경기</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white text-base font-black">
+              SSG <span className="text-zinc-500 font-bold text-sm">vs</span> {nextGame.opponent}
+            </p>
+            <p className="text-zinc-400 text-xs mt-0.5">
+              {nextGame.isHome ? '🏟️ 홈' : '✈️ 원정'}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-white text-sm font-black">{dateStr}</p>
+            {timeStr && <p className="text-zinc-500 text-xs">{timeStr}</p>}
+            <p className="text-red-400 text-[10px] font-bold mt-0.5">
+              D-{daysAhead}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 라인업 콘텐츠 (정상/partial/fallback 톤 분기)
+const LineupContent = ({ lineup, tone = 'normal', isFallback = false, fallbackDate }) => {
+  const players = Object.values(lineup.players || {});
+
+  // 톤별 스타일
+  const toneStyles = {
+    normal: {
+      container: 'bg-zinc-900/60 border-zinc-800',
+      label: 'text-red-400',
+      pitcherBg: 'bg-red-600/8 border-red-900/30',
+      pitcherText: 'text-white',
+      pitcherSpLabel: 'text-red-400',
+      rowBg: 'bg-white/[0.02]',
+      number: 'text-red-400',
+      name: 'text-white',
+      pos: 'text-zinc-500',
+    },
+    partial: {
+      container: 'bg-zinc-900/40 border-zinc-800/70',
+      label: 'text-red-400',
+      pitcherBg: 'bg-red-600/8 border-red-900/30',
+      pitcherText: 'text-white',
+      pitcherSpLabel: 'text-red-400',
+      rowBg: 'bg-white/[0.015]',
+      number: 'text-zinc-500',
+      name: 'text-zinc-400',
+      pos: 'text-zinc-600',
+    },
+    fallback: {
+      container: 'bg-zinc-900/40 border-zinc-800/70',
+      label: 'text-zinc-500',
+      pitcherBg: 'bg-zinc-800/40 border-zinc-700/50',
+      pitcherText: 'text-zinc-400',
+      pitcherSpLabel: 'text-zinc-500',
+      rowBg: 'bg-white/[0.015]',
+      number: 'text-zinc-500',
+      name: 'text-zinc-400',
+      pos: 'text-zinc-600',
+    },
+  };
+
+  const s = toneStyles[tone];
+
+  return (
+    <div className={`${s.container} border rounded-2xl p-4`}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <span className="text-[10px] font-black text-red-400 tracking-widest">선발 라인업</span>
+          <span className={`text-[10px] font-black ${s.label} tracking-widest`}>선발 라인업</span>
           {lineup.opponent && (
             <span className="text-zinc-500 text-[10px] ml-1.5">SSG vs {lineup.opponent}</span>
           )}
         </div>
-        {lineup.date && <span className="text-zinc-600 text-[10px]">{lineup.date}</span>}
+        {lineup.date && (
+          <span className="text-zinc-600 text-[10px]">
+            {isFallback && tone === 'partial' && `타순 ${fallbackDate} 기준`}
+            {isFallback && tone === 'fallback' && fallbackDate}
+            {!isFallback && lineup.date}
+          </span>
+        )}
       </div>
 
       {lineup.pitcher && (
-        <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-600/8 border border-red-900/30 rounded-lg">
-          <span className="text-red-400 text-[10px] font-black tracking-wider w-5">SP</span>
-          <span className="text-white text-sm font-bold flex-1">{lineup.pitcher}</span>
-          <span className="text-zinc-500 text-[10px]">선발</span>
+        <div className={`flex items-center gap-2 px-3 py-2 mb-2 ${s.pitcherBg} border rounded-lg`}>
+          <span className={`${s.pitcherSpLabel} text-[10px] font-black tracking-wider w-5`}>SP</span>
+          <span className={`${s.pitcherText} text-sm font-bold flex-1`}>{lineup.pitcher}</span>
+          <span className="text-zinc-500 text-[10px]">
+            {tone === 'partial' ? '오늘 선발 ✓' : '선발'}
+          </span>
         </div>
       )}
 
       <div className="space-y-1">
         {players.slice(0, 9).map((p, i) => (
-          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white/[0.02] rounded-lg">
-            <span className="text-red-400 font-black text-xs w-5" style={{ fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-            <span className="text-white text-sm font-bold flex-1">{p.name || '-'}</span>
-            <span className="text-zinc-500 text-[10px] font-bold">{POS_ABBR[p.pos] || p.pos || ''}</span>
+          <div key={i} className={`flex items-center gap-2 px-3 py-2 ${s.rowBg} rounded-lg`}>
+            <span className={`${s.number} font-black text-xs w-5`} style={{ fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+            <span className={`${s.name} text-sm font-bold flex-1`}>{p.name || '-'}</span>
+            <span className={`${s.pos} text-[10px] font-bold`}>{POS_ABBR[p.pos] || p.pos || ''}</span>
           </div>
         ))}
         {players.length === 0 && (
@@ -434,8 +606,17 @@ function TossDashboard() {
   const todayKey = getTodayKey();
   const [prediction, setPrediction] = useState(null);
   const [lineup, setLineup] = useState(null);
+  const [lineupYesterday, setLineupYesterday] = useState(null);
+  const [noGame, setNoGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState(null);
+
+  // 어제 날짜 키
+  const yesterdayKey = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   useEffect(() => {
     const unsubP = onValue(dbRef(database, `prediction/${todayKey}`), (snap) => {
@@ -445,8 +626,14 @@ function TossDashboard() {
       setLineup(snap.val());
       setLoading(false);
     });
-    return () => { unsubP(); unsubL(); };
-  }, [todayKey]);
+    const unsubLY = onValue(dbRef(database, `lineup/byDate/${yesterdayKey}`), (snap) => {
+      setLineupYesterday(snap.val());
+    });
+    const unsubNG = onValue(dbRef(database, 'lineup/noGame'), (snap) => {
+      setNoGame(snap.val());
+    });
+    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); };
+  }, [todayKey, yesterdayKey]);
 
   // 트래킹: 진입 + DAU + 유저 프로필
   useEffect(() => {
@@ -510,7 +697,7 @@ function TossDashboard() {
           <>
             <PredictionCard prediction={prediction} />
             <VideoCard prediction={prediction} />
-            <LineupBoard lineup={lineup} />
+            <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
             <ChatCard todayKey={todayKey} hasVoted={!!myVote} />
           </>

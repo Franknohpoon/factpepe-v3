@@ -13,6 +13,18 @@
         "$ts": {
           ".write": "!data.exists() && $ts.matches(/^[0-9]+$/) && newData.hasChild('date')"
         }
+      },
+      "byDate": {
+        ".read": true,
+        "$date": {
+          ".write": true,
+          ".validate": "$date.matches(/^[0-9]{8}$/) && newData.hasChild('date')"
+        }
+      },
+      "noGame": {
+        ".read": true,
+        ".write": true,
+        ".validate": "newData.hasChild('date') && newData.child('date').val().length <= 20"
       }
     },
 

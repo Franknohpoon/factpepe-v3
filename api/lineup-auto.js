@@ -202,10 +202,10 @@ async function logCronResult(dateIso, jobName, success, errorMsg = '') {
   } catch {}
 }
 
-/** Firebase REST API에 저장 (latest 갱신 + history 누적) */
-async function saveToFirebase(record) {
+/** Firebase REST API에 저장 (latest + history + byDate) */
+async function saveToFirebase(record, dateCompact) {
   const now = Date.now();
-  await Promise.all([
+  const writes = [
     fetch(`${FIREBASE_URL}/lineup/latest.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -216,7 +216,45 @@ async function saveToFirebase(record) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record),
     }),
-  ]);
+  ];
+  // 날짜별 백업 (어제 데이터 정확히 가져오기 위함)
+  if (dateCompact) {
+    writes.push(
+      fetch(`${FIREBASE_URL}/lineup/byDate/${dateCompact}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record),
+      })
+    );
+  }
+  await Promise.all(writes);
+}
+
+/** 다음 7일 SSG 경기 검색 (비경기일용) */
+async function findNextSSGGame(fromIso) {
+  const start = new Date(fromIso);
+  start.setDate(start.getDate() + 1);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const url = `https://api-gw.sports.naver.com/schedule/games?upperCategoryId=kbaseball&categoryId=kbo&fromDate=${fmt(start)}&toDate=${fmt(end)}`;
+  try {
+    const res = await fetch(url, { headers: NAVER_HEADERS, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const games = data?.result?.games || [];
+    const next = games.find((g) => g.homeTeamCode === SSG_CODE || g.awayTeamCode === SSG_CODE);
+    if (!next) return null;
+    const isHome = next.homeTeamCode === SSG_CODE;
+    return {
+      gameDate: next.gameDate,
+      gameDateTime: next.gameDateTime,
+      opponent: isHome ? next.awayTeamName : next.homeTeamName,
+      isHome,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
@@ -235,33 +273,44 @@ export default async function handler(req, res) {
   const isPreview = req.query.preview === '1';
   const forceSave = req.query.save === '1';
   const { iso: dateIso, display: dateDisplay } = getKSTDate();
+  const dateCompact = dateIso.replace(/-/g, '');
 
   try {
     // 1. 오늘 SSG 경기 찾기
     const game = await findSSGGame(dateIso);
+
+    // 오늘 경기 없음 → 다음 경기 정보 저장 + 반환
     if (!game) {
+      const nextGame = await findNextSSGGame(dateIso);
+      // Firebase에 noGame 상태 저장
+      const shouldSave = (isCron || forceSave) && !isPreview;
+      if (shouldSave) {
+        await fetch(`${FIREBASE_URL}/lineup/noGame.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: dateDisplay,
+            nextGame: nextGame || null,
+            updatedAt: Date.now(),
+          }),
+        });
+      }
+      logCronResult(dateIso, 'lineup', true).catch(() => {});
       return res.status(200).json({
         ok: false,
         reason: 'no_game',
         message: `오늘(${dateDisplay}) SSG 경기가 없습니다.`,
+        nextGame,
       });
+    }
+
+    // 오늘 경기 있음 — noGame 플래그 삭제
+    if ((isCron || forceSave) && !isPreview) {
+      fetch(`${FIREBASE_URL}/lineup/noGame.json`, { method: 'DELETE' }).catch(() => {});
     }
 
     // 2. preview에서 라인업 파싱
     let { ready, players, pitcher } = await fetchPreviewLineup(game.gameId, game.side);
-
-    if (!ready) {
-      // 라인업 미발표 — KBO 백업으로 선발투수/상대팀이라도 제공
-      const kbo = await fetchKBOGame(getKSTCompact());
-      return res.status(200).json({
-        ok: false,
-        reason: 'lineup_not_ready',
-        message: '타순은 아직 미발표예요. 선발투수/상대만 KBO에서 가져왔어요. (트윗 붙여넣기로 타순 입력 가능)',
-        gameId: game.gameId,
-        opponent: game.opponent || kbo?.opponent || '',
-        pitcher: kbo?.pitcher || '',
-      });
-    }
 
     // 선발투수가 네이버에 비어 있으면 KBO 공식에서 보강
     if (!pitcher) {
@@ -269,30 +318,45 @@ export default async function handler(req, res) {
       if (kbo?.pitcher) pitcher = kbo.pitcher;
     }
 
-    // 3. Firebase 저장 (크론 자동 또는 ?save=1, 단 preview 모드 제외)
+    // 3. partial 데이터 처리 (선발투수만 발표된 경우)
+    const isPartial = !ready;
+    if (isPartial && !pitcher && !players?.length) {
+      // 완전 비어있음 - 저장도 안 함
+      logCronResult(dateIso, 'lineup', true).catch(() => {});
+      return res.status(200).json({
+        ok: false,
+        reason: 'lineup_not_ready',
+        message: '라인업 미발표 (선발투수도 없음)',
+        gameId: game.gameId,
+        opponent: game.opponent,
+      });
+    }
+
+    // 4. Firebase 저장 (partial이라도 저장)
     const shouldSave = (isCron || forceSave) && !isPreview;
     let saved = false;
     let skipped = false;
     if (shouldSave) {
-      // 이미 동일 라인업이 저장돼 있으면 중복 저장 방지 (반복 크론 대응)
       const current = await fetchCurrentLatest();
-      if (isSameLineup(current, players, pitcher, game.gameId)) {
+      if (!isPartial && isSameLineup(current, players, pitcher, game.gameId)) {
         skipped = true;
       } else {
-        const playersObj = players.reduce(
+        const playersObj = (players || []).reduce(
           (acc, p, i) => ({ ...acc, [i]: { name: p.name, pos: p.pos } }),
           {}
         );
         const record = {
           date: dateDisplay,
           opponent: game.opponent,
-          pitcher,
+          pitcher: pitcher || '',
           players: playersObj,
           source: 'naver-auto',
           gameId: game.gameId,
+          partial: isPartial,
+          partialReason: isPartial ? (pitcher ? 'pitcher_only' : 'incomplete') : null,
           updatedAt: Date.now(),
         };
-        await saveToFirebase(record);
+        await saveToFirebase(record, dateCompact);
         saved = true;
       }
     }
@@ -302,14 +366,15 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      ok: true,
+      ok: !isPartial, // partial이면 false (운영자 인지용)
+      partial: isPartial,
       saved,
-      skipped, // 이미 동일 라인업이라 저장 건너뜀
+      skipped,
       gameId: game.gameId,
       date: dateDisplay,
       opponent: game.opponent,
-      pitcher,
-      players, // [{ name, pos, order }]
+      pitcher: pitcher || '',
+      players: players || [],
     });
   } catch (err) {
     console.error('[lineup-auto] error:', err);
