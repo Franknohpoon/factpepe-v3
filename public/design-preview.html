@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>팩트페페 — 디자인 시안 비교</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif; }
+  body { background: #f5f5f5; padding: 24px 12px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; }
+  .lead { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .controls { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .ctrl-btn { padding: 8px 16px; border-radius: 8px; background: #fff; border: 1px solid #ddd; cursor: pointer; font-size: 13px; font-weight: 700; }
+  .ctrl-btn.active { background: #CE1141; color: #fff; border-color: #CE1141; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  @media (max-width: 1100px) { .row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+
+  .variant { background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .variant-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px; }
+  .variant-name { font-weight: 900; font-size: 15px; color: #111; }
+  .variant-tag { font-size: 10px; color: #888; padding: 2px 8px; border-radius: 4px; background: #f3f3f3; }
+
+  /* 미니 폰 미리보기 */
+  .phone { width: 100%; max-width: 280px; margin: 0 auto; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  .phone-inner { padding: 14px 12px; height: 480px; overflow: hidden; position: relative; }
+
+  .h2 { font-size: 18px; font-weight: 900; color: #111; margin: 32px 0 12px; }
+  .h2-sub { color: #666; font-size: 13px; margin-bottom: 16px; }
+
+  /* 페페 캐릭터 그리드 */
+  .pepe-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  @media (max-width: 800px) { .pepe-grid { grid-template-columns: repeat(3, 1fr); } }
+  .pepe-item { background: #fff; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pepe-item svg { width: 80px; height: 80px; }
+  .pepe-name { font-size: 11px; font-weight: 800; color: #111; margin-top: 8px; }
+  .pepe-tag { font-size: 9px; color: #888; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🐸 팩트페페 — 디자인 시안 비교</h1>
+<p class="lead">4가지 톤을 동시에 비교 · 마음에 드는 방향 알려주세요</p>
+
+<h2 class="h2">① 컬러 톤 시안 (4가지)</h2>
+<p class="h2-sub">실제 대시보드 미리보기 — 같은 데이터, 다른 톤</p>
+
+<div class="row" id="ton-row">
+  <!-- 시안들 JS로 주입 -->
+</div>
+
+<h2 class="h2">② 페페 캐릭터 변형 (6종)</h2>
+<p class="h2-sub">상황별 다른 표정 페페 — 헤더/회고/응원톡 등에 활용</p>
+
+<div class="pepe-grid" id="pepe-grid">
+  <!-- 페페들 JS로 주입 -->
+</div>
+
+</div>
+
+<script>
+
+// ─────────── 페페 SVG 컴포넌트들 ───────────
+
+const pepeFace = (mood = 'happy', size = 80) => {
+  const moods = {
+    happy: { brow: 'normal', mouth: 'M -22 10 Q 0 26 22 10', cheek: 0.4 },
+    excited: { brow: 'up', mouth: 'M -22 6 Q 0 28 22 6', cheek: 0.6, eyes: 'big' },
+    cool: { brow: 'normal', mouth: 'M -16 14 L 16 14', cheek: 0.15, shades: true },
+    sad: { brow: 'down', mouth: 'M -18 18 Q 0 8 18 18', cheek: 0.2 },
+    sleepy: { brow: 'normal', mouth: 'M -10 14 Q 0 18 10 14', cheek: 0.2, eyes: 'closed' },
+    analyzing: { brow: 'normal', mouth: 'M -12 14 L 12 14', cheek: 0.25, glasses: true },
+  };
+  const m = moods[mood];
+  return `
+    <svg viewBox="-50 -50 100 100" width="${size}" height="${size}">
+      <defs>
+        <radialGradient id="bg-${mood}" cx="40%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#7DD957"/>
+          <stop offset="60%" stop-color="#4FAF35"/>
+          <stop offset="100%" stop-color="#2D7820"/>
+        </radialGradient>
+      </defs>
+      <!-- 머리 -->
+      <circle cx="0" cy="0" r="42" fill="url(#bg-${mood})"/>
+      <!-- 눈 받침 -->
+      <ellipse cx="-18" cy="-18" rx="16" ry="17" fill="#5dc23f"/>
+      <ellipse cx="18" cy="-18" rx="16" ry="17" fill="#5dc23f"/>
+
+      ${m.eyes === 'closed' ? `
+        <path d="M -28 -16 Q -18 -20 -8 -16" stroke="#1a3d0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M 8 -16 Q 18 -20 28 -16" stroke="#1a3d0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      ` : m.eyes === 'big' ? `
+        <circle cx="-18" cy="-18" r="14" fill="#fff"/>
+        <circle cx="18" cy="-18" r="14" fill="#fff"/>
+        <circle cx="-18" cy="-15" r="8" fill="#0a0a0a"/>
+        <circle cx="18" cy="-15" r="8" fill="#0a0a0a"/>
+        <circle cx="-21" cy="-18" r="2.5" fill="#fff"/>
+        <circle cx="15" cy="-18" r="2.5" fill="#fff"/>
+      ` : `
+        <circle cx="-18" cy="-18" r="12" fill="#fff"/>
+        <circle cx="18" cy="-18" r="12" fill="#fff"/>
+        <circle cx="-18" cy="-15" r="6" fill="#0a0a0a"/>
+        <circle cx="18" cy="-15" r="6" fill="#0a0a0a"/>
+        <circle cx="-21" cy="-18" r="2" fill="#fff"/>
+        <circle cx="15" cy="-18" r="2" fill="#fff"/>
+      `}
+
+      ${m.shades ? `
+        <rect x="-32" y="-22" width="64" height="14" rx="3" fill="#1a1a1a"/>
+        <rect x="-30" y="-21" width="22" height="12" fill="#333"/>
+        <rect x="8" y="-21" width="22" height="12" fill="#333"/>
+      ` : ''}
+
+      ${m.glasses ? `
+        <circle cx="-18" cy="-18" r="16" stroke="#1a1a1a" stroke-width="2.5" fill="none"/>
+        <circle cx="18" cy="-18" r="16" stroke="#1a1a1a" stroke-width="2.5" fill="none"/>
+        <line x1="-2" y1="-18" x2="2" y2="-18" stroke="#1a1a1a" stroke-width="2.5"/>
+      ` : ''}
+
+      <!-- 입 -->
+      <path d="${m.mouth}" stroke="#1a3d0a" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+      <!-- 볼터치 -->
+      <ellipse cx="-30" cy="6" rx="6" ry="4" fill="#E61E45" opacity="${m.cheek}"/>
+      <ellipse cx="30" cy="6" rx="6" ry="4" fill="#E61E45" opacity="${m.cheek}"/>
+    </svg>
+  `;
+};
+
+const cheerStick = (size = 90) => `
+  <svg viewBox="-50 -50 100 100" width="${size}" height="${size}">
+    <defs>
+      <radialGradient id="cs-bg" cx="40%" cy="40%" r="65%">
+        <stop offset="0%" stop-color="#7DD957"/>
+        <stop offset="100%" stop-color="#4FAF35"/>
+      </radialGradient>
+    </defs>
+    <!-- 응원봉 -->
+    <line x1="32" y1="-32" x2="40" y2="-44" stroke="#CE1141" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="42" cy="-44" r="6" fill="#CE1141"/>
+    <circle cx="42" cy="-44" r="3" fill="#ff5577"/>
+    <circle cx="-32" cy="-32" r="0"/>
+    <line x1="-32" y1="-32" x2="-40" y2="-44" stroke="#CE1141" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="-42" cy="-44" r="6" fill="#CE1141"/>
+    <circle cx="-42" cy="-44" r="3" fill="#ff5577"/>
+    <!-- 페페 -->
+    <circle cx="0" cy="2" r="38" fill="url(#cs-bg)"/>
+    <ellipse cx="-15" cy="-15" rx="14" ry="15" fill="#5dc23f"/>
+    <ellipse cx="15" cy="-15" rx="14" ry="15" fill="#5dc23f"/>
+    <circle cx="-15" cy="-15" r="11" fill="#fff"/>
+    <circle cx="15" cy="-15" r="11" fill="#fff"/>
+    <circle cx="-15" cy="-12" r="5" fill="#0a0a0a"/>
+    <circle cx="15" cy="-12" r="5" fill="#0a0a0a"/>
+    <circle cx="-17" cy="-15" r="1.5" fill="#fff"/>
+    <circle cx="13" cy="-15" r="1.5" fill="#fff"/>
+    <path d="M -16 14 Q 0 26 16 14" stroke="#1a3d0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="-26" cy="8" rx="5" ry="3" fill="#E61E45" opacity="0.5"/>
+    <ellipse cx="26" cy="8" rx="5" ry="3" fill="#E61E45" opacity="0.5"/>
+  </svg>
+`;
+
+// ─────────── 4가지 톤 시안 ───────────
+
+const themes = [
+  {
+    name: '현재 (다크)',
+    tag: '기존',
+    bg: '#000000',
+    card: 'rgba(39, 39, 42, 0.6)',
+    cardBorder: 'rgba(63, 63, 70, 1)',
+    text: '#ffffff',
+    textMuted: 'rgba(255,255,255,0.5)',
+    accent: '#CE1141',
+    accentBg: 'rgba(206, 17, 65, 0.08)',
+    accentBorder: 'rgba(206, 17, 65, 0.3)',
+    pepeColor: '#4FAF35',
+    isDark: true,
+  },
+  {
+    name: '시안 A — 크림',
+    tag: '따뜻',
+    bg: '#FFF8EB',
+    card: '#ffffff',
+    cardBorder: 'rgba(206, 17, 65, 0.12)',
+    text: '#1a0a0a',
+    textMuted: '#8b7355',
+    accent: '#CE1141',
+    accentBg: 'rgba(206, 17, 65, 0.08)',
+    accentBorder: 'rgba(206, 17, 65, 0.3)',
+    pepeColor: '#4FAF35',
+    isDark: false,
+  },
+  {
+    name: '시안 B — 화이트',
+    tag: '모던',
+    bg: '#FAFAFA',
+    card: '#ffffff',
+    cardBorder: 'rgba(0, 0, 0, 0.06)',
+    text: '#0a0a0a',
+    textMuted: '#737373',
+    accent: '#CE1141',
+    accentBg: 'rgba(206, 17, 65, 0.05)',
+    accentBorder: 'rgba(206, 17, 65, 0.2)',
+    pepeColor: '#4FAF35',
+    isDark: false,
+  },
+  {
+    name: '시안 C — 페일핑크',
+    tag: '친근',
+    bg: '#FFF0F3',
+    card: '#ffffff',
+    cardBorder: 'rgba(206, 17, 65, 0.15)',
+    text: '#1a0a0a',
+    textMuted: '#9b6b73',
+    accent: '#CE1141',
+    accentBg: 'rgba(206, 17, 65, 0.08)',
+    accentBorder: 'rgba(206, 17, 65, 0.3)',
+    pepeColor: '#4FAF35',
+    isDark: false,
+  },
+];
+
+// ─────────── 미니 폰 미리보기 ───────────
+
+const renderPhone = (t) => `
+<div style="background: ${t.bg};">
+  <div class="phone-inner">
+    <!-- 헤더 -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 28px; height: 28px;">${pepeFace('happy', 28)}</div>
+        <div>
+          <div style="font-weight: 900; font-size: 13px; color: ${t.text}; line-height: 1;">팩트페페</div>
+          <div style="font-size: 8px; color: ${t.textMuted}; line-height: 1; margin-top: 2px;">SSG 팬 데이터</div>
+        </div>
+      </div>
+      <div style="text-align: right; line-height: 1;">
+        <div style="font-size: 10px; font-weight: 800; color: ${t.text};">06.04 (목)</div>
+        <div style="font-size: 9px; color: ${t.accent}; font-weight: 800; margin-top: 2px;">vs 키움</div>
+      </div>
+    </div>
+
+    <!-- 회고 카드 -->
+    <div style="background: ${t.card}; border: 1px solid ${t.cardBorder}; border-radius: 12px; padding: 10px; margin-bottom: 8px;">
+      <div style="font-size: 8px; font-weight: 900; color: ${t.textMuted}; letter-spacing: 2px; margin-bottom: 6px;">어제 회고</div>
+      <div style="display: flex; gap: 6px;">
+        <div style="flex: 1; background: ${t.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'}; border-radius: 8px; padding: 8px; text-align: center;">
+          <div style="font-size: 8px; color: ${t.textMuted}; font-weight: 700;">예측</div>
+          <div style="font-size: 18px; font-weight: 900; color: ${t.text}; margin-top: 2px;">62%</div>
+        </div>
+        <div style="flex: 1; background: ${t.accentBg}; border: 1px solid ${t.accentBorder}; border-radius: 8px; padding: 8px; text-align: center;">
+          <div style="font-size: 8px; color: ${t.accent}; font-weight: 700;">결과</div>
+          <div style="font-size: 18px; font-weight: 900; color: ${t.accent}; margin-top: 2px;">승</div>
+          <div style="font-size: 8px; color: ${t.textMuted};">5-3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 승률 카드 -->
+    <div style="background: ${t.card}; border: 1px solid ${t.cardBorder}; border-radius: 12px; padding: 12px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div style="font-size: 8px; font-weight: 900; color: ${t.accent}; letter-spacing: 2px;">팩트 승률</div>
+        <div style="font-size: 7px; color: ${t.textMuted}; background: ${t.accentBg}; padding: 2px 6px; border-radius: 3px;">📊 자동</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="position: relative; width: 60px; height: 60px; flex-shrink: 0;">
+          <div style="position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(${t.accent} ${62*3.6}deg, ${t.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} ${62*3.6}deg);"></div>
+          <div style="position: absolute; inset: 6px; background: ${t.card}; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 16px; font-weight: 900; color: ${t.text};">62<span style="font-size: 10px;">%</span></span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 900; color: ${t.text}; line-height: 1.2;">SSG 승리 확률</div>
+          <div style="font-size: 9px; color: ${t.textMuted}; margin-top: 4px;">상대 ERA 5.2, 홈 4연승</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 라인업 미니 -->
+    <div style="background: ${t.card}; border: 1px solid ${t.cardBorder}; border-radius: 12px; padding: 10px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <div style="font-size: 8px; font-weight: 900; color: ${t.accent}; letter-spacing: 2px;">선발 라인업</div>
+        <div style="font-size: 8px; color: ${t.textMuted};">vs 키움</div>
+      </div>
+      <div style="background: ${t.accentBg}; border: 1px solid ${t.accentBorder}; border-radius: 6px; padding: 5px 8px; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 8px; font-weight: 900; color: ${t.accent};">SP</span>
+        <span style="font-size: 10px; font-weight: 700; color: ${t.text}; flex: 1;">최민준</span>
+      </div>
+      ${[['1','최지훈','CF'],['2','박성한','SS'],['3','최정','3B']].map(([n,name,pos]) => `
+        <div style="background: ${t.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}; border-radius: 6px; padding: 5px 8px; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 8px; font-weight: 900; color: ${t.accent}; width: 12px;">${n}</span>
+          <span style="font-size: 10px; font-weight: 700; color: ${t.text}; flex: 1;">${name}</span>
+          <span style="font-size: 8px; color: ${t.textMuted}; font-weight: 700;">${pos}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- 투표 미니 -->
+    <div style="background: ${t.card}; border: 1px solid ${t.cardBorder}; border-radius: 12px; padding: 10px;">
+      <div style="font-size: 8px; font-weight: 900; color: ${t.textMuted}; letter-spacing: 2px; margin-bottom: 6px;">오늘 결과 투표</div>
+      <div style="display: flex; gap: 4px;">
+        <div style="flex: 1; background: ${t.accent}; color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: 900;">🔴 SSG</div>
+        <div style="flex: 1; background: ${t.isDark ? '#3f3f46' : '#e5e5e5'}; color: ${t.isDark ? '#fff' : '#666'}; padding: 8px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: 900;">⚪ 키움</div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+// 시안 렌더
+document.getElementById('ton-row').innerHTML = themes.map(t => `
+  <div class="variant">
+    <div class="variant-header">
+      <div class="variant-name">${t.name}</div>
+      <div class="variant-tag">${t.tag}</div>
+    </div>
+    <div class="phone">${renderPhone(t)}</div>
+  </div>
+`).join('');
+
+// 페페 렌더
+const pepes = [
+  { mood: 'happy',     name: '기본 페페',   tag: '헤더용' },
+  { mood: 'excited',   name: '승리 페페',   tag: '회고 적중 시' },
+  { mood: 'cool',      name: '쿨 페페',    tag: '분석 카드' },
+  { mood: 'sad',       name: '안타까운 페페', tag: '예측 빗나감 시' },
+  { mood: 'sleepy',    name: '졸린 페페',   tag: '비경기일' },
+  { mood: 'analyzing', name: '분석 페페',   tag: '승률 카드' },
+];
+
+document.getElementById('pepe-grid').innerHTML = `
+  ${pepes.map(p => `
+    <div class="pepe-item">
+      ${pepeFace(p.mood)}
+      <div class="pepe-name">${p.name}</div>
+      <div class="pepe-tag">${p.tag}</div>
+    </div>
+  `).join('')}
+  <div class="pepe-item" style="grid-column: span 1;">
+    ${cheerStick()}
+    <div class="pepe-name">응원봉 페페</div>
+    <div class="pepe-tag">응원 톡 강조</div>
+  </div>
+`;
+
+</script>
+</body>
+</html>
