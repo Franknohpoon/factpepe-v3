@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/daily-report",     "schedule": "0 0 * * *" },
+    { "path": "/api/recap-auto",       "schedule": "0 20 * * *" },
     { "path": "/api/prediction-auto",  "schedule": "0 2 * * *" },
     { "path": "/api/prediction-auto",  "schedule": "0 4 * * *" },
     { "path": "/api/prediction-auto",  "schedule": "30 7 * * *" },

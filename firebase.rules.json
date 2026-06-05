@@ -121,9 +121,13 @@
 
     "prediction": {
       ".read": true,
-      "$date": {
+      "stats": {
         ".write": true,
-        ".validate": "newData.hasChildren(['winRate']) && newData.child('winRate').isNumber() && newData.child('winRate').val() >= 0 && newData.child('winRate').val() <= 100 && $date.matches(/^[0-9]{8}$/)"
+        ".validate": "newData.hasChild('total') && newData.child('total').isNumber() && newData.child('total').val() >= 0 && newData.child('total').val() < 1000000"
+      },
+      "$date": {
+        ".write": "$date.matches(/^[0-9]{8}$/)",
+        ".validate": "newData.hasChild('winRate') ? (newData.child('winRate').isNumber() && newData.child('winRate').val() >= 0 && newData.child('winRate').val() <= 100) : true"
       }
     },
 
@@ -160,8 +164,18 @@
         "messages": {
           ".read": true,
           "$msgId": {
-            ".write": "(!data.exists() && newData.hasChildren(['userId', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 50 && newData.child('userId').isString() && newData.child('userId').val().length >= 4 && newData.child('userId').val().length <= 80 && newData.child('at').isNumber() && !root.child('chat').child('banned').child(newData.child('userId').val()).exists()) || !newData.exists()",
-            ".validate": "newData.hasChildren(['userId', 'text', 'at'])"
+            ".write": "(!data.exists() && newData.hasChildren(['userId', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 50 && newData.child('userId').isString() && newData.child('userId').val().length >= 4 && newData.child('userId').val().length <= 80 && newData.child('at').isNumber() && !root.child('chat').child('banned').child(newData.child('userId').val()).exists()) || !newData.exists() || (data.exists() && newData.child('text').val() === data.child('text').val() && newData.child('userId').val() === data.child('userId').val() && newData.child('at').val() === data.child('at').val())",
+            ".validate": "newData.hasChildren(['userId', 'text', 'at']) && (!newData.hasChild('likes') || (newData.child('likes').isNumber() && newData.child('likes').val() >= 0 && newData.child('likes').val() < 100000))"
+          }
+        },
+        "likes": {
+          ".read": true,
+          "_users": {
+            "$uid": {
+              "$msgId": {
+                ".write": "(newData.isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)) || !newData.exists()"
+              }
+            }
           }
         }
       }

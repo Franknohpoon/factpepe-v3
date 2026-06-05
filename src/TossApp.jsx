@@ -22,6 +22,92 @@ import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 const RED = '#CE1141';
 const POS_ABBR = { '포수':'C', '1루수':'1B', '2루수':'2B', '3루수':'3B', '유격수':'SS', '좌익수':'LF', '중견수':'CF', '우익수':'RF', '지명타자':'DH', '투수':'P' };
 
+// ─── 회고 카드 (어제 예측 vs 실제 결과 + 시즌 누적 적중률) ─────────
+const RecapCard = ({ yesterdayPrediction, stats }) => {
+  // 어제 결과 데이터가 있을 때만 표시
+  const result = yesterdayPrediction?.result;
+  if (!result || result.actual === 'pending') return null;
+
+  // 시각 스타일
+  const isWin = result.actual === 'win';
+  const isCorrect = result.correct === true;
+  const isWrong = result.correct === false;
+  const isUndetermined = result.correct === null; // 무승부/취소
+
+  // 누적 적중률
+  const accuracy = stats?.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null;
+
+  return (
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-black text-zinc-500 tracking-widest">어제 회고</span>
+        {result.opponent && (
+          <span className="text-zinc-600 text-[10px]">SSG vs {result.opponent}</span>
+        )}
+      </div>
+
+      {/* 결과 + 예측 비교 */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {/* 좌: 예측 */}
+        <div className="bg-white/[0.02] rounded-xl p-3 text-center">
+          <p className="text-zinc-500 text-[10px] font-bold mb-1">예측</p>
+          <p className={`text-2xl font-black ${result.hadPrediction ? 'text-white' : 'text-zinc-600'}`}>
+            {result.hadPrediction ? `${result.predictedWinRate}%` : '-'}
+          </p>
+          <p className="text-zinc-500 text-[10px] mt-0.5">
+            {result.predictionSource === 'manual' ? '운영자 분석' : result.predictionSource === 'auto-stats' ? '자동 분석' : '미등록'}
+          </p>
+        </div>
+
+        {/* 우: 실제 결과 */}
+        <div className={`rounded-xl p-3 text-center border ${
+          result.actual === 'cancelled'
+            ? 'bg-zinc-800/30 border-zinc-700/50'
+            : isWin
+              ? 'bg-red-600/15 border-red-900/40'
+              : 'bg-zinc-800/30 border-zinc-700/50'
+        }`}>
+          <p className={`text-[10px] font-bold mb-1 ${isWin ? 'text-red-400' : 'text-zinc-500'}`}>
+            실제 결과
+          </p>
+          <p className={`text-2xl font-black ${isWin ? 'text-red-400' : result.actual === 'lose' ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            {result.actual === 'cancelled' ? '취소' :
+             result.actual === 'draw'      ? '무승부' :
+             isWin                          ? '승' : '패'}
+          </p>
+          {(result.actual === 'win' || result.actual === 'lose' || result.actual === 'draw') && (
+            <p className="text-zinc-500 text-[10px] mt-0.5">
+              {result.ssgScore} – {result.oppScore}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 적중 여부 + 누적 적중률 */}
+      <div className="flex items-center justify-between bg-zinc-800/40 rounded-lg px-3 py-2">
+        {result.hadPrediction && (
+          <span className="text-xs font-bold">
+            {isCorrect && <span className="text-green-400">✅ 예측 적중</span>}
+            {isWrong && <span className="text-zinc-500">❌ 예측 빗나감</span>}
+            {isUndetermined && <span className="text-zinc-500">⚪ 적중 판정 불가</span>}
+          </span>
+        )}
+        {!result.hadPrediction && (
+          <span className="text-xs text-zinc-600">분석 미등록</span>
+        )}
+
+        {accuracy !== null && (
+          <span className="text-xs">
+            <span className="text-zinc-500">시즌 누적</span>{' '}
+            <span className="text-white font-black">{accuracy}%</span>
+            <span className="text-zinc-600 text-[10px] ml-1">({stats.correct}/{stats.total})</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── 분석 카드 (승률 + 영상) ─────────────────────────────────────────
 const PredictionCard = ({ prediction }) => {
   if (!prediction) {
@@ -460,7 +546,7 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
   );
 };
 
-// ─── 응원 톡 (투표 참여자만, 분당 1회 제한, 욕설 필터) ─────────────
+// ─── 응원 톡 (투표 참여자만, 분당 1회 제한, 욕설 필터, 좋아요) ──────
 const ChatCard = ({ todayKey, hasVoted }) => {
   const userId = useRef(getUserId()).current;
   const [messages, setMessages] = useState([]);
@@ -469,6 +555,7 @@ const ChatCard = ({ todayKey, hasVoted }) => {
   const [sending, setSending] = useState(false);
   const [cooldownSec, setCooldownSec] = useState(0);
   const [banned, setBanned] = useState(false);
+  const [myLikes, setMyLikes] = useState({}); // { msgId: true }
 
   // 최신 20개 구독 (실시간)
   useEffect(() => {
@@ -490,6 +577,39 @@ const ChatCard = ({ todayKey, hasVoted }) => {
     });
     return unsub;
   }, [userId]);
+
+  // 내 좋아요 목록 구독
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, `chat/${todayKey}/likes/_users/${userId}`), (snap) => {
+      setMyLikes(snap.val() || {});
+    });
+    return unsub;
+  }, [todayKey, userId]);
+
+  // 좋아요 토글
+  const toggleLike = async (msgId) => {
+    if (banned) return;
+    const liked = !!myLikes[msgId];
+    try {
+      if (liked) {
+        // 취소
+        await set(dbRef(database, `chat/${todayKey}/likes/_users/${userId}/${msgId}`), null);
+        await runTransaction(
+          dbRef(database, `chat/${todayKey}/messages/${msgId}/likes`),
+          (v) => Math.max(0, (v || 0) - 1)
+        );
+      } else {
+        // 추가
+        await set(dbRef(database, `chat/${todayKey}/likes/_users/${userId}/${msgId}`), Date.now());
+        await runTransaction(
+          dbRef(database, `chat/${todayKey}/messages/${msgId}/likes`),
+          (v) => (v || 0) + 1
+        );
+      }
+    } catch (e) {
+      console.warn('like toggle failed:', e.message);
+    }
+  };
 
   // 쿨다운 카운트다운
   useEffect(() => {
@@ -557,6 +677,8 @@ const ChatCard = ({ todayKey, hasVoted }) => {
               if (sec < 3600) return `${Math.floor(sec / 60)}분`;
               return `${Math.floor(sec / 3600)}시간`;
             })();
+            const liked = !!myLikes[m.id];
+            const likeCount = m.likes || 0;
             return (
               <div key={m.id}
                 className={`flex items-start gap-2 px-3 py-2 rounded-lg ${isMine ? 'bg-red-600/8 border border-red-900/30' : 'bg-white/[0.02]'}`}>
@@ -564,7 +686,32 @@ const ChatCard = ({ todayKey, hasVoted }) => {
                   style={{ color: isMine ? '#ff8088' : '#e5e5e5' }}>
                   {m.text}
                 </span>
-                <span className="text-zinc-600 text-[9px] flex-shrink-0 mt-0.5">{ago}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* 좋아요 버튼 — 본인 메시지에는 안 보임 */}
+                  {!isMine && !banned && (
+                    <button
+                      onClick={() => toggleLike(m.id)}
+                      className="flex items-center gap-0.5 active:scale-95 transition-transform"
+                    >
+                      <span className={`text-xs leading-none ${liked ? '' : 'grayscale opacity-40'}`}>
+                        {liked ? '❤️' : '🤍'}
+                      </span>
+                      {likeCount > 0 && (
+                        <span className={`text-[10px] font-bold leading-none ${liked ? 'text-red-400' : 'text-zinc-500'}`}>
+                          {likeCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  {/* 본인 메시지: 좋아요 카운트만 표시 */}
+                  {isMine && likeCount > 0 && (
+                    <span className="flex items-center gap-0.5">
+                      <span className="text-xs leading-none">❤️</span>
+                      <span className="text-[10px] font-bold text-red-400 leading-none">{likeCount}</span>
+                    </span>
+                  )}
+                  <span className="text-zinc-600 text-[9px] mt-0.5">{ago}</span>
+                </div>
               </div>
             );
           })
@@ -607,6 +754,8 @@ function TossDashboard() {
   const [prediction, setPrediction] = useState(null);
   const [lineup, setLineup] = useState(null);
   const [lineupYesterday, setLineupYesterday] = useState(null);
+  const [yesterdayPrediction, setYesterdayPrediction] = useState(null);
+  const [predictionStats, setPredictionStats] = useState(null);
   const [noGame, setNoGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState(null);
@@ -632,7 +781,13 @@ function TossDashboard() {
     const unsubNG = onValue(dbRef(database, 'lineup/noGame'), (snap) => {
       setNoGame(snap.val());
     });
-    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); };
+    const unsubYP = onValue(dbRef(database, `prediction/${yesterdayKey}`), (snap) => {
+      setYesterdayPrediction(snap.val());
+    });
+    const unsubStats = onValue(dbRef(database, 'prediction/stats'), (snap) => {
+      setPredictionStats(snap.val());
+    });
+    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); };
   }, [todayKey, yesterdayKey]);
 
   // 트래킹: 진입 + DAU + 유저 프로필
@@ -695,6 +850,7 @@ function TossDashboard() {
           </div>
         ) : (
           <>
+            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} />
             <PredictionCard prediction={prediction} />
             <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
