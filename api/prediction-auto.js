@@ -199,6 +199,31 @@ async function saveToFirebase(dateCompact, record) {
   });
 }
 
+/** 크론 실행 결과 로깅 */
+async function logCronResult(dateIso, jobName, success, errorMsg = '') {
+  const dateKey = dateIso.replace(/-/g, '');
+  const path = `analytics/cron/${dateKey}/${jobName}`;
+  try {
+    // GET 기존 → 업데이트 → PUT
+    const cur = await fetch(`${FIREBASE_URL}/${path}.json`).then((r) => r.json()).catch(() => null);
+    const log = cur || { ok: 0, fail: 0 };
+    if (success) log.ok = (log.ok || 0) + 1;
+    else {
+      log.fail = (log.fail || 0) + 1;
+      log.lastError = errorMsg.slice(0, 200);
+      log.lastErrorAt = Date.now();
+    }
+    log.lastRunAt = Date.now();
+    await fetch(`${FIREBASE_URL}/${path}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(log),
+    });
+  } catch {
+    // 로깅 실패는 무시
+  }
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -268,6 +293,10 @@ export default async function handler(req, res) {
       }
     }
 
+    if (saved || skipped) {
+      logCronResult(dateIso, 'prediction', true).catch(() => {});
+    }
+
     return res.status(200).json({
       ok: true,
       saved,
@@ -282,6 +311,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[prediction-auto] error:', err);
+    logCronResult(dateIso, 'prediction', false, err.message).catch(() => {});
     return res.status(500).json({ ok: false, error: err.message });
   }
 }

@@ -155,8 +155,62 @@
       }
     },
 
+    "users": {
+      ".read": true,
+      "$uid": {
+        ".write": "newData.hasChild('lastSeen') && newData.child('lastSeen').isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)",
+        ".validate": "newData.hasChildren(['lastSeen']) && (!newData.hasChild('sessions') || (newData.child('sessions').isNumber() && newData.child('sessions').val() < 100000))"
+      }
+    },
+
     "analytics": {
-      ".read": false,
+      ".read": true,
+      "dau": {
+        "$date": {
+          ".validate": "$date.matches(/^[0-9]{8}$/)",
+          "$uid": {
+            ".write": "newData.isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)"
+          }
+        }
+      },
+      "actions": {
+        "$date": {
+          ".validate": "$date.matches(/^[0-9]{8}$/)",
+          "counts": {
+            "$action": {
+              ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000000 && $action.matches(/^[a-z_]{1,50}$/)"
+            }
+          },
+          "users": {
+            "$uid": {
+              "$action": {
+                ".write": "newData.isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/) && $action.matches(/^[a-z_]{1,50}$/)"
+              }
+            }
+          }
+        }
+      },
+      "funnel": {
+        "$date": {
+          ".validate": "$date.matches(/^[0-9]{8}$/)",
+          "$stage": {
+            ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000000"
+          },
+          "_users": {
+            "$uid": {
+              "$key": { ".write": "newData.isNumber()" }
+            }
+          }
+        }
+      },
+      "cron": {
+        "$date": {
+          ".validate": "$date.matches(/^[0-9]{8}$/)",
+          "$job": {
+            ".write": true
+          }
+        }
+      },
       "daily": {
         "$date": {
           ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",

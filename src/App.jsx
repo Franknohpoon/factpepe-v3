@@ -3453,6 +3453,7 @@ const AdminPage = () => {
     { id: 'news',       label: '📰 뉴스 작성' },
     { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'matchup',    label: '⚔️ 상대전적 입력' },
+    { id: 'analytics',  label: '📈 트래픽' },
     { id: 'prediction', label: '📊 오늘의 분석' },
     { id: 'chat',       label: '💬 응원 톡 관리' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
@@ -3476,6 +3477,7 @@ const AdminPage = () => {
       {section === 'news'       && <AdminNewsForm />}
       {section === 'lineup'     && <AdminLineupForm />}
       {section === 'matchup'    && <AdminMatchupForm />}
+      {section === 'analytics'  && <AdminAnalytics />}
       {section === 'prediction' && <AdminPredictionForm />}
       {section === 'chat'       && <AdminChatModeration />}
       {section === 'seatphoto'  && <AdminSeatPhotoUpload />}
@@ -4212,6 +4214,209 @@ const AdminSeatApproval = () => {
         ? <PendingList items={seatPending} onApprove={approveSeat} onReject={rejectSeat} labelFn={i => `${i.zone} ${i.row} ${i.seat}번`} />
         : <PendingList items={goodsPending} onApprove={approveGoods} onReject={rejectGoods} labelFn={i => `${i.goodsType}${i.itemName ? ' · ' + i.itemName : ''}`} />
       }
+    </div>
+  );
+};
+
+// ─── 어드민: 트래픽 분석 대시보드 ────────────────────────────────────
+const AdminAnalytics = () => {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yKey = `${yesterday.getFullYear()}${String(yesterday.getMonth() + 1).padStart(2, '0')}${String(yesterday.getDate()).padStart(2, '0')}`;
+
+  const [todayData, setTodayData] = useState(null);
+  const [yesterdayData, setYesterdayData] = useState(null);
+  const [retention, setRetention] = useState(null);
+  const [cronStatus, setCronStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true);
+      try {
+        // 오늘/어제 분석 데이터 한번에 fetch
+        const [tDau, yDau, tActions, yActions, tFunnel, yFunnel, tCron, allUsers] = await Promise.all([
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/dau/${todayKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/dau/${yKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/actions/${todayKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/actions/${yKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/funnel/${todayKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/funnel/${yKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/analytics/cron/${todayKey}.json`).then(r => r.json()),
+          fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/users.json?shallow=true`).then(r => r.json()),
+        ]);
+
+        const todayUsers = tDau ? Object.keys(tDau) : [];
+        const yesterdayUsers = yDau ? Object.keys(yDau) : [];
+
+        // Retention 계산 (어제 방문자 중 오늘 다시 온 비율)
+        const retainedYesterday = yesterdayUsers.filter(u => todayUsers.includes(u)).length;
+        const d1Retention = yesterdayUsers.length > 0
+          ? Math.round((retainedYesterday / yesterdayUsers.length) * 100)
+          : null;
+
+        setTodayData({
+          dau: todayUsers.length,
+          actions: tActions?.counts || {},
+          funnel: tFunnel || {},
+        });
+        setYesterdayData({
+          dau: yesterdayUsers.length,
+          actions: yActions?.counts || {},
+          funnel: yFunnel || {},
+        });
+        setRetention({ d1: d1Retention, retainedYesterday, yesterdayTotal: yesterdayUsers.length });
+        setCronStatus(tCron || {});
+      } catch (e) {
+        console.error('analytics load error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAll();
+  }, [todayKey, yKey]);
+
+  if (loading) {
+    return <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-red-600 border-t-transparent" /></div>;
+  }
+
+  const changePct = (today, yest) => {
+    if (yest === 0 || yest === null || yest === undefined) return null;
+    return Math.round(((today - yest) / yest) * 100);
+  };
+
+  const dauChange = changePct(todayData.dau, yesterdayData.dau);
+  const actions = todayData.actions;
+  const yActions = yesterdayData.actions;
+
+  const KeyValue = ({ label, value, sub = null, color = 'white' }) => (
+    <div className="bg-zinc-800 rounded-lg p-3">
+      <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">{label}</div>
+      <div className={`font-black text-2xl text-${color}`} style={{ color: color !== 'white' ? color : '#fff' }}>{value}</div>
+      {sub && <div className="text-zinc-500 text-[10px] mt-1">{sub}</div>}
+    </div>
+  );
+
+  const Funnel = ({ stages }) => (
+    <div className="space-y-1.5">
+      {stages.map(([label, value, color]) => {
+        const max = stages[0][1] || 1;
+        const pct = Math.round((value / max) * 100);
+        return (
+          <div key={label}>
+            <div className="flex justify-between text-xs mb-0.5">
+              <span className="text-zinc-300 font-bold">{label}</span>
+              <span className="text-white font-black">{value} <span className="text-zinc-500 text-[10px]">({pct}%)</span></span>
+            </div>
+            <div className="h-1.5 bg-zinc-800 rounded">
+              <div className="h-full rounded" style={{ width: `${pct}%`, background: color }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 max-w-3xl">
+      {/* 헤더 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-red-500 font-bold text-xs mb-1 uppercase tracking-wider">📈 트래픽 ({todayKey})</p>
+        <p className="text-zinc-500 text-xs">토스 미니앱 사용자 행동 데이터</p>
+      </div>
+
+      {/* 핵심 지표 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-zinc-400 font-bold text-xs mb-3 uppercase tracking-wider">핵심 지표</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <KeyValue label="오늘 DAU" value={todayData.dau} sub={dauChange !== null ? (dauChange >= 0 ? `▲ ${dauChange}%` : `▼ ${dauChange}%`) : '기준 없음'} color={dauChange >= 0 ? '#4ade80' : '#f87171'} />
+          <KeyValue label="어제 DAU" value={yesterdayData.dau} />
+          <KeyValue label="D1 Retention" value={retention?.d1 !== null ? `${retention.d1}%` : '-'} sub={retention?.yesterdayTotal > 0 ? `${retention.retainedYesterday}/${retention.yesterdayTotal}명` : null} />
+          <KeyValue label="투표 참여율" value={todayData.dau > 0 && actions.vote_cast ? `${Math.round((actions.vote_cast / todayData.dau) * 100)}%` : '-'} sub={actions.vote_cast ? `${actions.vote_cast}명` : null} />
+        </div>
+      </div>
+
+      {/* 깔때기 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-zinc-400 font-bold text-xs mb-3 uppercase tracking-wider">사용자 깔때기 (오늘)</p>
+        <Funnel stages={[
+          ['진입',     todayData.funnel['1_visit'] || 0,        '#3b82f6'],
+          ['투표',     todayData.funnel['2_vote_cast'] || 0,    '#CE1141'],
+          ['응원톡',   todayData.funnel['3_chat_sent'] || 0,    '#fbbf24'],
+          ['영상 클릭', todayData.funnel['4_video_clicked'] || 0,'#4ade80'],
+        ]} />
+      </div>
+
+      {/* 액션 카운터 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-zinc-400 font-bold text-xs mb-3 uppercase tracking-wider">액션별 발생 횟수</p>
+        <div className="space-y-1.5">
+          {[
+            ['투표',           'vote_cast'],
+            ['응원톡 전송',     'chat_sent'],
+            ['영상 클릭',       'video_clicked'],
+            ['응원톡까지 스크롤', 'scroll_deep'],
+            ['소개 페이지',     'about_clicked'],
+            ['약관 페이지',     'terms_clicked'],
+            ['처리방침 페이지', 'privacy_clicked'],
+          ].map(([label, key]) => (
+            <div key={key} className="flex justify-between items-center text-xs bg-zinc-800 rounded px-3 py-2">
+              <span className="text-zinc-300">{label}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-zinc-600 font-mono">어제 {yActions[key] || 0}</span>
+                <span className="text-white font-black w-12 text-right">{actions[key] || 0}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 자동 시스템 상태 */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <p className="text-zinc-400 font-bold text-xs mb-3 uppercase tracking-wider">자동 시스템 (오늘)</p>
+        <div className="space-y-2">
+          {[
+            ['📋 라인업 자동',  'lineup'],
+            ['📊 승률 자동',   'prediction'],
+            ['🎬 YouTube 자동', 'youtube'],
+          ].map(([label, key]) => {
+            const job = cronStatus[key];
+            const success = job?.ok > 0;
+            return (
+              <div key={key} className="flex items-center justify-between bg-zinc-800 rounded px-3 py-2 text-xs">
+                <span className="text-zinc-300 font-bold">{label}</span>
+                <div className="flex items-center gap-3">
+                  {job ? (
+                    <>
+                      <span className="text-green-400">✓ {job.ok || 0}</span>
+                      {job.fail > 0 && <span className="text-red-400">✗ {job.fail}</span>}
+                      <span className="text-zinc-500 text-[10px]">
+                        {job.lastRunAt ? new Date(job.lastRunAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-zinc-600">실행 전</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {cronStatus && Object.values(cronStatus).some(j => j?.lastError) && (
+          <div className="mt-3 p-3 bg-red-950/40 border border-red-900 rounded text-xs">
+            <p className="text-red-400 font-bold mb-1">최근 오류</p>
+            {Object.entries(cronStatus).filter(([_, j]) => j?.lastError).map(([k, j]) => (
+              <p key={k} className="text-red-300 mb-0.5">[{k}] {j.lastError}</p>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="text-zinc-700 text-[10px] text-center">
+        ※ 데이터는 실시간이 아닌 새로고침 시점 기준입니다
+      </p>
     </div>
   );
 };

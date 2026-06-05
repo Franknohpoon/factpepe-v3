@@ -4,6 +4,7 @@ import { ref as dbRef, onValue, runTransaction, push, set, query, limitToLast } 
 import { getUserId, getTodayKey } from './tossAuth.js';
 import { validateMessage, checkRateLimit, markSent, MAX_LEN_CHAT } from './chatFilter.js';
 import { TossPrivacyPage, TossTermsPage, TossAboutPage } from './TossLegalPages.jsx';
+import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -101,10 +102,9 @@ const VideoCard = ({ prediction }) => {
 
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  // 클릭 시 외부 사이트 이동 안내 (토스 정책 가시화)
-  const handleClick = (e) => {
-    // 명시적 외부 이동 — 토스가 가장 안전하게 보는 패턴
-    // (자동 자녀 임베드 아님, 사용자 명시적 탭)
+  // 클릭 시 외부 사이트 이동 안내 (토스 정책 가시화) + 트래킹
+  const handleClick = () => {
+    trackAction(ACTIONS.VIDEO_CLICKED, { funnelStage: FUNNEL.VIDEO });
   };
 
   return (
@@ -236,6 +236,8 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
       await runTransaction(dbRef(database, `vote/${todayKey}/counts/${choice}`), (v) => (v || 0) + 1);
       // 3) 사용자 기록
       await set(dbRef(database, `vote/${todayKey}/users/${userId}`), { choice, at: Date.now() });
+      // 4) 트래킹 (유저당 첫 투표만)
+      trackAction(ACTIONS.VOTE_CAST, { funnelStage: FUNNEL.VOTE });
     } catch (e) { console.error(e); }
   };
 
@@ -354,6 +356,8 @@ const ChatCard = ({ todayKey, hasVoted }) => {
       markSent();
       setDraft('');
       setCooldownSec(60);
+      // 트래킹
+      trackAction(ACTIONS.CHAT_SENT, { funnelStage: FUNNEL.CHAT });
     } catch (e) {
       setError('전송 실패: ' + e.message);
     } finally {
@@ -444,15 +448,29 @@ function TossDashboard() {
     return () => { unsubP(); unsubL(); };
   }, [todayKey]);
 
-  // 트래킹
+  // 트래킹: 진입 + DAU + 유저 프로필
   useEffect(() => {
+    // 기존 페이지뷰 카운터 유지 (이전 시스템 호환)
     const today = new Date().toISOString().split('T')[0];
-    const sessKey = `toss_session_${today}`;
-    if (!sessionStorage.getItem(sessKey)) {
-      sessionStorage.setItem(sessKey, '1');
-      runTransaction(dbRef(database, `analytics/daily/${today}/toss/sessions`), v => (v || 0) + 1).catch(() => {});
-    }
     runTransaction(dbRef(database, `analytics/daily/${today}/toss/pageviews`), v => (v || 0) + 1).catch(() => {});
+    // 신규 측정 인프라
+    trackSession();
+  }, []);
+
+  // 스크롤 깊이 측정 (응원톡까지 도달 시 1회)
+  useEffect(() => {
+    let tracked = false;
+    const onScroll = () => {
+      if (tracked) return;
+      const scrolled = window.scrollY + window.innerHeight;
+      const total = document.documentElement.scrollHeight;
+      if (scrolled / total >= 0.7) {
+        tracked = true;
+        trackAction(ACTIONS.SCROLL_DEEP, { uniquePerSession: true });
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const opponent = lineup?.opponent || prediction?.opponent || '';
@@ -500,11 +518,11 @@ function TossDashboard() {
 
         <div className="pt-3">
           <div className="flex gap-2 justify-center text-[10px] mb-2">
-            <a href="/toss/about"   className="text-zinc-500 hover:text-zinc-300">서비스 소개</a>
+            <a href="/toss/about"   onClick={() => trackAction(ACTIONS.ABOUT_CLICKED)}   className="text-zinc-500 hover:text-zinc-300">서비스 소개</a>
             <span className="text-zinc-700">·</span>
-            <a href="/toss/privacy" className="text-zinc-500 hover:text-zinc-300">개인정보 처리방침</a>
+            <a href="/toss/privacy" onClick={() => trackAction(ACTIONS.PRIVACY_CLICKED)} className="text-zinc-500 hover:text-zinc-300">개인정보 처리방침</a>
             <span className="text-zinc-700">·</span>
-            <a href="/toss/terms"   className="text-zinc-500 hover:text-zinc-300">이용약관</a>
+            <a href="/toss/terms"   onClick={() => trackAction(ACTIONS.TERMS_CLICKED)}   className="text-zinc-500 hover:text-zinc-300">이용약관</a>
           </div>
           <div className="text-center">
             <span className="text-zinc-700 text-[10px]">FACTPEPE · @factpepe_</span>
