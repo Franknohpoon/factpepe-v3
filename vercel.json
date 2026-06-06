@@ -15,6 +15,7 @@
     { "path": "/api/lineup-auto",   "schedule": "30 9 * * *" }
   ],
   "rewrites": [
+    { "source": "/q",           "destination": "/index.html" },
     { "source": "/toss/:path*", "destination": "/index.html" },
     { "source": "/toss",        "destination": "/index.html" }
   ]

@@ -5774,4 +5774,4 @@ const AdminNewsForm = () => {
 };
 
 export default App;
-export { LineupTab, RouletteTab, SeatViewContent, database };
+export { LineupTab, RouletteTab, SeatViewContent, database, parseLineupText };
