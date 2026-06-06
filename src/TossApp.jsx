@@ -7,6 +7,7 @@ import { TossPrivacyPage, TossTermsPage, TossAboutPage } from './TossLegalPages.
 import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
+import { BADGES, LEVELS, computeBadges, computeLevel, nextLevelProgress, getBadge } from './badges.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -25,7 +26,7 @@ const RED = T.accent;
 const POS_ABBR = { '포수':'C', '1루수':'1B', '2루수':'2B', '3루수':'3B', '유격수':'SS', '좌익수':'LF', '중견수':'CF', '우익수':'RF', '지명타자':'DH', '투수':'P' };
 
 // ─── 내 적중률 카드 (시즌 누적 + 연속 적중) ──────────────────────
-const MyStatsCard = ({ userStats, nickname, onSetNickname }) => {
+const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) => {
   if (!userStats || (userStats.totalVotes || 0) === 0) {
     return (
       <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
@@ -53,33 +54,37 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname }) => {
   const total = userStats.seasonVotes ?? userStats.totalVotes ?? 0;
   const correct = userStats.seasonCorrect ?? userStats.totalCorrect ?? 0;
   const streak = userStats.currentStreak ?? 0;
+  const level = computeLevel(userStats);
+  const earnedBadges = computeBadges(userStats);
 
   return (
     <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
       <div className="flex items-center gap-2 mb-3">
         <Pepe mood={accuracy >= 60 ? 'excited' : accuracy >= 40 ? 'happy' : 'analyzing'} size={32} />
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-black" style={{ color: T.text }}>
+            <span className="text-sm font-black truncate" style={{ color: T.text }}>
               {nickname || '익명'}
             </span>
-            <button onClick={onSetNickname} className="text-[10px]" style={{ color: T.textMuted }}>
+            <button onClick={onSetNickname} className="text-[10px] flex-shrink-0" style={{ color: T.textMuted }}>
               {nickname ? '변경' : '닉네임 설정'}
             </button>
           </div>
-          <p className="text-[10px]" style={{ color: T.textMuted }}>
-            시즌 적중률 누적 중
-          </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${level.color}20`, color: level.color }}>
+              Lv.{level.level} {level.name}
+            </span>
+          </div>
         </div>
         {streak >= 3 && (
-          <div className="text-center px-2 py-1 rounded-lg" style={{ background: T.accentBg }}>
+          <div className="text-center px-2 py-1 rounded-lg flex-shrink-0" style={{ background: T.accentBg }}>
             <p className="text-base font-black leading-none" style={{ color: T.accent }}>🔥{streak}</p>
             <p className="text-[8px] mt-0.5" style={{ color: T.accent }}>연속</p>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 mb-2">
         <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
           <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중률</p>
           <p className="text-lg font-black" style={{ color: T.accent }}>{accuracy}<span className="text-xs">%</span></p>
@@ -92,6 +97,193 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname }) => {
           <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>최고 연속</p>
           <p className="text-lg font-black" style={{ color: T.text }}>{userStats.bestStreak || 0}</p>
         </div>
+      </div>
+
+      {/* 획득한 뱃지 */}
+      {earnedBadges.length > 0 && (
+        <div className="mb-2 rounded-lg p-2" style={{ background: T.zinc100 }}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>획득 뱃지</span>
+            <span className="text-[10px]" style={{ color: T.zinc400 }}>{earnedBadges.length}/{BADGES.length}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {earnedBadges.slice(0, 8).map(id => {
+              const b = getBadge(id);
+              if (!b) return null;
+              return (
+                <span key={id} title={`${b.name} - ${b.desc}`}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
+                  style={{ background: T.card }}>
+                  <span>{b.emoji}</span>
+                  <span className="text-[9px] font-bold" style={{ color: T.textSecondary }}>{b.name}</span>
+                </span>
+              );
+            })}
+            {earnedBadges.length > 8 && (
+              <span className="text-[9px] font-bold py-0.5" style={{ color: T.textMuted }}>+{earnedBadges.length - 8}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {onOpenLeaderboard && (
+        <button onClick={onOpenLeaderboard} className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+          style={{ background: T.zinc100, color: T.accent }}>
+          🏆 예측왕 리더보드 보기 →
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ─── 리더보드 모달 ───────────────────────────────────────────────
+const LeaderboardModal = ({ onClose, userId, nickname }) => {
+  const [tab, setTab] = useState('season'); // 'season' | 'weekly'
+  const [users, setUsers] = useState([]);
+  const [myRank, setMyRank] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/users.json`)
+      .then(r => r.json())
+      .then(data => {
+        if (!mounted || !data) { setLoading(false); return; }
+        const list = Object.entries(data)
+          .filter(([_, u]) => u && u.stats && (u.stats.totalVotes || 0) >= 5) // 최소 5번 투표
+          .map(([uid, u]) => ({
+            uid,
+            nickname: u.nickname || '익명',
+            stats: u.stats,
+          }));
+        setUsers(list);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  // 정렬: 적중률 → 적중 수
+  const sortField = tab === 'season' ? 'seasonAccuracy' : 'weeklyAccuracy';
+  const totalField = tab === 'season' ? 'seasonVotes' : 'weeklyVotes';
+  const correctField = tab === 'season' ? 'seasonCorrect' : 'weeklyCorrect';
+
+  const sorted = [...users]
+    .filter(u => (u.stats[totalField] || 0) >= 3) // 주간은 3번, 시즌도 3번 이상
+    .sort((a, b) => {
+      const acc = (b.stats[sortField] || 0) - (a.stats[sortField] || 0);
+      if (acc !== 0) return acc;
+      return (b.stats[correctField] || 0) - (a.stats[correctField] || 0);
+    });
+
+  const top10 = sorted.slice(0, 10);
+  const myIndex = sorted.findIndex(u => u.uid === userId);
+  const myEntry = myIndex >= 0 ? sorted[myIndex] : null;
+
+  const medal = (rank) => rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `${rank + 1}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div className="w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5" style={{ background: T.bg, maxHeight: '90vh', overflowY: 'auto' }}>
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Pepe mood="excited" size={28} />
+            <h2 className="font-black text-lg" style={{ color: T.text }}>예측왕 리더보드</h2>
+          </div>
+          <button onClick={onClose} className="text-2xl" style={{ color: T.textMuted }}>×</button>
+        </div>
+
+        {/* 탭 */}
+        <div className="flex gap-2 mb-3">
+          {[
+            { key: 'season', label: '시즌' },
+            { key: 'weekly', label: '이번 주' },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="flex-1 py-2 rounded-xl font-bold text-sm transition-all"
+              style={tab === t.key
+                ? { background: T.accent, color: '#fff' }
+                : { background: T.card, color: T.textMuted, border: `1px solid ${T.cardBorder}` }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 내 순위 카드 */}
+        {myEntry ? (
+          <div className="rounded-xl p-3 mb-3" style={{ background: T.accentBg, border: `1px solid ${T.accentBorder}` }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold" style={{ color: T.accent }}>내 순위</p>
+                <p className="font-black text-base" style={{ color: T.text }}>
+                  {myIndex + 1}위 · {nickname || '익명'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black" style={{ color: T.accent }}>
+                  {myEntry.stats[sortField] || 0}<span className="text-sm">%</span>
+                </p>
+                <p className="text-[10px]" style={{ color: T.textMuted }}>
+                  {myEntry.stats[correctField] || 0}/{myEntry.stats[totalField] || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl p-3 mb-3 text-center" style={{ background: T.card, border: `1px solid ${T.cardBorder}` }}>
+            <p className="text-xs" style={{ color: T.textMuted }}>
+              최소 3번 투표 + 결과 확정 시 순위에 진입합니다
+            </p>
+          </div>
+        )}
+
+        {/* TOP 10 */}
+        <p className="text-[10px] font-black tracking-widest mb-2" style={{ color: T.textMuted }}>TOP 10</p>
+        {loading ? (
+          <p className="text-center py-8 text-sm" style={{ color: T.textMuted }}>로딩 중...</p>
+        ) : top10.length === 0 ? (
+          <div className="text-center py-8">
+            <Pepe mood="sleepy" size={48} />
+            <p className="text-sm mt-2" style={{ color: T.textMuted }}>아직 참여자가 적어요</p>
+            <p className="text-xs mt-1" style={{ color: T.zinc400 }}>최소 3번 투표가 필요합니다</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {top10.map((u, i) => {
+              const isMe = u.uid === userId;
+              return (
+                <div key={u.uid} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{
+                    background: isMe ? T.accentBg : T.card,
+                    border: isMe ? `1px solid ${T.accentBorder}` : `1px solid ${T.cardBorder}`,
+                  }}>
+                  <span className="text-base font-black w-7 text-center" style={{ color: i < 3 ? T.accent : T.textMuted }}>
+                    {medal(i)}
+                  </span>
+                  <span className="flex-1 text-sm font-bold truncate" style={{ color: isMe ? T.accent : T.text }}>
+                    {u.nickname}
+                    {isMe && <span className="text-[10px] ml-1" style={{ color: T.accent }}>(나)</span>}
+                  </span>
+                  <div className="text-right">
+                    <p className="text-base font-black leading-none" style={{ color: T.text }}>
+                      {u.stats[sortField] || 0}%
+                    </p>
+                    <p className="text-[9px] leading-none mt-0.5" style={{ color: T.textMuted }}>
+                      {u.stats[correctField] || 0}/{u.stats[totalField] || 0}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <p className="text-[10px] text-center mt-3" style={{ color: T.zinc400 }}>
+          ※ 매일 05:00 KST 자동 집계 · 무승부/취소 경기는 제외
+        </p>
       </div>
     </div>
   );
@@ -919,6 +1111,7 @@ function TossDashboard() {
   const [myVote, setMyVote] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -1040,6 +1233,7 @@ function TossDashboard() {
               userStats={userProfile?.stats}
               nickname={userProfile?.nickname}
               onSetNickname={() => setShowNicknameModal(true)}
+              onOpenLeaderboard={() => setShowLeaderboard(true)}
             />
             <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} />
             <PredictionCard prediction={prediction} />
@@ -1070,6 +1264,14 @@ function TossDashboard() {
           initial={userProfile?.nickname || ''}
           onSave={saveNickname}
           onClose={() => setShowNicknameModal(false)}
+        />
+      )}
+      {/* 리더보드 모달 */}
+      {showLeaderboard && (
+        <LeaderboardModal
+          userId={userId}
+          nickname={userProfile?.nickname}
+          onClose={() => setShowLeaderboard(false)}
         />
       )}
     </div>
