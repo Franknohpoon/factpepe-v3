@@ -24,6 +24,128 @@ import { Pepe } from './Pepe.jsx';
 const RED = T.accent;
 const POS_ABBR = { '포수':'C', '1루수':'1B', '2루수':'2B', '3루수':'3B', '유격수':'SS', '좌익수':'LF', '중견수':'CF', '우익수':'RF', '지명타자':'DH', '투수':'P' };
 
+// ─── 내 적중률 카드 (시즌 누적 + 연속 적중) ──────────────────────
+const MyStatsCard = ({ userStats, nickname, onSetNickname }) => {
+  if (!userStats || (userStats.totalVotes || 0) === 0) {
+    return (
+      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
+        <div className="flex items-center gap-2">
+          <Pepe mood="happy" size={32} />
+          <div className="flex-1">
+            <p className="text-sm font-bold" style={{ color: T.text }}>
+              {nickname || '닉네임을 설정하세요'}
+            </p>
+            <p className="text-xs" style={{ color: T.textMuted }}>
+              투표하면 적중률이 누적됩니다
+            </p>
+          </div>
+          {!nickname && (
+            <button onClick={onSetNickname} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: T.accent, color: '#fff' }}>
+              설정
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const accuracy = userStats.seasonAccuracy ?? userStats.accuracy ?? 0;
+  const total = userStats.seasonVotes ?? userStats.totalVotes ?? 0;
+  const correct = userStats.seasonCorrect ?? userStats.totalCorrect ?? 0;
+  const streak = userStats.currentStreak ?? 0;
+
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <Pepe mood={accuracy >= 60 ? 'excited' : accuracy >= 40 ? 'happy' : 'analyzing'} size={32} />
+        <div className="flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-black" style={{ color: T.text }}>
+              {nickname || '익명'}
+            </span>
+            <button onClick={onSetNickname} className="text-[10px]" style={{ color: T.textMuted }}>
+              {nickname ? '변경' : '닉네임 설정'}
+            </button>
+          </div>
+          <p className="text-[10px]" style={{ color: T.textMuted }}>
+            시즌 적중률 누적 중
+          </p>
+        </div>
+        {streak >= 3 && (
+          <div className="text-center px-2 py-1 rounded-lg" style={{ background: T.accentBg }}>
+            <p className="text-base font-black leading-none" style={{ color: T.accent }}>🔥{streak}</p>
+            <p className="text-[8px] mt-0.5" style={{ color: T.accent }}>연속</p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
+          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중률</p>
+          <p className="text-lg font-black" style={{ color: T.accent }}>{accuracy}<span className="text-xs">%</span></p>
+        </div>
+        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
+          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중</p>
+          <p className="text-lg font-black" style={{ color: T.text }}>{correct}<span className="text-xs" style={{ color: T.textMuted }}>/{total}</span></p>
+        </div>
+        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
+          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>최고 연속</p>
+          <p className="text-lg font-black" style={{ color: T.text }}>{userStats.bestStreak || 0}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── 닉네임 설정 모달 ────────────────────────────────────────────
+const NicknameModal = ({ initial = '', onSave, onClose }) => {
+  const [value, setValue] = useState(initial);
+  const [error, setError] = useState('');
+  const handleSave = () => {
+    const v = value.trim();
+    if (v.length < 2) { setError('2자 이상 입력해주세요.'); return; }
+    if (v.length > 10) { setError('10자 이하로 입력해주세요.'); return; }
+    if (!/^[가-힣A-Za-z0-9_]+$/.test(v)) { setError('한글/영문/숫자만 사용 가능합니다.'); return; }
+    onSave(v);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: T.card, boxShadow: T.shadowStrong }}>
+        <div className="text-center mb-4">
+          <Pepe mood="cheering" size={56} />
+          <h2 className="font-black text-lg mt-2" style={{ color: T.text }}>닉네임 설정</h2>
+          <p className="text-xs mt-1" style={{ color: T.textMuted }}>
+            응원 톡과 리더보드에 표시됩니다
+          </p>
+        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => { setValue(e.target.value); setError(''); }}
+          placeholder="예: 페페팬123"
+          maxLength={10}
+          className="w-full text-base font-bold rounded-lg py-3 px-3 mb-2"
+          style={{ background: T.zinc100, color: T.text, border: `2px solid ${error ? T.error : 'transparent'}` }}
+          autoFocus
+        />
+        {error && <p className="text-xs mb-2" style={{ color: T.error }}>{error}</p>}
+        <p className="text-[10px] mb-3" style={{ color: T.textMuted }}>
+          한글/영문/숫자 · 2~10자
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-lg font-bold text-sm" style={{ background: T.zinc100, color: T.textMuted }}>
+            취소
+          </button>
+          <button onClick={handleSave} disabled={value.length < 2} className="flex-1 py-2.5 rounded-lg font-bold text-sm disabled:opacity-40" style={{ background: T.accent, color: '#fff' }}>
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── 회고 카드 (어제 예측 vs 실제 결과 + 시즌 누적 적중률) ─────────
 const RecapCard = ({ yesterdayPrediction, stats }) => {
   // 어제 결과 데이터가 있을 때만 표시
@@ -567,7 +689,7 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
 };
 
 // ─── 응원 톡 (투표 참여자만, 분당 1회 제한, 욕설 필터, 좋아요) ──────
-const ChatCard = ({ todayKey, hasVoted }) => {
+const ChatCard = ({ todayKey, hasVoted, nickname }) => {
   const userId = useRef(getUserId()).current;
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
@@ -662,6 +784,7 @@ const ChatCard = ({ todayKey, hasVoted }) => {
       const msgRef = push(dbRef(database, `chat/${todayKey}/messages`));
       await set(msgRef, {
         userId,
+        nickname: nickname || '',
         text: v.text,
         at: Date.now(),
       });
@@ -709,10 +832,17 @@ const ChatCard = ({ todayKey, hasVoted }) => {
                   ? { background: T.chatMine, border: `1px solid ${T.chatMineBorder}` }
                   : { background: T.chatOther }
                 }>
-                <span className="text-xs flex-1 leading-snug break-all"
-                  style={{ color: isMine ? T.chatMineText : T.chatOtherText }}>
-                  {m.text}
-                </span>
+                <div className="flex-1 min-w-0">
+                  {m.nickname && (
+                    <div className="text-[9px] font-bold mb-0.5" style={{ color: isMine ? T.accent : T.textMuted }}>
+                      {m.nickname}
+                    </div>
+                  )}
+                  <span className="text-xs leading-snug break-all"
+                    style={{ color: isMine ? T.chatMineText : T.chatOtherText }}>
+                    {m.text}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!isMine && !banned && (
                     <button
@@ -778,6 +908,7 @@ const ChatCard = ({ todayKey, hasVoted }) => {
 // ─── 메인 대시보드 ─────────────────────────────────────────────────
 function TossDashboard() {
   const todayKey = getTodayKey();
+  const userId = useRef(getUserId()).current;
   const [prediction, setPrediction] = useState(null);
   const [lineup, setLineup] = useState(null);
   const [lineupYesterday, setLineupYesterday] = useState(null);
@@ -786,6 +917,8 @@ function TossDashboard() {
   const [noGame, setNoGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -814,8 +947,28 @@ function TossDashboard() {
     const unsubStats = onValue(dbRef(database, 'prediction/stats'), (snap) => {
       setPredictionStats(snap.val());
     });
-    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); };
-  }, [todayKey, yesterdayKey]);
+    const unsubUser = onValue(dbRef(database, `users/${userId}`), (snap) => {
+      setUserProfile(snap.val());
+    });
+    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); };
+  }, [todayKey, yesterdayKey, userId]);
+
+  const saveNickname = async (newNickname) => {
+    try {
+      await runTransaction(dbRef(database, `users/${userId}`), (current) => {
+        const now = Date.now();
+        return {
+          ...(current || {}),
+          nickname: newNickname,
+          nicknameSetAt: now,
+          lastSeen: now,
+        };
+      });
+      setShowNicknameModal(false);
+    } catch (e) {
+      console.error('nickname save failed:', e);
+    }
+  };
 
   // 트래킹: 진입 + DAU + 유저 프로필
   useEffect(() => {
@@ -883,12 +1036,17 @@ function TossDashboard() {
           </div>
         ) : (
           <>
+            <MyStatsCard
+              userStats={userProfile?.stats}
+              nickname={userProfile?.nickname}
+              onSetNickname={() => setShowNicknameModal(true)}
+            />
             <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} />
             <PredictionCard prediction={prediction} />
             <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
-            <ChatCard todayKey={todayKey} hasVoted={!!myVote} />
+            <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
           </>
         )}
 
@@ -905,6 +1063,15 @@ function TossDashboard() {
           </div>
         </div>
       </main>
+
+      {/* 닉네임 설정 모달 */}
+      {showNicknameModal && (
+        <NicknameModal
+          initial={userProfile?.nickname || ''}
+          onSave={saveNickname}
+          onClose={() => setShowNicknameModal(false)}
+        />
+      )}
     </div>
   );
 }

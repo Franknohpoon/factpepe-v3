@@ -165,7 +165,7 @@
           ".read": true,
           "$msgId": {
             ".write": "(!data.exists() && newData.hasChildren(['userId', 'text', 'at']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 50 && newData.child('userId').isString() && newData.child('userId').val().length >= 4 && newData.child('userId').val().length <= 80 && newData.child('at').isNumber() && !root.child('chat').child('banned').child(newData.child('userId').val()).exists()) || !newData.exists() || (data.exists() && newData.child('text').val() === data.child('text').val() && newData.child('userId').val() === data.child('userId').val() && newData.child('at').val() === data.child('at').val())",
-            ".validate": "newData.hasChildren(['userId', 'text', 'at']) && (!newData.hasChild('likes') || (newData.child('likes').isNumber() && newData.child('likes').val() >= 0 && newData.child('likes').val() < 100000))"
+            ".validate": "newData.hasChildren(['userId', 'text', 'at']) && (!newData.hasChild('likes') || (newData.child('likes').isNumber() && newData.child('likes').val() >= 0 && newData.child('likes').val() < 100000)) && (!newData.hasChild('nickname') || (newData.child('nickname').isString() && newData.child('nickname').val().length <= 10))"
           }
         },
         "likes": {
@@ -185,7 +185,7 @@
       ".read": true,
       "$uid": {
         ".write": "newData.hasChild('lastSeen') && newData.child('lastSeen').isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)",
-        ".validate": "newData.hasChildren(['lastSeen']) && (!newData.hasChild('sessions') || (newData.child('sessions').isNumber() && newData.child('sessions').val() < 100000))"
+        ".validate": "newData.hasChildren(['lastSeen']) && (!newData.hasChild('sessions') || (newData.child('sessions').isNumber() && newData.child('sessions').val() < 100000)) && (!newData.hasChild('nickname') || (newData.child('nickname').isString() && newData.child('nickname').val().length <= 10))"
       }
     },
 

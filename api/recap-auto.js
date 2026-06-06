@@ -98,6 +98,99 @@ async function patchResult(dateCompact, resultData) {
   });
 }
 
+/**
+ * 어제 투표자 전체 stats 자동 업데이트
+ * - 적중 여부 판정
+ * - 일간/주간/시즌 누적
+ * - 연속 적중 streak
+ */
+async function processVoteResults(dateCompact, actualResult) {
+  // 적중 판정 불가능한 결과는 스킵
+  if (actualResult === 'draw' || actualResult === 'cancelled' || actualResult === 'pending') {
+    return { processed: 0, skipped: 'undetermined' };
+  }
+
+  // 그 날 투표자 전체 조회
+  const votesRes = await fetch(`${FIREBASE_URL}/vote/${dateCompact}/users.json`);
+  if (!votesRes.ok) return { processed: 0 };
+  const votes = (await votesRes.json()) || {};
+  const userIds = Object.keys(votes);
+  if (!userIds.length) return { processed: 0 };
+
+  // 주차 계산 (월요일 시작)
+  const dateStr = `${dateCompact.slice(0, 4)}-${dateCompact.slice(4, 6)}-${dateCompact.slice(6, 8)}`;
+  const voteDate = new Date(dateStr);
+  const weekStart = new Date(voteDate);
+  weekStart.setDate(voteDate.getDate() - ((voteDate.getDay() + 6) % 7)); // 월요일
+  const weekKey = `${weekStart.getFullYear()}${String(weekStart.getMonth() + 1).padStart(2, '0')}${String(weekStart.getDate()).padStart(2, '0')}`;
+
+  let processed = 0;
+  for (const userId of userIds) {
+    const vote = votes[userId];
+    if (!vote?.choice) continue;
+    const correct =
+      (vote.choice === 'win' && actualResult === 'win') ||
+      (vote.choice === 'lose' && actualResult === 'lose');
+
+    // 기존 stats 조회
+    const userRes = await fetch(`${FIREBASE_URL}/users/${userId}.json`);
+    const user = userRes.ok ? await userRes.json() : null;
+    const stats = user?.stats || {
+      totalVotes: 0,
+      totalCorrect: 0,
+      seasonVotes: 0,
+      seasonCorrect: 0,
+      weeklyVotes: 0,
+      weeklyCorrect: 0,
+      weekKey: '',
+      currentStreak: 0,
+      bestStreak: 0,
+      lastVotedDate: '',
+    };
+
+    // 같은 날 중복 처리 방지
+    if (stats.lastProcessedDate === dateCompact) continue;
+
+    // 주간 리셋 체크
+    if (stats.weekKey !== weekKey) {
+      stats.weeklyVotes = 0;
+      stats.weeklyCorrect = 0;
+      stats.weekKey = weekKey;
+    }
+
+    // 누적 업데이트
+    stats.totalVotes = (stats.totalVotes || 0) + 1;
+    stats.seasonVotes = (stats.seasonVotes || 0) + 1;
+    stats.weeklyVotes = (stats.weeklyVotes || 0) + 1;
+    if (correct) {
+      stats.totalCorrect = (stats.totalCorrect || 0) + 1;
+      stats.seasonCorrect = (stats.seasonCorrect || 0) + 1;
+      stats.weeklyCorrect = (stats.weeklyCorrect || 0) + 1;
+      stats.currentStreak = (stats.currentStreak || 0) + 1;
+      if (stats.currentStreak > (stats.bestStreak || 0)) {
+        stats.bestStreak = stats.currentStreak;
+      }
+    } else {
+      stats.currentStreak = 0;
+    }
+    stats.accuracy = stats.totalVotes > 0 ? Math.round((stats.totalCorrect / stats.totalVotes) * 100) : 0;
+    stats.seasonAccuracy = stats.seasonVotes > 0 ? Math.round((stats.seasonCorrect / stats.seasonVotes) * 100) : 0;
+    stats.weeklyAccuracy = stats.weeklyVotes > 0 ? Math.round((stats.weeklyCorrect / stats.weeklyVotes) * 100) : 0;
+    stats.lastProcessedDate = dateCompact;
+    stats.lastVotedDate = dateCompact;
+
+    // PATCH 업데이트 (다른 필드 보존)
+    await fetch(`${FIREBASE_URL}/users/${userId}.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stats, lastSeen: Date.now() }),
+    });
+    processed++;
+  }
+
+  return { processed };
+}
+
 /** 누적 통계 업데이트 (transaction-like) */
 async function updateStats(correct, source) {
   // 단순 GET-then-PUT (충돌 가능성 낮음 — 일일 1회 크론)
@@ -215,6 +308,7 @@ export default async function handler(req, res) {
     let saved = false;
     let stats = null;
 
+    let voteProcessed = null;
     if (shouldSave) {
       // result 부분 업데이트
       await patchResult(dateInfo.compact, resultRecord);
@@ -223,6 +317,14 @@ export default async function handler(req, res) {
       if (correct !== null && prediction) {
         stats = await updateStats(correct, prediction.source);
       }
+
+      // 사용자별 stats 업데이트 (A+B 패키지: 적중률 누적)
+      try {
+        voteProcessed = await processVoteResults(dateInfo.compact, gameResult.result);
+      } catch (e) {
+        console.error('[recap] vote processing failed:', e);
+      }
+
       saved = true;
       logCronResult(dateInfo.compact, true).catch(() => {});
     }
@@ -233,6 +335,7 @@ export default async function handler(req, res) {
       date: dateInfo.display,
       result: resultRecord,
       stats,
+      voteProcessed,
     });
   } catch (err) {
     console.error('[recap-auto] error:', err);
