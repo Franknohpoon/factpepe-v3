@@ -8,6 +8,7 @@ import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import { BADGES, LEVELS, computeBadges, computeLevel, nextLevelProgress, getBadge } from './badges.js';
+import { generateStatsCard, generateHitCard, shareOrDownload } from './shareCard.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -126,12 +127,36 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) 
         </div>
       )}
 
-      {onOpenLeaderboard && (
-        <button onClick={onOpenLeaderboard} className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
-          style={{ background: T.zinc100, color: T.accent }}>
-          🏆 예측왕 리더보드 보기 →
-        </button>
-      )}
+      <div className="flex gap-2">
+        {total >= 3 && (
+          <button
+            onClick={async () => {
+              const level = computeLevel(userStats);
+              const dataUrl = await generateStatsCard({
+                nickname: nickname || '익명',
+                accuracy,
+                correct,
+                total,
+                streak,
+                bestStreak: userStats.bestStreak || 0,
+                levelName: level.name,
+                levelColor: level.color,
+              });
+              shareOrDownload(dataUrl, `factpepe-stats-${nickname || 'fan'}.png`);
+              trackAction(ACTIONS.SHARE_STATS);
+            }}
+            className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+            style={{ background: T.accentBg, color: T.accent, border: `1px solid ${T.accentBorder}` }}>
+            📤 내 적중률 공유
+          </button>
+        )}
+        {onOpenLeaderboard && (
+          <button onClick={onOpenLeaderboard} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
+            style={{ background: T.zinc100, color: T.accent }}>
+            🏆 리더보드
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -339,7 +364,7 @@ const NicknameModal = ({ initial = '', onSave, onClose }) => {
 };
 
 // ─── 회고 카드 (어제 예측 vs 실제 결과 + 시즌 누적 적중률) ─────────
-const RecapCard = ({ yesterdayPrediction, stats }) => {
+const RecapCard = ({ yesterdayPrediction, stats, nickname, userStats }) => {
   // 어제 결과 데이터가 있을 때만 표시
   const result = yesterdayPrediction?.result;
   if (!result || result.actual === 'pending') return null;
@@ -418,11 +443,36 @@ const RecapCard = ({ yesterdayPrediction, stats }) => {
           </span>
         )}
       </div>
+
+      {/* E: 적중 시 공유 버튼 */}
+      {isCorrect && (
+        <button
+          onClick={async () => {
+            const dataUrl = await generateHitCard({
+              predictedRate: result.predictedWinRate,
+              actual: result.actual,
+              ssgScore: result.ssgScore,
+              oppScore: result.oppScore,
+              opponent: result.opponent,
+              isHome: result.isHome,
+              nickname: nickname || '익명',
+              seasonAccuracy: userStats?.seasonAccuracy ?? userStats?.accuracy ?? null,
+              seasonCorrect: userStats?.seasonCorrect ?? userStats?.totalCorrect ?? null,
+              seasonTotal: userStats?.seasonVotes ?? userStats?.totalVotes ?? null,
+            });
+            shareOrDownload(dataUrl, 'factpepe-hit.png');
+            trackAction(ACTIONS.SHARE_HIT);
+          }}
+          className="w-full mt-2 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+          style={{ background: T.accent, color: '#fff', boxShadow: `0 4px 16px ${T.accent}40` }}>
+          📤 적중! 자랑하기
+        </button>
+      )}
     </div>
   );
 };
 
-// ─── 분석 카드 (승률 + 영상) ─────────────────────────────────────────
+// ─── 분석 카드 (승률 + 영상) — B: 임팩트 강화 리디자인 ──────────────
 const PredictionCard = ({ prediction }) => {
   if (!prediction) {
     return (
@@ -433,44 +483,89 @@ const PredictionCard = ({ prediction }) => {
     );
   }
   const rate = Number(prediction.winRate) || 0;
-  const angle = (rate / 100) * 360;
+  const pepeMood = rate >= 60 ? 'excited' : rate >= 45 ? 'analyzing' : 'sad';
+  const isHigh = rate >= 55;
+
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${T.card} 0%, ${T.accentBg} 100%)`,
-      border: `1px solid ${T.accentBorder}`,
-      borderRadius: '16px', padding: '18px',
+      background: T.card,
+      border: `1.5px solid ${T.accentBorder}`,
+      borderRadius: '20px',
       boxShadow: T.shadow,
+      overflow: 'hidden',
+      position: 'relative',
     }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5">
-          <Pepe mood="analyzing" size={20} />
-          <span className="text-[10px] font-black tracking-widest" style={{ color: T.accent }}>팩트 승률</span>
-          {prediction.opponent && <span className="text-[10px] ml-1" style={{ color: T.textMuted }}>· vs {prediction.opponent}</span>}
-        </div>
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{
-          background: prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.15)' : T.zinc200,
-          color: prediction.source === 'manual' ? T.warning : T.textMuted,
-          border: `1px solid ${prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.3)' : T.zinc300}`,
-        }}>
-          {prediction.source === 'manual' ? '✏️ 운영자 분석' : '📊 자동 분석'}
-        </span>
-      </div>
+      {/* 상단 텍스처 배경 */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
+        background: `repeating-linear-gradient(135deg, transparent, transparent 10px, ${T.accentBg} 10px, ${T.accentBg} 12px)`,
+        opacity: 0.3,
+        pointerEvents: 'none',
+      }} />
 
-      <div className="flex items-center gap-5">
-        <div className="relative flex-shrink-0" style={{ width: '96px', height: '96px' }}>
-          <div className="absolute inset-0 rounded-full"
-            style={{ background: `conic-gradient(${T.accent} ${angle}deg, ${T.zinc200} ${angle}deg)` }} />
-          <div className="absolute rounded-full flex items-center justify-center" style={{ inset: '8px', background: T.card }}>
-            <span className="font-black text-xl leading-none" style={{ color: T.text }}>{rate}<span className="text-xs">%</span></span>
+      <div style={{ position: 'relative', padding: '18px' }}>
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <Pepe mood="analyzing" size={18} />
+            <span className="text-[10px] font-black tracking-widest" style={{ color: T.accent }}>팩트 승률</span>
+            {prediction.opponent && <span className="text-[10px] ml-1" style={{ color: T.textMuted }}>· vs {prediction.opponent}</span>}
+          </div>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{
+            background: prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.15)' : T.zinc200,
+            color: prediction.source === 'manual' ? T.warning : T.textMuted,
+            border: `1px solid ${prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.3)' : T.zinc300}`,
+          }}>
+            {prediction.source === 'manual' ? '✏️ 운영자' : '📊 자동'}
+          </span>
+        </div>
+
+        {/* 메인: 거대 숫자 + 페페 */}
+        <div className="flex items-center justify-between" style={{ minHeight: '100px' }}>
+          <div className="flex items-baseline gap-1">
+            <span style={{
+              fontSize: '72px',
+              fontWeight: 900,
+              lineHeight: 1,
+              color: T.text,
+              letterSpacing: '-3px',
+            }}>
+              {rate}
+            </span>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: T.accent }}>%</span>
+          </div>
+
+          <div className="flex flex-col items-center flex-shrink-0" style={{ marginRight: '4px' }}>
+            <Pepe mood={pepeMood} size={64} />
+            <span className="text-[10px] font-black mt-1" style={{ color: isHigh ? T.accent : T.textMuted }}>
+              {isHigh ? 'SSG 유리' : rate === 50 ? '반반' : 'SSG 불리'}
+            </span>
           </div>
         </div>
 
-        <div className="flex-1">
-          <div className="font-black text-lg leading-tight" style={{ color: T.text }}>SSG 승리 확률</div>
-          {prediction.reason && (
-            <p className="text-xs mt-1 leading-relaxed" style={{ color: T.textSecondary }}>{prediction.reason}</p>
-          )}
+        {/* SSG 승리 확률 바 */}
+        <div className="mt-2 mb-2">
+          <div className="flex justify-between text-[10px] font-bold mb-1">
+            <span style={{ color: T.accent }}>SSG {rate}%</span>
+            <span style={{ color: T.textMuted }}>{prediction.opponent || '상대'} {100 - rate}%</span>
+          </div>
+          <div className="flex h-2.5 rounded-full overflow-hidden" style={{ background: T.zinc200 }}>
+            <div className="rounded-full transition-all duration-700" style={{
+              width: `${rate}%`,
+              background: `linear-gradient(90deg, ${T.accent}, ${T.accent}cc)`,
+              boxShadow: isHigh ? `0 0 10px ${T.accent}60` : 'none',
+            }} />
+          </div>
         </div>
+
+        {/* 근거 */}
+        {prediction.reason && (
+          <div className="rounded-lg px-3 py-2 mt-2" style={{ background: T.zinc100 }}>
+            <p className="text-[11px] leading-relaxed" style={{ color: T.textSecondary }}>
+              💡 {prediction.reason}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1235,7 +1330,7 @@ function TossDashboard() {
               onSetNickname={() => setShowNicknameModal(true)}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
             />
-            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} />
+            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
             <PredictionCard prediction={prediction} />
             <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />

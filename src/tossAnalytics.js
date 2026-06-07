@@ -137,6 +137,8 @@ export const ACTIONS = {
   ABOUT_CLICKED: 'about_clicked',
   PRIVACY_CLICKED: 'privacy_clicked',
   TERMS_CLICKED: 'terms_clicked',
+  SHARE_STATS: 'share_stats',     // 내 적중률 공유 카드 (A)
+  SHARE_HIT: 'share_hit',         // 적중 자랑 공유 카드 (E)
 };
 
 // 깔때기 단계 (사용자 여정)
