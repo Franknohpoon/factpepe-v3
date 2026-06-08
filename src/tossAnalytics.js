@@ -47,12 +47,13 @@ export const trackSession = async () => {
     // 1) DAU 등록 (단순 set, 같은 날 재방문 시 timestamp 갱신)
     await set(dbRef(database, `analytics/dau/${today}/${userId}`), now);
 
-    // 2) 유저 프로필 (firstSeen/lastSeen/sessions)
+    // 2) 유저 프로필 (기존 데이터 보존 + session 갱신)
     await runTransaction(dbRef(database, `users/${userId}`), (current) => {
       if (!current) {
         return { firstSeen: now, lastSeen: now, sessions: 1, source: 'toss' };
       }
       return {
+        ...current,                          // ← 기존 데이터 전부 보존 (nickname, stats 등)
         firstSeen: current.firstSeen || now,
         lastSeen: now,
         sessions: (current.sessions || 0) + 1,
