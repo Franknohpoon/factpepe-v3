@@ -3,6 +3,7 @@ import { database, parseLineupText } from './App.jsx';
 import { ref as dbRef, set } from 'firebase/database';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
+import EatsAdmin from './EatsAdmin.jsx';
 
 /**
  * 운영자 초고속 라인업 입력 모드
@@ -26,6 +27,7 @@ const QuickLineup = () => {
   const [authed, setAuthed] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [tab, setTab] = useState('lineup'); // 'lineup' | 'eats'
   const [text, setText] = useState('');
   const [opponent, setOpponent] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -178,8 +180,10 @@ const QuickLineup = () => {
           <div className="flex items-center gap-2">
             <Pepe mood="cool" size={28} />
             <div>
-              <div className="font-black text-sm" style={{ color: T.text }}>📡 초고속 입력</div>
-              <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>트윗 붙여넣고 즉시 발행</div>
+              <div className="font-black text-sm" style={{ color: T.text }}>운영자 콘솔</div>
+              <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>
+                {tab === 'lineup' ? '트윗 붙여넣고 즉시 발행' : '랜더스필드 먹거리 관리'}
+              </div>
             </div>
           </div>
           <button
@@ -189,9 +193,33 @@ const QuickLineup = () => {
             로그아웃
           </button>
         </div>
+
+        {/* 탭 헤더 */}
+        <div className="max-w-md mx-auto flex" style={{ borderTop: `1px solid ${T.cardBorder}` }}>
+          <button onClick={() => setTab('lineup')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'lineup' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'lineup' ? T.accent : 'transparent'}`,
+            }}>
+            📡 라인업
+          </button>
+          <button onClick={() => setTab('eats')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'eats' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'eats' ? T.accent : 'transparent'}`,
+            }}>
+            🍽️ 먹거리
+          </button>
+        </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+        {tab === 'eats' ? (
+          <EatsAdmin />
+        ) : (
+          <>
         {/* 발행 완료 안내 */}
         {publishedAt && (
           <div className="rounded-xl p-3 text-center" style={{
@@ -295,6 +323,8 @@ const QuickLineup = () => {
         <p className="text-[10px] text-center" style={{ color: T.textMuted }}>
           발행하면 토스 미니앱 모든 사용자에게 즉시 반영됩니다
         </p>
+          </>
+        )}
       </main>
     </div>
   );

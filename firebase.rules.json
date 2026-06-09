@@ -139,6 +139,14 @@
       }
     },
 
+    "stadiumEats": {
+      ".read": true,
+      "$shopId": {
+        ".write": true,
+        ".validate": "!newData.exists() || (newData.hasChild('name') && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 30 && (!newData.hasChild('zone') || newData.child('zone').val().length <= 40) && (!newData.hasChild('category') || newData.child('category').val().length <= 20) && (!newData.hasChild('menu') || newData.child('menu').val().length <= 100) && (!newData.hasChild('priceRange') || newData.child('priceRange').val().length <= 30) && (!newData.hasChild('description') || newData.child('description').val().length <= 200) && (!newData.hasChild('tossPayRate') || (newData.child('tossPayRate').isNumber() && newData.child('tossPayRate').val() >= 0 && newData.child('tossPayRate').val() <= 50)))"
+      }
+    },
+
     "vote": {
       ".read": true,
       "$date": {
