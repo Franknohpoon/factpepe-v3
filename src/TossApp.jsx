@@ -34,22 +34,38 @@ const RED = T.accent;
 const POS_ABBR = { '포수':'C', '1루수':'1B', '2루수':'2B', '3루수':'3B', '유격수':'SS', '좌익수':'LF', '중견수':'CF', '우익수':'RF', '지명타자':'DH', '투수':'P' };
 
 // ─── 내 적중률 카드 (시즌 누적 + 연속 적중) ──────────────────────
+// 카테고리: 🔵 데이터 (토스 블루 좌측 바)
 const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) => {
+  const cardBase = {
+    position: 'relative',
+    background: T.card,
+    border: `1px solid ${T.cardBorder}`,
+    boxShadow: T.shadowCard,
+    borderRadius: T.radiusLg,
+    overflow: 'hidden',
+    marginBottom: '12px',
+  };
+  const colorBar = (color) => (
+    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: color }} />
+  );
+
   if (!userStats || (userStats.totalVotes || 0) === 0) {
     return (
-      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
-        <div className="flex items-center gap-2">
-          <Pepe mood="happy" size={32} />
-          <div className="flex-1">
-            <p className="text-sm font-bold" style={{ color: T.text }}>
+      <div style={cardBase}>
+        {colorBar(T.brand)}
+        <div className="flex items-center gap-3 pl-6 pr-4 py-4">
+          <Pepe mood="happy" size={40} />
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-black" style={{ color: T.text }}>
               {nickname || '닉네임을 설정하세요'}
             </p>
-            <p className="text-xs" style={{ color: T.textMuted }}>
-              투표하면 적중률이 누적됩니다
+            <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>
+              투표하면 시즌 적중률이 누적돼요
             </p>
           </div>
           {!nickname && (
-            <button onClick={onSetNickname} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: T.accent, color: '#fff' }}>
+            <button onClick={onSetNickname} className="text-xs font-black px-3.5 py-2 rounded-lg active:scale-95 transition-all"
+              style={{ background: T.brand, color: '#fff' }}>
               설정
             </button>
           )}
@@ -66,116 +82,121 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) 
   const earnedBadges = computeBadges(userStats);
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
-      <div className="flex items-center gap-2 mb-3">
-        <Pepe mood={accuracy >= 60 ? 'excited' : accuracy >= 40 ? 'happy' : 'analyzing'} size={32} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-black truncate" style={{ color: T.text }}>
-              {nickname || '익명'}
-            </span>
-            <button onClick={onSetNickname} className="text-[10px] flex-shrink-0" style={{ color: T.textMuted }}>
-              {nickname ? '변경' : '닉네임 설정'}
+    <div style={cardBase}>
+      {colorBar(T.brand)}
+      <div className="pl-6 pr-4 py-4">
+        <div className="flex items-center gap-2.5 mb-3">
+          <Pepe mood={accuracy >= 60 ? 'excited' : accuracy >= 40 ? 'happy' : 'analyzing'} size={36} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-black truncate" style={{ color: T.text }}>
+                {nickname || '익명'}
+              </span>
+              <button onClick={onSetNickname} className="text-[10px] flex-shrink-0" style={{ color: T.textMuted }}>
+                {nickname ? '변경' : '닉네임 설정'}
+              </button>
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${level.color}20`, color: level.color }}>
+                Lv.{level.level} {level.name}
+              </span>
+            </div>
+          </div>
+          {streak >= 3 && (
+            <div className="text-center px-2 py-1 rounded-lg flex-shrink-0" style={{ background: T.accentBg }}>
+              <p className="text-base font-black leading-none" style={{ color: T.accent }}>🔥{streak}</p>
+              <p className="text-[8px] mt-0.5" style={{ color: T.accent }}>연속</p>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="text-center rounded-xl py-2.5" style={{ background: T.brandBg }}>
+            <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>시즌 적중률</p>
+            <p className="text-xl font-black mt-0.5" style={{ color: T.brand }}>{accuracy}<span className="text-sm">%</span></p>
+          </div>
+          <div className="text-center rounded-xl py-2.5" style={{ background: T.zinc100 }}>
+            <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중</p>
+            <p className="text-xl font-black mt-0.5" style={{ color: T.text }}>{correct}<span className="text-sm" style={{ color: T.textMuted }}>/{total}</span></p>
+          </div>
+          <div className="text-center rounded-xl py-2.5" style={{ background: T.zinc100 }}>
+            <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>최고 연속</p>
+            <p className="text-xl font-black mt-0.5" style={{ color: T.text }}>{userStats.bestStreak || 0}</p>
+          </div>
+        </div>
+
+        {/* 획득한 뱃지 */}
+        {earnedBadges.length > 0 && (
+          <div className="mb-3 rounded-lg p-2.5" style={{ background: T.zinc100 }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>획득 뱃지</span>
+              <span className="text-[10px]" style={{ color: T.zinc400 }}>{earnedBadges.length}/{BADGES.length}</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {earnedBadges.slice(0, 8).map(id => {
+                const b = getBadge(id);
+                if (!b) return null;
+                return (
+                  <span key={id} title={`${b.name} - ${b.desc}`}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
+                    style={{ background: T.card }}>
+                    <span>{b.emoji}</span>
+                    <span className="text-[9px] font-bold" style={{ color: T.textSecondary }}>{b.name}</span>
+                  </span>
+                );
+              })}
+              {earnedBadges.length > 8 && (
+                <span className="text-[9px] font-bold py-0.5" style={{ color: T.textMuted }}>+{earnedBadges.length - 8}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {total >= 3 && (
+            <button
+              onClick={async () => {
+                const lv = computeLevel(userStats);
+                const dataUrl = await generateStatsCard({
+                  nickname: nickname || '익명',
+                  accuracy,
+                  correct,
+                  total,
+                  streak,
+                  bestStreak: userStats.bestStreak || 0,
+                  levelName: lv.name,
+                  levelColor: lv.color,
+                });
+                shareOrDownload(dataUrl, `factpepe-stats-${nickname || 'fan'}.png`);
+                trackAction(ACTIONS.SHARE_STATS);
+              }}
+              className="flex-1 py-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-1 active:scale-95 transition-all"
+              style={{ background: T.brandBg, color: T.brand, border: `1px solid ${T.brandBorder}` }}>
+              📤 적중률 공유
             </button>
-          </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${level.color}20`, color: level.color }}>
-              Lv.{level.level} {level.name}
-            </span>
-          </div>
+          )}
+          {onOpenLeaderboard && (
+            <button onClick={onOpenLeaderboard} className="flex-1 py-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-1 active:scale-95 transition-all"
+              style={{ background: T.zinc100, color: T.text }}>
+              🏆 리더보드
+            </button>
+          )}
         </div>
-        {streak >= 3 && (
-          <div className="text-center px-2 py-1 rounded-lg flex-shrink-0" style={{ background: T.accentBg }}>
-            <p className="text-base font-black leading-none" style={{ color: T.accent }}>🔥{streak}</p>
-            <p className="text-[8px] mt-0.5" style={{ color: T.accent }}>연속</p>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 mb-2">
-        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
-          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중률</p>
-          <p className="text-lg font-black" style={{ color: T.accent }}>{accuracy}<span className="text-xs">%</span></p>
-        </div>
-        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
-          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>적중</p>
-          <p className="text-lg font-black" style={{ color: T.text }}>{correct}<span className="text-xs" style={{ color: T.textMuted }}>/{total}</span></p>
-        </div>
-        <div className="text-center rounded-lg py-2" style={{ background: T.zinc100 }}>
-          <p className="text-[10px] font-bold" style={{ color: T.textMuted }}>최고 연속</p>
-          <p className="text-lg font-black" style={{ color: T.text }}>{userStats.bestStreak || 0}</p>
-        </div>
-      </div>
-
-      {/* 획득한 뱃지 */}
-      {earnedBadges.length > 0 && (
-        <div className="mb-2 rounded-lg p-2" style={{ background: T.zinc100 }}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>획득 뱃지</span>
-            <span className="text-[10px]" style={{ color: T.zinc400 }}>{earnedBadges.length}/{BADGES.length}</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {earnedBadges.slice(0, 8).map(id => {
-              const b = getBadge(id);
-              if (!b) return null;
-              return (
-                <span key={id} title={`${b.name} - ${b.desc}`}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
-                  style={{ background: T.card }}>
-                  <span>{b.emoji}</span>
-                  <span className="text-[9px] font-bold" style={{ color: T.textSecondary }}>{b.name}</span>
-                </span>
-              );
-            })}
-            {earnedBadges.length > 8 && (
-              <span className="text-[9px] font-bold py-0.5" style={{ color: T.textMuted }}>+{earnedBadges.length - 8}</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        {total >= 3 && (
-          <button
-            onClick={async () => {
-              const level = computeLevel(userStats);
-              const dataUrl = await generateStatsCard({
-                nickname: nickname || '익명',
-                accuracy,
-                correct,
-                total,
-                streak,
-                bestStreak: userStats.bestStreak || 0,
-                levelName: level.name,
-                levelColor: level.color,
-              });
-              shareOrDownload(dataUrl, `factpepe-stats-${nickname || 'fan'}.png`);
-              trackAction(ACTIONS.SHARE_STATS);
-            }}
-            className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
-            style={{ background: T.accentBg, color: T.accent, border: `1px solid ${T.accentBorder}` }}>
-            📤 내 적중률 공유
-          </button>
-        )}
-        {onOpenLeaderboard && (
-          <button onClick={onOpenLeaderboard} className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all"
-            style={{ background: T.zinc100, color: T.accent }}>
-            🏆 리더보드
-          </button>
-        )}
       </div>
     </div>
   );
 };
 
 // ─── 직관 기록 카드 (대시보드) ───────────────────────────────────────
-// 사용자 선택: "본인만 보기 + 인증 뱃지" → 비공개. 카드에 통계만 표시.
+// 카테고리: 🔴 정체성 (SSG 레드 좌측 바). 본인만 보기 + 인증 뱃지.
 const StadiumLogCard = ({ logs, onOpen }) => {
   const stats = computeStadiumStats(logs);
   const earnedBadges = computeStadiumBadges(stats);
 
   return (
-    <div className="rounded-2xl p-4 mb-3" style={{ background: T.card, boxShadow: T.shadowCard }}>
+    <div className="relative pl-6 pr-4 py-4 mb-3 overflow-hidden"
+      style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: T.radiusLg }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: T.accent }} />
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg">🏟️</span>
@@ -836,11 +857,28 @@ const RecapCard = ({ yesterdayPrediction, stats, nickname, userStats }) => {
 
 // ─── 분석 카드 (승률 + 영상) — B: 임팩트 강화 리디자인 ──────────────
 const PredictionCard = ({ prediction }) => {
+  // 카테고리: 🔵 데이터·분석 (토스 블루 좌측 바)
+  const cardBase = {
+    position: 'relative',
+    background: T.card,
+    border: `1px solid ${T.cardBorder}`,
+    boxShadow: T.shadowCard,
+    borderRadius: T.radiusLg,
+    overflow: 'hidden',
+    marginBottom: '12px',
+  };
+  const colorBar = (
+    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', background: T.brand, zIndex: 1 }} />
+  );
+
   if (!prediction) {
     return (
-      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
-        <Pepe mood="sleepy" size={48} style={{ marginBottom: '8px' }} />
-        <p className="text-sm" style={{ color: T.textMuted }}>오늘의 분석이 아직 등록되지 않았어요</p>
+      <div style={cardBase}>
+        {colorBar}
+        <div className="pl-6 pr-4 py-6 text-center">
+          <Pepe mood="sleepy" size={48} />
+          <p className="text-sm mt-2" style={{ color: T.textMuted }}>오늘의 분석이 아직 등록되지 않았어요</p>
+        </div>
       </div>
     );
   }
@@ -849,34 +887,28 @@ const PredictionCard = ({ prediction }) => {
   const isHigh = rate >= 55;
 
   return (
-    <div style={{
-      background: T.card,
-      border: `1.5px solid ${T.accentBorder}`,
-      borderRadius: '20px',
-      boxShadow: T.shadow,
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
-      {/* 상단 텍스처 배경 */}
+    <div style={cardBase}>
+      {colorBar}
+      {/* 옅은 텍스처 배경 (토스 블루 톤) */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
-        background: `repeating-linear-gradient(135deg, transparent, transparent 10px, ${T.accentBg} 10px, ${T.accentBg} 12px)`,
-        opacity: 0.3,
+        background: `repeating-linear-gradient(135deg, transparent, transparent 10px, ${T.brandBg} 10px, ${T.brandBg} 12px)`,
+        opacity: 0.4,
         pointerEvents: 'none',
       }} />
 
-      <div style={{ position: 'relative', padding: '18px' }}>
+      <div style={{ position: 'relative', padding: '18px 18px 18px 24px' }}>
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-1.5">
             <Pepe mood="analyzing" size={18} />
-            <span className="text-[10px] font-black tracking-widest" style={{ color: T.accent }}>팩트 승률</span>
+            <span className="text-[10px] font-black tracking-widest" style={{ color: T.brand }}>팩트 승률</span>
             {prediction.opponent && <span className="text-[10px] ml-1" style={{ color: T.textMuted }}>· vs {prediction.opponent}</span>}
           </div>
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{
-            background: prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.15)' : T.zinc200,
+            background: prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.15)' : T.zinc100,
             color: prediction.source === 'manual' ? T.warning : T.textMuted,
-            border: `1px solid ${prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.3)' : T.zinc300}`,
+            border: `1px solid ${prediction.source === 'manual' ? 'rgba(245, 158, 11, 0.3)' : T.zinc200}`,
           }}>
             {prediction.source === 'manual' ? '✏️ 운영자' : '📊 자동'}
           </span>
@@ -886,7 +918,7 @@ const PredictionCard = ({ prediction }) => {
         <div className="flex items-center justify-between" style={{ minHeight: '100px' }}>
           <div className="flex items-baseline gap-1">
             <span style={{
-              fontSize: '72px',
+              fontSize: '76px',
               fontWeight: 900,
               lineHeight: 1,
               color: T.text,
@@ -894,7 +926,7 @@ const PredictionCard = ({ prediction }) => {
             }}>
               {rate}
             </span>
-            <span style={{ fontSize: '28px', fontWeight: 800, color: T.accent }}>%</span>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: T.brand }}>%</span>
           </div>
 
           <div className="flex flex-col items-center flex-shrink-0" style={{ marginRight: '4px' }}>
@@ -905,7 +937,7 @@ const PredictionCard = ({ prediction }) => {
           </div>
         </div>
 
-        {/* SSG 승리 확률 바 */}
+        {/* SSG 승리 확률 바 — SSG 응원 컬러로 (감정) */}
         <div className="mt-2 mb-2">
           <div className="flex justify-between text-[10px] font-bold mb-1">
             <span style={{ color: T.accent }}>SSG {rate}%</span>
@@ -1918,26 +1950,31 @@ function TossDashboard() {
 
   return (
     <div className="min-h-screen" style={{ background: T.bgGradient, color: T.text }}>
-      {/* Sticky compact header */}
+      {/* Sticky header — 화이트 + 옅은 보더 (토스 스타일) */}
       <header className="sticky top-0 z-40"
         style={{
-          background: 'rgba(255, 248, 235, 0.85)',
+          background: 'rgba(255, 255, 255, 0.92)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderBottom: `1px solid ${T.cardBorder}`,
           paddingTop: 'env(safe-area-inset-top)',
         }}>
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Pepe mood="happy" size={32} />
+          <div className="flex items-center gap-2.5">
+            <Pepe mood="happy" size={36} />
             <div className="leading-tight">
-              <div className="font-black text-sm" style={{ color: T.text }}>팩트페페</div>
-              <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>SSG 랜더스 팬 데이터</div>
+              <div className="font-black text-base tracking-tight" style={{ color: T.text }}>팩트페페</div>
+              <div className="text-[11px] font-semibold" style={{ color: T.textMuted }}>SSG 랜더스 팬 데이터</div>
             </div>
           </div>
           <div className="text-right leading-tight">
             <div className="text-xs font-bold" style={{ color: T.textSecondary }}>{dateDisplay} ({weekday})</div>
-            {opponent && <div className="text-[10px] font-bold" style={{ color: T.accent }}>vs {opponent}</div>}
+            {opponent && (
+              <div className="text-[11px] font-black mt-0.5 inline-block px-1.5 py-0.5 rounded"
+                style={{ background: T.accentBg, color: T.accent }}>
+                vs {opponent}
+              </div>
+            )}
           </div>
         </div>
       </header>
