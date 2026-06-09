@@ -11,6 +11,7 @@ node_modules
 
 # 빌드
 dist
+dist-toss
 build
 .next
 out
