@@ -1964,19 +1964,19 @@ function TossDashboard() {
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
 
-            {/* 5~6. 참여형: 직관 기록 → 먹거리 */}
+            {/* 5. 응원 톡 — 투표 직후 자연스러운 참여 동선 */}
+            <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
+
+            {/* 6~7. 참여형: 직관 기록 → 먹거리 */}
             <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
             <EatsSection
               onOpenAll={() => setEatsModalShop(true)}
               onSelect={(shop) => setEatsModalShop(shop)}
             />
 
-            {/* 7~8. 부가 정보: 어제 회고 → 분석 영상 */}
+            {/* 8~9. 부가 정보: 어제 회고 → 분석 영상 */}
             <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
             <VideoCard prediction={prediction} />
-
-            {/* 9. 커뮤니티: 응원 톡 */}
-            <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
           </>
         )}
 
