@@ -15,6 +15,7 @@ import {
   computeStadiumStats, computeStadiumBadges, STADIUM_BADGES,
   dateInputToKey, keyToDateInput, keyToDisplay, getTodayIso,
 } from './stadiumLog.js';
+import { EATS_ZONES, EATS_CATEGORIES, getCategoryMeta } from './EatsAdmin.jsx';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -1336,6 +1337,265 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
   );
 };
 
+// ─── 먹거리 섹션 (대시보드) ─────────────────────────────────────────
+// 운영자가 사전 등록한 가게 노출. active=false 가게는 숨김.
+// 토스페이 적립 가게를 상단 강조 (장기 리워드 연동 목표).
+const EatsSection = ({ onOpenAll, onSelect }) => {
+  const [eats, setEats] = useState({});
+
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, 'stadiumEats'), (snap) => {
+      setEats(snap.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  const list = Object.entries(eats || {})
+    .map(([id, v]) => ({ id, ...v }))
+    .filter((e) => e.active !== false);
+
+  if (list.length === 0) return null; // 등록된 가게 없으면 섹션 숨김
+
+  // 토스페이 우선 → 그 외 → 미리보기 6개
+  const sorted = [...list].sort((a, b) => {
+    if (!!b.tossPayEnabled !== !!a.tossPayEnabled) return b.tossPayEnabled ? 1 : -1;
+    return (a.zone || '').localeCompare(b.zone || '');
+  });
+  const preview = sorted.slice(0, 6);
+
+  return (
+    <div className="rounded-2xl p-4 mb-3" style={{ background: T.card, boxShadow: T.shadowCard }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🍽️</span>
+          <div>
+            <div className="font-black text-sm" style={{ color: T.text }}>랜더스필드 먹거리</div>
+            <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>
+              구장 안팎 추천 맛집 {list.length}곳
+            </div>
+          </div>
+        </div>
+        {list.length > 6 && (
+          <button onClick={onOpenAll} className="text-[11px] font-bold px-2 py-1 rounded"
+            style={{ background: T.zinc100, color: T.accent }}>
+            전체 →
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {preview.map((e) => {
+          const cat = getCategoryMeta(e.category);
+          return (
+            <button key={e.id} onClick={() => onSelect(e)}
+              className="text-left p-2.5 rounded-xl active:scale-95 transition-all"
+              style={{
+                background: e.tossPayEnabled ? T.accentBg : T.zinc100,
+                border: e.tossPayEnabled ? `1px solid ${T.accentBorder}` : '1px solid transparent',
+              }}>
+              <div className="flex items-start justify-between mb-1">
+                <span className="text-xl">{cat.emoji}</span>
+                {e.tossPayEnabled && (
+                  <span className="text-[9px] font-black px-1 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>
+                    💰 {e.tossPayRate}%
+                  </span>
+                )}
+              </div>
+              <div className="font-black text-xs leading-tight mb-0.5" style={{ color: T.text }}>
+                {e.name}
+              </div>
+              <div className="text-[10px]" style={{ color: T.textMuted }}>
+                📍 {e.zone}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─── 먹거리 전체 보기 + 상세 모달 ──────────────────────────────────
+const EatsModal = ({ initialShop, onClose }) => {
+  const [eats, setEats] = useState({});
+  const [zoneFilter, setZoneFilter] = useState('all');
+  const [selected, setSelected] = useState(initialShop || null);
+
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, 'stadiumEats'), (snap) => {
+      setEats(snap.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  const allList = Object.entries(eats || {})
+    .map(([id, v]) => ({ id, ...v }))
+    .filter((e) => e.active !== false)
+    .sort((a, b) => {
+      if (!!b.tossPayEnabled !== !!a.tossPayEnabled) return b.tossPayEnabled ? 1 : -1;
+      return (a.zone || '').localeCompare(b.zone || '') || (a.name || '').localeCompare(b.name || '');
+    });
+
+  const filtered = zoneFilter === 'all' ? allList : allList.filter((e) => e.zone === zoneFilter);
+
+  // 구역 칩에는 등록된 가게가 있는 구역만 노출
+  const availableZones = Array.from(new Set(allList.map((e) => e.zone).filter(Boolean)));
+
+  // ─── 상세 보기 모드 ───
+  if (selected) {
+    const cat = getCategoryMeta(selected.category);
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="w-full max-w-md max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
+          style={{ background: T.card, boxShadow: T.shadowStrong }}>
+          <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: T.cardBorder }}>
+            <button onClick={() => setSelected(null)} className="text-sm font-bold" style={{ color: T.textMuted }}>
+              ← 목록
+            </button>
+            <button onClick={onClose} className="text-lg px-2" style={{ color: T.textMuted }}>✕</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* 큰 카테고리 이모지 */}
+            <div className="text-center py-6 rounded-2xl mb-3" style={{ background: T.zinc100 }}>
+              <div className="text-6xl mb-2">{cat.emoji}</div>
+              <h2 className="font-black text-xl mb-1" style={{ color: T.text }}>{selected.name}</h2>
+              <div className="text-xs font-bold" style={{ color: T.textMuted }}>
+                📍 {selected.zone} · {cat.label}
+              </div>
+            </div>
+
+            {/* 토스페이 강조 배너 */}
+            {selected.tossPayEnabled && (
+              <div className="mb-3 p-3 rounded-xl text-center" style={{ background: T.accent, color: '#fff' }}>
+                <div className="text-2xl mb-1">💰</div>
+                <div className="font-black text-sm">토스페이로 결제 시 {selected.tossPayRate}% 적립</div>
+                <div className="text-[10px] mt-0.5 opacity-80">팩트페페 미니앱 한정 혜택</div>
+              </div>
+            )}
+
+            {/* 정보 그리드 */}
+            <div className="space-y-2.5">
+              {selected.menu && (
+                <InfoRow label="🍴 대표 메뉴" value={selected.menu} />
+              )}
+              {selected.priceRange && (
+                <InfoRow label="💴 가격대" value={selected.priceRange} />
+              )}
+              {selected.description && (
+                <div className="rounded-xl p-3" style={{ background: T.zinc100 }}>
+                  <div className="text-[10px] font-bold mb-1" style={{ color: T.textMuted }}>💬 소개</div>
+                  <p className="text-sm" style={{ color: T.text }}>{selected.description}</p>
+                </div>
+              )}
+            </div>
+
+            {/* TODO: 토스페이 결제 딥링크 (장기) */}
+            {selected.tossPayEnabled && (
+              <button disabled
+                className="w-full mt-4 py-3 rounded-xl font-black text-sm disabled:opacity-50"
+                style={{ background: T.accent, color: '#fff' }}>
+                💳 토스페이로 결제하기 (곧 출시)
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── 목록 모드 ───
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="w-full max-w-md max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        style={{ background: T.card, boxShadow: T.shadowStrong }}>
+
+        <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: T.cardBorder }}>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🍽️</span>
+            <h2 className="font-black text-base" style={{ color: T.text }}>랜더스필드 먹거리</h2>
+          </div>
+          <button onClick={onClose} className="text-lg px-2" style={{ color: T.textMuted }}>✕</button>
+        </div>
+
+        {/* 구역 필터 */}
+        <div className="px-4 py-2.5 border-b overflow-x-auto" style={{ borderColor: T.cardBorder }}>
+          <div className="flex gap-1.5" style={{ minWidth: 'max-content' }}>
+            <button onClick={() => setZoneFilter('all')}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+              style={{
+                background: zoneFilter === 'all' ? T.accent : T.zinc100,
+                color: zoneFilter === 'all' ? '#fff' : T.text,
+              }}>
+              전체 ({allList.length})
+            </button>
+            {availableZones.map((z) => (
+              <button key={z} onClick={() => setZoneFilter(z)}
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+                style={{
+                  background: zoneFilter === z ? T.accent : T.zinc100,
+                  color: zoneFilter === z ? '#fff' : T.text,
+                }}>
+                {z}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 목록 */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {filtered.length === 0 ? (
+            <p className="text-xs text-center py-8" style={{ color: T.textMuted }}>
+              이 구역에 등록된 가게가 없어요.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map((e) => {
+                const cat = getCategoryMeta(e.category);
+                return (
+                  <button key={e.id} onClick={() => setSelected(e)}
+                    className="w-full text-left rounded-xl p-3 active:scale-[0.98] transition-all"
+                    style={{
+                      background: e.tossPayEnabled ? T.accentBg : T.zinc100,
+                      border: e.tossPayEnabled ? `1px solid ${T.accentBorder}` : '1px solid transparent',
+                    }}>
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl">{cat.emoji}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-black text-sm" style={{ color: T.text }}>{e.name}</span>
+                          {e.tossPayEnabled && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>
+                              💰 {e.tossPayRate}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] font-bold" style={{ color: T.textMuted }}>
+                          📍 {e.zone} · {cat.label}
+                        </div>
+                        {e.menu && (
+                          <p className="text-[11px] mt-1 truncate" style={{ color: T.text }}>🍴 {e.menu}</p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const InfoRow = ({ label, value }) => (
+  <div className="rounded-xl p-3" style={{ background: T.zinc100 }}>
+    <div className="text-[10px] font-bold mb-0.5" style={{ color: T.textMuted }}>{label}</div>
+    <div className="text-sm font-bold" style={{ color: T.text }}>{value}</div>
+  </div>
+);
+
 // ─── 응원 톡 (투표 참여자만, 분당 1회 제한, 욕설 필터, 좋아요) ──────
 const ChatCard = ({ todayKey, hasVoted, nickname }) => {
   const userId = useRef(getUserId()).current;
@@ -1570,6 +1830,7 @@ function TossDashboard() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showStadiumLog, setShowStadiumLog] = useState(false);
   const [stadiumLogs, setStadiumLogs] = useState(null);
+  const [eatsModalShop, setEatsModalShop] = useState(null); // 객체 = 상세, true = 목록, null = 닫힘
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -1702,6 +1963,10 @@ function TossDashboard() {
             <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
+            <EatsSection
+              onOpenAll={() => setEatsModalShop(true)}
+              onSelect={(shop) => setEatsModalShop(shop)}
+            />
             <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
           </>
         )}
@@ -1742,6 +2007,13 @@ function TossDashboard() {
           userId={userId}
           logs={stadiumLogs}
           onClose={() => setShowStadiumLog(false)}
+        />
+      )}
+      {/* 먹거리 전체 보기 / 상세 모달 */}
+      {eatsModalShop && (
+        <EatsModal
+          initialShop={typeof eatsModalShop === 'object' ? eatsModalShop : null}
+          onClose={() => setEatsModalShop(null)}
         />
       )}
     </div>
