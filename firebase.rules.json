@@ -193,7 +193,13 @@
       ".read": true,
       "$uid": {
         ".write": "newData.hasChild('lastSeen') && newData.child('lastSeen').isNumber() && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)",
-        ".validate": "newData.hasChildren(['lastSeen']) && (!newData.hasChild('sessions') || (newData.child('sessions').isNumber() && newData.child('sessions').val() < 100000)) && (!newData.hasChild('nickname') || (newData.child('nickname').isString() && newData.child('nickname').val().length <= 10))"
+        ".validate": "newData.hasChildren(['lastSeen']) && (!newData.hasChild('sessions') || (newData.child('sessions').isNumber() && newData.child('sessions').val() < 100000)) && (!newData.hasChild('nickname') || (newData.child('nickname').isString() && newData.child('nickname').val().length <= 10))",
+        "stadiumLog": {
+          "$date": {
+            ".write": "$date.matches(/^[0-9]{8}$/) && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)",
+            ".validate": "!newData.exists() || (newData.hasChildren(['date', 'opponent', 'result']) && newData.child('date').val() === $date && newData.child('opponent').val().length <= 30 && newData.child('result').val().length <= 12 && (!newData.hasChild('zone') || newData.child('zone').val().length <= 30) && (!newData.hasChild('customZone') || newData.child('customZone').val().length <= 30) && (!newData.hasChild('review') || newData.child('review').val().length <= 50) && (!newData.hasChild('stadium') || newData.child('stadium').val().length <= 50) && (!newData.hasChild('ssgScore') || newData.child('ssgScore').isNumber()) && (!newData.hasChild('oppScore') || newData.child('oppScore').isNumber()))"
+          }
+        }
       }
     },
 

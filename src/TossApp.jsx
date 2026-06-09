@@ -9,6 +9,12 @@ import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import { BADGES, LEVELS, computeBadges, computeLevel, nextLevelProgress, getBadge } from './badges.js';
 import { generateStatsCard, generateHitCard, shareOrDownload } from './shareCard.js';
+import {
+  STADIUM_ZONES, getZoneLabel, getZoneEmoji,
+  fetchGameByDate, saveStadiumLog, deleteStadiumLog,
+  computeStadiumStats, computeStadiumBadges, STADIUM_BADGES,
+  dateInputToKey, keyToDateInput, keyToDisplay, getTodayIso,
+} from './stadiumLog.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -160,6 +166,361 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) 
     </div>
   );
 };
+
+// ─── 직관 기록 카드 (대시보드) ───────────────────────────────────────
+// 사용자 선택: "본인만 보기 + 인증 뱃지" → 비공개. 카드에 통계만 표시.
+const StadiumLogCard = ({ logs, onOpen }) => {
+  const stats = computeStadiumStats(logs);
+  const earnedBadges = computeStadiumBadges(stats);
+
+  return (
+    <div className="rounded-2xl p-4 mb-3" style={{ background: T.card, boxShadow: T.shadowCard }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🏟️</span>
+          <span className="font-black text-sm" style={{ color: T.text }}>직관 기록</span>
+          {stats.total > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+              style={{ background: T.accentBg, color: T.accent }}>
+              {stats.total}회
+            </span>
+          )}
+        </div>
+        <button onClick={onOpen} className="text-[11px] font-bold px-2.5 py-1 rounded-md active:scale-95 transition-all"
+          style={{ background: T.accent, color: '#fff' }}>
+          {stats.total === 0 ? '+ 첫 기록' : '+ 기록 추가'}
+        </button>
+      </div>
+
+      {stats.total === 0 ? (
+        <p className="text-xs" style={{ color: T.textMuted }}>
+          오늘 직관 가셨나요? 날짜만 고르면 상대팀·스코어가 자동으로 채워져요.
+        </p>
+      ) : (
+        <>
+          {/* 통계 3분할 */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="text-center py-2 rounded-lg" style={{ background: T.zinc100 }}>
+              <div className="text-[10px] font-bold mb-0.5" style={{ color: T.textMuted }}>직관 승률</div>
+              <div className="font-black text-base" style={{ color: T.accent }}>{stats.winRate}%</div>
+            </div>
+            <div className="text-center py-2 rounded-lg" style={{ background: T.zinc100 }}>
+              <div className="text-[10px] font-bold mb-0.5" style={{ color: T.textMuted }}>전적</div>
+              <div className="font-black text-base" style={{ color: T.text }}>
+                {stats.wins}<span className="text-[10px]" style={{ color: T.textMuted }}>승</span>
+                <span className="mx-0.5" style={{ color: T.textMuted }}>·</span>
+                {stats.losses}<span className="text-[10px]" style={{ color: T.textMuted }}>패</span>
+              </div>
+            </div>
+            <div className="text-center py-2 rounded-lg" style={{ background: T.zinc100 }}>
+              <div className="text-[10px] font-bold mb-0.5" style={{ color: T.textMuted }}>최고 연승</div>
+              <div className="font-black text-base" style={{ color: T.text }}>{stats.bestWinStreak}🔥</div>
+            </div>
+          </div>
+
+          {/* 인증 뱃지 */}
+          {earnedBadges.length > 0 && (
+            <div className="flex gap-1 flex-wrap">
+              {earnedBadges.map((badgeId) => {
+                const b = STADIUM_BADGES.find((x) => x.id === badgeId);
+                if (!b) return null;
+                return (
+                  <span key={b.id} className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: T.accentBg, color: T.accent, border: `1px solid ${T.accentBorder}` }}>
+                    {b.emoji} {b.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+// ─── 직관 기록 모달 (등록 + 내 기록 리스트) ─────────────────────────
+const StadiumLogModal = ({ userId, logs, onClose }) => {
+  const [tab, setTab] = useState('add'); // 'add' | 'list'
+  const [selectedDate, setSelectedDate] = useState(getTodayIso());
+  const [game, setGame] = useState(null);
+  const [gameLoading, setGameLoading] = useState(false);
+  const [zone, setZone] = useState('home_1b');
+  const [customZone, setCustomZone] = useState('');
+  const [review, setReview] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
+
+  // 날짜 변경 시 자동으로 게임 조회
+  useEffect(() => {
+    if (!selectedDate) { setGame(null); return; }
+    let cancelled = false;
+    (async () => {
+      setGameLoading(true);
+      setErrorMsg('');
+      const dateKey = dateInputToKey(selectedDate);
+      const g = await fetchGameByDate(dateKey);
+      if (cancelled) return;
+      setGame(g);
+      setGameLoading(false);
+
+      // 이미 기록이 있는 날짜라면 기존 값 미리 채움
+      const existing = logs?.[dateKey];
+      if (existing) {
+        setZone(existing.zone || 'home_1b');
+        setCustomZone(existing.customZone || '');
+        setReview(existing.review || '');
+      } else {
+        setReview('');
+        setCustomZone('');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDate, logs]);
+
+  const handleSave = async () => {
+    if (!game) {
+      setErrorMsg('해당 날짜에 SSG 경기가 없어요.');
+      return;
+    }
+    if (game.result === 'pending' || game.ssgScore == null) {
+      setErrorMsg('아직 경기가 끝나지 않았어요. 경기 종료 후 다시 시도해주세요.');
+      return;
+    }
+    if (zone === 'other' && !customZone.trim()) {
+      setErrorMsg('좌석 구역을 입력해주세요.');
+      return;
+    }
+    setSaving(true);
+    setErrorMsg('');
+    try {
+      await saveStadiumLog(userId, dateInputToKey(selectedDate), game, {
+        zone, customZone: customZone.trim(), review: review.trim(),
+      });
+      setSavedMsg('직관 기록이 저장됐어요!');
+      setTimeout(() => setSavedMsg(''), 2000);
+      // 저장 후 리스트 탭으로 자동 전환 (첫 저장이면)
+      if (!logs || Object.keys(logs).length === 0) setTab('list');
+    } catch (e) {
+      setErrorMsg(e.message || '저장 실패');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (dateKey) => {
+    if (!confirm('이 직관 기록을 삭제할까요?')) return;
+    try {
+      await deleteStadiumLog(userId, dateKey);
+    } catch (e) {
+      alert('삭제 실패: ' + e.message);
+    }
+  };
+
+  const sortedLogs = logs
+    ? Object.values(logs).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="w-full max-w-md max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        style={{ background: T.card, boxShadow: T.shadowStrong }}>
+
+        {/* 헤더 */}
+        <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: T.cardBorder }}>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🏟️</span>
+            <h2 className="font-black text-base" style={{ color: T.text }}>직관 기록</h2>
+          </div>
+          <button onClick={onClose} className="text-lg px-2 py-1" style={{ color: T.textMuted }}>✕</button>
+        </div>
+
+        {/* 탭 */}
+        <div className="flex border-b" style={{ borderColor: T.cardBorder }}>
+          <button onClick={() => setTab('add')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'add' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'add' ? T.accent : 'transparent'}`,
+            }}>
+            기록 추가
+          </button>
+          <button onClick={() => setTab('list')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'list' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'list' ? T.accent : 'transparent'}`,
+            }}>
+            내 직관 ({sortedLogs.length})
+          </button>
+        </div>
+
+        {/* 내용 */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {tab === 'add' ? (
+            <>
+              {/* 날짜 선택 */}
+              <label className="block mb-3">
+                <span className="text-xs font-bold mb-1.5 block" style={{ color: T.textMuted }}>직관 날짜</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={getTodayIso()}
+                  min="2026-03-23"
+                  className="w-full py-2.5 px-3 rounded-lg text-sm font-bold"
+                  style={{ background: T.zinc100, color: T.text, border: `2px solid transparent` }}
+                />
+              </label>
+
+              {/* 자동 채움 — 경기 정보 */}
+              <div className="mb-3 rounded-lg p-3" style={{ background: T.zinc100 }}>
+                {gameLoading ? (
+                  <div className="text-xs text-center py-2" style={{ color: T.textMuted }}>경기 정보 불러오는 중…</div>
+                ) : !game ? (
+                  <div className="text-xs text-center py-2" style={{ color: T.textMuted }}>
+                    이 날짜에는 SSG 경기가 없어요.
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>
+                        {game.isHome ? '🏟️ 홈' : '✈️ 원정'} · {game.stadium}
+                      </span>
+                      {game.result === 'win' && (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>승</span>
+                      )}
+                      {game.result === 'lose' && (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc300, color: T.textMuted }}>패</span>
+                      )}
+                      {game.result === 'draw' && (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc200, color: T.textSecondary }}>무</span>
+                      )}
+                      {game.result === 'pending' && (
+                        <span className="text-[10px] font-bold" style={{ color: T.warning }}>진행중</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-center gap-3 py-2">
+                      <span className="font-black text-base" style={{ color: T.text }}>SSG</span>
+                      <span className="font-black text-2xl" style={{ color: T.accent }}>{game.ssgScore ?? '-'}</span>
+                      <span className="text-xs font-bold" style={{ color: T.textMuted }}>:</span>
+                      <span className="font-black text-2xl" style={{ color: T.text }}>{game.oppScore ?? '-'}</span>
+                      <span className="font-black text-base" style={{ color: T.text }}>{game.opponent}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 좌석 구역 */}
+              <div className="mb-3">
+                <span className="text-xs font-bold mb-1.5 block" style={{ color: T.textMuted }}>내가 앉은 좌석</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {STADIUM_ZONES.map((z) => (
+                    <button key={z.id} onClick={() => setZone(z.id)}
+                      className="py-2 px-2 rounded-lg text-xs font-bold text-left active:scale-95 transition-all"
+                      style={{
+                        background: zone === z.id ? T.accent : T.zinc100,
+                        color: zone === z.id ? '#fff' : T.text,
+                      }}>
+                      <span className="mr-1">{z.emoji}</span>{z.label}
+                    </button>
+                  ))}
+                </div>
+                {zone === 'other' && (
+                  <input
+                    type="text"
+                    value={customZone}
+                    onChange={(e) => setCustomZone(e.target.value)}
+                    placeholder="구역명 직접 입력"
+                    maxLength={30}
+                    className="w-full mt-2 py-2 px-3 rounded-lg text-sm"
+                    style={{ background: T.zinc100, color: T.text, border: '2px solid transparent' }}
+                  />
+                )}
+              </div>
+
+              {/* 한 줄 감상평 */}
+              <label className="block mb-3">
+                <span className="text-xs font-bold mb-1.5 block" style={{ color: T.textMuted }}>
+                  한 줄 감상평 <span className="font-normal">({review.length}/50)</span>
+                </span>
+                <input
+                  type="text"
+                  value={review}
+                  onChange={(e) => setReview(e.target.value.slice(0, 50))}
+                  placeholder="예: 역전승! 짱이다 🔥"
+                  maxLength={50}
+                  className="w-full py-2.5 px-3 rounded-lg text-sm"
+                  style={{ background: T.zinc100, color: T.text, border: '2px solid transparent' }}
+                />
+              </label>
+
+              {/* 에러/성공 */}
+              {errorMsg && <p className="text-xs mb-2" style={{ color: T.error }}>{errorMsg}</p>}
+              {savedMsg && <p className="text-xs mb-2" style={{ color: T.success }}>✓ {savedMsg}</p>}
+
+              <button onClick={handleSave} disabled={saving || !game || gameLoading}
+                className="w-full py-3 rounded-lg font-black text-sm active:scale-95 transition-all disabled:opacity-40"
+                style={{ background: T.accent, color: '#fff' }}>
+                {saving ? '저장 중…' : (logs?.[dateInputToKey(selectedDate)] ? '수정 저장' : '직관 기록 저장')}
+              </button>
+            </>
+          ) : (
+            // 리스트 탭
+            <>
+              {sortedLogs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-2">🏟️</div>
+                  <p className="text-xs" style={{ color: T.textMuted }}>아직 직관 기록이 없어요.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sortedLogs.map((log) => (
+                    <div key={log.date} className="rounded-lg p-3" style={{ background: T.zinc100 }}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black" style={{ color: T.text }}>{keyToDisplay(log.date)}</span>
+                          {log.result === 'win' && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>승</span>
+                          )}
+                          {log.result === 'lose' && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc300, color: T.textMuted }}>패</span>
+                          )}
+                          {log.result === 'draw' && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc200, color: T.textSecondary }}>무</span>
+                          )}
+                        </div>
+                        <button onClick={() => handleDelete(log.date)} className="text-[10px]" style={{ color: T.textMuted }}>삭제</button>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs mb-1">
+                        <span className="font-bold" style={{ color: T.text }}>
+                          SSG {log.ssgScore} : {log.oppScore} {log.opponent}
+                        </span>
+                        <span className="text-[10px]" style={{ color: T.textMuted }}>
+                          {log.isHome ? '홈' : '원정'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]" style={{ color: T.textMuted }}>
+                        <span>{getZoneEmoji(log.zone)} {getZoneLabel(log.zone, log.customZone)}</span>
+                      </div>
+                      {log.review && (
+                        <p className="text-xs mt-1.5 px-2 py-1.5 rounded" style={{ background: T.card, color: T.text }}>
+                          💬 {log.review}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // ─── 리더보드 모달 ───────────────────────────────────────────────
 const LeaderboardModal = ({ onClose, userId, nickname }) => {
@@ -1207,6 +1568,8 @@ function TossDashboard() {
   const [userProfile, setUserProfile] = useState(null);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showStadiumLog, setShowStadiumLog] = useState(false);
+  const [stadiumLogs, setStadiumLogs] = useState(null);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -1238,7 +1601,10 @@ function TossDashboard() {
     const unsubUser = onValue(dbRef(database, `users/${userId}`), (snap) => {
       setUserProfile(snap.val());
     });
-    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); };
+    const unsubStadium = onValue(dbRef(database, `users/${userId}/stadiumLog`), (snap) => {
+      setStadiumLogs(snap.val());
+    });
+    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); unsubStadium(); };
   }, [todayKey, yesterdayKey, userId]);
 
   const saveNickname = async (newNickname) => {
@@ -1330,6 +1696,7 @@ function TossDashboard() {
               onSetNickname={() => setShowNicknameModal(true)}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
             />
+            <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
             <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
             <PredictionCard prediction={prediction} />
             <VideoCard prediction={prediction} />
@@ -1367,6 +1734,14 @@ function TossDashboard() {
           userId={userId}
           nickname={userProfile?.nickname}
           onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+      {/* 직관 기록 모달 */}
+      {showStadiumLog && (
+        <StadiumLogModal
+          userId={userId}
+          logs={stadiumLogs}
+          onClose={() => setShowStadiumLog(false)}
         />
       )}
     </div>
