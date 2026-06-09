@@ -1858,11 +1858,29 @@ function TossDashboard() {
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  // ─── Deep-link 라우팅 ────────────────────────────────────────────
+  // 토스 콘솔 '앱 내 기능' 등록용 경로:
+  //   /toss/log         → 직관 기록 모달 자동 오픈
+  //   /toss/eats        → 먹거리 모달 자동 오픈
+  //   /toss/leaderboard → 리더보드 자동 오픈
+  // 모달 닫으면 history.replaceState로 /toss 메인 경로 복원.
+  const initialPath = typeof window !== 'undefined' ? window.location.pathname : '/toss';
+  const isLogPath = /^\/toss\/log\/?$/.test(initialPath);
+  const isEatsPath = /^\/toss\/eats\/?$/.test(initialPath);
+  const isLeaderboardPath = /^\/toss\/leaderboard\/?$/.test(initialPath);
+
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showStadiumLog, setShowStadiumLog] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(isLeaderboardPath);
+  const [showStadiumLog, setShowStadiumLog] = useState(isLogPath);
   const [stadiumLogs, setStadiumLogs] = useState(null);
-  const [eatsModalShop, setEatsModalShop] = useState(null); // 객체 = 상세, true = 목록, null = 닫힘
+  const [eatsModalShop, setEatsModalShop] = useState(isEatsPath ? true : null); // 객체 = 상세, true = 목록, null = 닫힘
+
+  // deep-link 진입 시 URL은 /toss 로 정규화 (뒤로가기 시 깔끔)
+  useEffect(() => {
+    if (isLogPath || isEatsPath || isLeaderboardPath) {
+      window.history.replaceState(null, '', '/toss');
+    }
+  }, []);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
