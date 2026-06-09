@@ -2,8 +2,8 @@ import { defineConfig } from '@apps-in-toss/web-framework/config';
 
 export default defineConfig({
   // 토스 콘솔에 등록한 앱 식별자 (고유 키)
-  // 딥링크: intoss://factpepe-incheon-baseball
-  appName: 'factpepe-incheon-baseball',
+  // 딥링크: intoss://factpepe-incheon
+  appName: 'factpepe-incheon',
 
   brand: {
     displayName: '팩트페페:인천 야구',

@@ -14,7 +14,7 @@
 
 ### 앱 식별자 (appName, granite.config.ts와 일치 필요)
 ```
-factpepe-incheon-baseball
+factpepe-incheon
 ```
 
 ### 카테고리
@@ -127,7 +127,7 @@ npx ait build
 ### 산출물
 | 항목 | 값 |
 |---|---|
-| 파일명 | `factpepe-incheon-baseball.ait` |
+| 파일명 | `factpepe-incheon.ait` |
 | 위치 | 프로젝트 루트 (`/Users/.../factpepe-v3.0-complete/`) |
 | 크기 | 약 6.2 MB (토스 100MB 제한 통과) |
 | 내부 구조 | RN 0.84.0 + RN 0.72.6 + 웹 번들 + manifest |
@@ -137,7 +137,7 @@ npx ait build
 **방법 1: 콘솔 직접 업로드 (Recommended)**
 1. 토스 개발자 콘솔 → 워크스페이스 → 앱 선택
 2. 좌측 메뉴 **앱 출시**
-3. `factpepe-incheon-baseball.ait` 파일 업로드
+3. `factpepe-incheon.ait` 파일 업로드
 4. 자동 생성된 **테스트 QR 코드** 스캔 → 토스앱 내 테스트
 5. 최소 1회 테스트 완료 → **검토 요청**
 
@@ -197,7 +197,7 @@ npx ait deploy -m "출시 v1.0"
 
 - [x] Firebase Rules 프로덕션 게시
 - [x] 시드 데이터 (경기 65개, 먹거리 46개) DB 존재 확인
-- [x] **`npx ait build` 실행 → `factpepe-incheon-baseball.ait` 생성 완료**
+- [x] **`npx ait build` 실행 → `factpepe-incheon.ait` 생성 완료**
 - [ ] 스크린샷 4장 재촬영 (새 UI 반영)
 - [ ] 썸네일 카피 업데이트 (선택)
 - [ ] 운영 이메일 확정
