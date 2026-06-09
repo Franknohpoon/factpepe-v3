@@ -16,6 +16,10 @@ build
 .next
 out
 
+# 토스 미니앱 .ait 아티팩트 (빌드 산출물)
+*.ait
+.granite
+
 # 디버그
 npm-debug.log*
 yarn-debug.log*
