@@ -1951,22 +1951,31 @@ function TossDashboard() {
           </div>
         ) : (
           <>
+            {/* 1. 사용자 정체성 */}
             <MyStatsCard
               userStats={userProfile?.stats}
               nickname={userProfile?.nickname}
               onSetNickname={() => setShowNicknameModal(true)}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
             />
-            <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
-            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
+
+            {/* 2~4. 오늘 핵심: 분석 → 라인업 → 투표 */}
             <PredictionCard prediction={prediction} />
-            <VideoCard prediction={prediction} />
             <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
             <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
+
+            {/* 5~6. 참여형: 직관 기록 → 먹거리 */}
+            <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
             <EatsSection
               onOpenAll={() => setEatsModalShop(true)}
               onSelect={(shop) => setEatsModalShop(shop)}
             />
+
+            {/* 7~8. 부가 정보: 어제 회고 → 분석 영상 */}
+            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
+            <VideoCard prediction={prediction} />
+
+            {/* 9. 커뮤니티: 응원 톡 */}
             <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
           </>
         )}
