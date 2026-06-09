@@ -131,6 +131,14 @@
       }
     },
 
+    "games": {
+      ".read": true,
+      "$date": {
+        ".write": "$date.matches(/^[0-9]{8}$/)",
+        ".validate": "newData.hasChildren(['opponent', 'result']) && newData.child('opponent').isString() && newData.child('opponent').val().length <= 30 && (!newData.hasChild('ssgScore') || newData.child('ssgScore').isNumber()) && (!newData.hasChild('oppScore') || newData.child('oppScore').isNumber()) && (!newData.hasChild('stadium') || newData.child('stadium').val().length <= 50)"
+      }
+    },
+
     "vote": {
       ".read": true,
       "$date": {

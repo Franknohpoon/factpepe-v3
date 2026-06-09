@@ -12,7 +12,9 @@
     { "path": "/api/lineup-auto",   "schedule": "30 6 * * *" },
     { "path": "/api/lineup-auto",   "schedule": "30 7 * * *" },
     { "path": "/api/lineup-auto",   "schedule": "30 8 * * *" },
-    { "path": "/api/lineup-auto",   "schedule": "30 9 * * *" }
+    { "path": "/api/lineup-auto",   "schedule": "30 9 * * *" },
+    { "path": "/api/games-crawl",   "schedule": "30 14 * * *" },
+    { "path": "/api/games-crawl",   "schedule": "0 16 * * *" }
   ],
   "rewrites": [
     { "source": "/q",           "destination": "/index.html" },
