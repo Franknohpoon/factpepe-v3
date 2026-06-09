@@ -176,10 +176,33 @@ export default async function handler(req, res) {
       fromIso = toIso = today.iso;
     }
 
-    const games = await fetchSsgGames(fromIso, toIso);
+    // 네이버 API는 한 번 호출에 결과 10개까지만 반환 → 1일씩 쪼개서 호출
+    // (월 단위 백필 시 ~30회 호출이지만 SSG는 하루 1경기라 OK)
+    const allGames = [];
+    const startDate = new Date(`${fromIso}T00:00:00Z`);
+    const endDate = new Date(`${toIso}T00:00:00Z`);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const totalDays = Math.floor((endDate - startDate) / dayMs) + 1;
+
+    if (totalDays > 120) {
+      return res.status(400).json({ error: 'range too large (max 120 days)' });
+    }
+
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(startDate.getTime() + i * dayMs);
+      const iso = d.toISOString().slice(0, 10);
+      try {
+        const dayGames = await fetchSsgGames(iso, iso);
+        allGames.push(...dayGames);
+      } catch (err) {
+        // 개별 일자 실패는 무시하고 계속 진행
+        console.warn(`[games-crawl] ${iso} fetch failed:`, err.message);
+      }
+    }
+
     const results = [];
 
-    for (const raw of games) {
+    for (const raw of allGames) {
       const normalized = normalizeGame(raw);
       // 아직 결과 미확정(pending) + 스코어 없는 미래 경기는 스킵
       if (normalized.result === 'pending' && normalized.ssgScore == null) {
