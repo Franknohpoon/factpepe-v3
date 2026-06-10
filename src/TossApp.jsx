@@ -295,8 +295,7 @@ const WinRateBar = ({ winRate }) => (
   </div>
 );
 
-const StadiumLogCard = ({ logs, onOpen }) => {
-  const [seg, setSeg] = useState('all'); // all | stadium | opponent
+const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick }) => {
   const stats = computeStadiumStats(logs);
   const earnedBadges = computeStadiumBadges(stats);
 
@@ -335,7 +334,7 @@ const StadiumLogCard = ({ logs, onOpen }) => {
             {/* 세그먼트 토글 */}
             <div className="flex gap-1 p-1 rounded-xl mb-3" style={{ background: T.zinc100 }}>
               {SEGS.map((s) => (
-                <button key={s.id} onClick={() => setSeg(s.id)}
+                <button key={s.id} onClick={() => { onSegChange(s.id); onPick(null); }}
                   className="flex-1 py-1.5 rounded-lg text-[12px] font-bold transition-colors"
                   style={seg === s.id
                     ? { background: T.card, color: T.accent, boxShadow: T.shadowCard }
@@ -382,22 +381,37 @@ const StadiumLogCard = ({ logs, onOpen }) => {
               </>
             )}
 
-            {/* 구장별 / 상대별 분해 */}
+            {/* 구장별 / 상대별 분해 — 행 탭 시 아래 일지 필터 */}
             {seg !== 'all' && (
-              <div className="space-y-2.5">
-                {(seg === 'stadium' ? byStadium : byOpponent).map((g) => (
-                  <div key={g.key}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[13px] font-bold truncate pr-2" style={{ color: T.text }}>{g.label}</span>
-                      <span className="text-[12px] font-bold flex-shrink-0" style={{ color: T.textMuted }}>
-                        <span style={{ color: T.accent }}>{g.winRate}%</span>
-                        <span className="ml-1.5">{g.wins}승 {g.losses}패{g.draws > 0 ? ` ${g.draws}무` : ''}</span>
-                      </span>
-                    </div>
-                    <WinRateBar winRate={g.winRate} />
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="space-y-2.5">
+                  {(seg === 'stadium' ? byStadium : byOpponent).map((g) => {
+                    const active = picked === g.key;
+                    return (
+                      <button key={g.key} onClick={() => onPick(active ? null : g.key)}
+                        className="w-full text-left rounded-lg transition-colors"
+                        style={{
+                          padding: active ? '8px 10px' : '2px 0',
+                          background: active ? T.accentBg : 'transparent',
+                        }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[13px] font-bold truncate pr-2" style={{ color: active ? T.accent : T.text }}>
+                            {g.label}
+                          </span>
+                          <span className="text-[12px] font-bold flex-shrink-0" style={{ color: T.textMuted }}>
+                            <span style={{ color: T.accent }}>{g.winRate}%</span>
+                            <span className="ml-1.5">{g.wins}승 {g.losses}패{g.draws > 0 ? ` ${g.draws}무` : ''}</span>
+                          </span>
+                        </div>
+                        <WinRateBar winRate={g.winRate} />
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] mt-2.5" style={{ color: T.zinc400 }}>
+                  {picked ? '다시 탭하면 전체 일지로 돌아가요' : '항목을 탭하면 해당 경기만 모아봐요'}
+                </p>
+              </>
             )}
           </>
         )}
@@ -407,17 +421,34 @@ const StadiumLogCard = ({ logs, onOpen }) => {
 };
 
 // ─── 직관 기록 리스트 (직관 탭 인라인) ─────────────────────────────
-const StadiumLogList = ({ logs }) => {
-  const sorted = logs
+// seg/picked로 구장별·상대별 필터링. picked 없으면 전체 일자 역순.
+const StadiumLogList = ({ logs, seg = 'all', picked = null }) => {
+  const all = logs
     ? Object.values(logs).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
     : [];
-  if (sorted.length === 0) return null;
+  if (all.length === 0) return null;
+
+  // 필터 적용
+  const keyOf = (l) =>
+    seg === 'stadium' ? (l.stadium || (l.isHome ? '인천 SSG 랜더스필드' : '원정'))
+    : seg === 'opponent' ? (l.opponent || '상대')
+    : null;
+  const sorted = picked ? all.filter((l) => keyOf(l) === picked) : all;
+
+  const title = picked
+    ? (seg === 'stadium' ? '구장별 일지' : '상대별 일지')
+    : '내 직관 일지';
 
   return (
     <div style={cardStyle}>
       <ColorBar color={T.accent} />
       <div className="pl-5 pr-4 py-4">
-        <SectionHead kicker="SSG · 기록" kickerColor={T.accent} title="내 직관 일지" meta={`${sorted.length}경기`} />
+        <SectionHead
+          kicker="SSG · 기록"
+          kickerColor={T.accent}
+          title={title}
+          meta={picked ? `${picked} · ${sorted.length}경기` : `${sorted.length}경기`}
+        />
         <div className="space-y-2">
           {sorted.map((log) => (
             <div key={log.date} className="rounded-xl p-3" style={{ background: T.zinc100 }}>
@@ -2052,6 +2083,8 @@ function TossDashboard() {
   const [showStadiumLog, setShowStadiumLog] = useState(false);
   const [stadiumLogs, setStadiumLogs] = useState(null);
   const [eatsModalShop, setEatsModalShop] = useState(null); // 객체 = 상세, true = 목록, null = 닫힘
+  const [stadiumSeg, setStadiumSeg] = useState('all'); // 직관 통계 토글 (all|stadium|opponent)
+  const [stadiumPicked, setStadiumPicked] = useState(null); // 선택된 구장/상대 (일지 필터)
 
   // deep-link 진입 시 URL은 /toss 로 정규화
   useEffect(() => {
@@ -2201,8 +2234,15 @@ function TossDashboard() {
             {/* ── 직관 탭 ── */}
             {tab === 'log' && (
               <>
-                <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
-                <StadiumLogList logs={stadiumLogs} />
+                <StadiumLogCard
+                  logs={stadiumLogs}
+                  onOpen={() => setShowStadiumLog(true)}
+                  seg={stadiumSeg}
+                  onSegChange={setStadiumSeg}
+                  picked={stadiumPicked}
+                  onPick={setStadiumPicked}
+                />
+                <StadiumLogList logs={stadiumLogs} seg={stadiumSeg} picked={stadiumPicked} />
               </>
             )}
 
