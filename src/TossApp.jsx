@@ -12,7 +12,7 @@ import { generateStatsCard, generateHitCard, shareOrDownload } from './shareCard
 import {
   STADIUM_ZONES, getZoneLabel, getZoneEmoji,
   fetchGameByDate, saveStadiumLog, deleteStadiumLog,
-  computeStadiumStats, computeStadiumBadges, STADIUM_BADGES,
+  computeStadiumStats, computeStadiumBadges, STADIUM_BADGES, computeBreakdown,
   dateInputToKey, keyToDateInput, keyToDisplay, getTodayIso,
 } from './stadiumLog.js';
 import { EATS_ZONES, EATS_CATEGORIES, getCategoryMeta } from './EatsAdmin.jsx';
@@ -288,9 +288,26 @@ const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) 
 
 // ─── 직관 기록 카드 (대시보드) ───────────────────────────────────────
 // 카테고리: 🔴 정체성 (SSG 레드 좌측 바). 본인만 보기 + 인증 뱃지.
+// 승률 막대 (그룹 행에서 사용)
+const WinRateBar = ({ winRate }) => (
+  <div className="h-1.5 rounded-full overflow-hidden flex-1" style={{ background: T.zinc200 }}>
+    <div style={{ width: `${winRate}%`, height: '100%', background: T.accent }} />
+  </div>
+);
+
 const StadiumLogCard = ({ logs, onOpen }) => {
+  const [seg, setSeg] = useState('all'); // all | stadium | opponent
   const stats = computeStadiumStats(logs);
   const earnedBadges = computeStadiumBadges(stats);
+
+  const byStadium = computeBreakdown(logs, (l) => l.stadium || (l.isHome ? '인천 SSG 랜더스필드' : '원정'));
+  const byOpponent = computeBreakdown(logs, (l) => l.opponent || '상대');
+
+  const SEGS = [
+    { id: 'all', label: '전체' },
+    { id: 'stadium', label: '구장별' },
+    { id: 'opponent', label: '상대별' },
+  ];
 
   return (
     <div style={cardStyle}>
@@ -315,37 +332,71 @@ const StadiumLogCard = ({ logs, onOpen }) => {
           </p>
         ) : (
           <>
-            {/* 히어로 통계 — 왼쪽 정렬, 큰 숫자 + 맥락 */}
-            <div className="flex items-baseline gap-4 mb-3">
-              <div>
-                <span className="text-[32px] font-black leading-none" style={{ color: T.accent, letterSpacing: '-0.02em' }}>
-                  {stats.winRate}
-                </span>
-                <span className="text-base font-black" style={{ color: T.accent }}>%</span>
-                <span className="text-[11px] font-bold ml-1.5" style={{ color: T.textMuted }}>직관 승률</span>
-              </div>
-              <div className="flex items-center gap-3 text-[13px]" style={{ color: T.textSecondary }}>
-                <span className="font-bold">{stats.wins}승 {stats.losses}패</span>
-                {stats.bestWinStreak >= 2 && (
-                  <span className="font-bold" style={{ color: T.accent }}>최고 {stats.bestWinStreak}연승</span>
-                )}
-              </div>
+            {/* 세그먼트 토글 */}
+            <div className="flex gap-1 p-1 rounded-xl mb-3" style={{ background: T.zinc100 }}>
+              {SEGS.map((s) => (
+                <button key={s.id} onClick={() => setSeg(s.id)}
+                  className="flex-1 py-1.5 rounded-lg text-[12px] font-bold transition-colors"
+                  style={seg === s.id
+                    ? { background: T.card, color: T.accent, boxShadow: T.shadowCard }
+                    : { background: 'transparent', color: T.textMuted }}>
+                  {s.label}
+                </button>
+              ))}
             </div>
 
-            {/* 인증 뱃지 — 이모지 제거, 점 + 텍스트 */}
-            {earnedBadges.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap pt-3" style={{ borderTop: `1px solid ${T.cardBorder}` }}>
-                {earnedBadges.map((badgeId) => {
-                  const b = STADIUM_BADGES.find((x) => x.id === badgeId);
-                  if (!b) return null;
-                  return (
-                    <span key={b.id} className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md"
-                      style={{ background: T.accentBg, color: T.accent }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.accent }} />
-                      {b.label}
+            {/* 전체 */}
+            {seg === 'all' && (
+              <>
+                <div className="flex items-baseline gap-4 mb-3">
+                  <div>
+                    <span className="text-[32px] font-black leading-none" style={{ color: T.accent, letterSpacing: '-0.02em' }}>
+                      {stats.winRate}
                     </span>
-                  );
-                })}
+                    <span className="text-base font-black" style={{ color: T.accent }}>%</span>
+                    <span className="text-[11px] font-bold ml-1.5" style={{ color: T.textMuted }}>직관 승률</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[13px]" style={{ color: T.textSecondary }}>
+                    <span className="font-bold">{stats.wins}승 {stats.losses}패{stats.draws > 0 ? ` ${stats.draws}무` : ''}</span>
+                    {stats.bestWinStreak >= 2 && (
+                      <span className="font-bold" style={{ color: T.accent }}>최고 {stats.bestWinStreak}연승</span>
+                    )}
+                  </div>
+                </div>
+
+                {earnedBadges.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap pt-3" style={{ borderTop: `1px solid ${T.cardBorder}` }}>
+                    {earnedBadges.map((badgeId) => {
+                      const b = STADIUM_BADGES.find((x) => x.id === badgeId);
+                      if (!b) return null;
+                      return (
+                        <span key={b.id} className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md"
+                          style={{ background: T.accentBg, color: T.accent }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.accent }} />
+                          {b.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 구장별 / 상대별 분해 */}
+            {seg !== 'all' && (
+              <div className="space-y-2.5">
+                {(seg === 'stadium' ? byStadium : byOpponent).map((g) => (
+                  <div key={g.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[13px] font-bold truncate pr-2" style={{ color: T.text }}>{g.label}</span>
+                      <span className="text-[12px] font-bold flex-shrink-0" style={{ color: T.textMuted }}>
+                        <span style={{ color: T.accent }}>{g.winRate}%</span>
+                        <span className="ml-1.5">{g.wins}승 {g.losses}패{g.draws > 0 ? ` ${g.draws}무` : ''}</span>
+                      </span>
+                    </div>
+                    <WinRateBar winRate={g.winRate} />
+                  </div>
+                ))}
               </div>
             )}
           </>

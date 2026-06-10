@@ -127,6 +127,33 @@ export function computeStadiumStats(logs) {
   return { total: arr.length, wins, losses, draws, winRate, currentStreak, bestWinStreak };
 }
 
+/**
+ * 그룹별 승률 분해
+ * @param {object|null} logs
+ * @param {(log)=>string} keyFn - 그룹 키 추출 (예: 구장명, 상대팀)
+ * @param {(log)=>string} [labelFn] - 표시 라벨 (기본 key)
+ * @returns 배열 [{ key, label, total, wins, losses, draws, winRate }] (경기수 desc, 승률 desc)
+ */
+export function computeBreakdown(logs, keyFn, labelFn) {
+  const arr = logs ? Object.values(logs) : [];
+  const groups = {};
+  for (const log of arr) {
+    const key = keyFn(log) || '기타';
+    if (!groups[key]) groups[key] = { key, label: labelFn ? labelFn(log) : key, total: 0, wins: 0, losses: 0, draws: 0 };
+    const g = groups[key];
+    g.total++;
+    if (log.result === 'win') g.wins++;
+    else if (log.result === 'lose') g.losses++;
+    else if (log.result === 'draw') g.draws++;
+  }
+  return Object.values(groups)
+    .map((g) => {
+      const judged = g.wins + g.losses;
+      return { ...g, winRate: judged > 0 ? Math.round((g.wins / judged) * 100) : 0 };
+    })
+    .sort((a, b) => b.total - a.total || b.winRate - a.winRate);
+}
+
 // ─── 직관 인증 뱃지 (사용자 옵션: 본인 + 인증 뱃지) ──────────────────
 
 export const STADIUM_BADGES = [
