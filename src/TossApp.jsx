@@ -94,6 +94,68 @@ const ResultBadge = ({ result }) => {
   return null;
 };
 
+// ─── 하단 탭바 (토스 플로팅 스타일) ─────────────────────────────────
+// 아이콘은 이모지 대신 간결한 인라인 SVG. 활성 탭만 컬러.
+const TAB_ICONS = {
+  home: (a) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M3 10.5 12 3l9 7.5" stroke={a} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 9.5V20h14V9.5" stroke={a} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  log: (a) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" stroke={a} strokeWidth="2" />
+      <path d="M3.5 9h17M8 3v4M16 3v4" stroke={a} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="14.5" r="2" fill={a} />
+    </svg>
+  ),
+  eats: (a) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10" stroke={a} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4 2.5-1 2.5-4-1-5-2.5-5ZM16 12v9" stroke={a} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  my: (a) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="3.5" stroke={a} strokeWidth="2" />
+      <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" stroke={a} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+};
+
+const TAB_DEFS = [
+  { id: 'home', label: '홈' },
+  { id: 'log',  label: '직관' },
+  { id: 'eats', label: '먹거리' },
+  { id: 'my',   label: 'MY' },
+];
+
+const TabBar = ({ tab, onChange }) => (
+  <nav style={{
+    position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50,
+    paddingBottom: 'env(safe-area-inset-bottom)',
+    background: 'rgba(255,255,255,0.94)',
+    backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+    borderTop: `1px solid ${T.cardBorder}`,
+  }}>
+    <div className="max-w-md mx-auto flex">
+      {TAB_DEFS.map(({ id, label }) => {
+        const active = tab === id;
+        const color = active ? T.accent : T.zinc400;
+        return (
+          <button key={id} onClick={() => onChange(id)}
+            className="flex-1 flex flex-col items-center gap-0.5 py-2"
+            style={{ color }}>
+            {TAB_ICONS[id](color)}
+            <span className="text-[10px] font-bold" style={{ color }}>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  </nav>
+);
+
 // ─── 내 적중률 카드 (시즌 누적 + 연속 적중) ──────────────────────
 // 카테고리: 데이터 (토스 블루 좌측 바)
 const MyStatsCard = ({ userStats, nickname, onSetNickname, onOpenLeaderboard }) => {
@@ -288,6 +350,49 @@ const StadiumLogCard = ({ logs, onOpen }) => {
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+};
+
+// ─── 직관 기록 리스트 (직관 탭 인라인) ─────────────────────────────
+const StadiumLogList = ({ logs }) => {
+  const sorted = logs
+    ? Object.values(logs).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    : [];
+  if (sorted.length === 0) return null;
+
+  return (
+    <div style={cardStyle}>
+      <ColorBar color={T.accent} />
+      <div className="pl-5 pr-4 py-4">
+        <SectionHead kicker="SSG · 기록" kickerColor={T.accent} title="내 직관 일지" meta={`${sorted.length}경기`} />
+        <div className="space-y-2">
+          {sorted.map((log) => (
+            <div key={log.date} className="rounded-xl p-3" style={{ background: T.zinc100 }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-extrabold" style={{ color: T.text }}>{keyToDisplay(log.date)}</span>
+                  <ResultBadge result={log.result} />
+                </div>
+                <span className="text-[11px] font-semibold" style={{ color: T.textMuted }}>
+                  {log.isHome ? '홈' : '원정'}
+                </span>
+              </div>
+              <div className="text-[13px] font-bold mb-1" style={{ color: T.text }}>
+                SSG {log.ssgScore} : {log.oppScore} {log.opponent}
+              </div>
+              <div className="text-[11px]" style={{ color: T.textMuted }}>
+                {getZoneLabel(log.zone, log.customZone)}
+              </div>
+              {log.review && (
+                <p className="text-[12px] mt-2 px-2.5 py-2 rounded-lg" style={{ background: T.card, color: T.textSecondary }}>
+                  {log.review}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1370,8 +1475,9 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
 // ─── 먹거리 섹션 (대시보드) ─────────────────────────────────────────
 // 운영자가 사전 등록한 가게 노출. active=false 가게는 숨김.
 // 토스페이 적립 가게를 상단 강조 (장기 리워드 연동 목표).
-const EatsSection = ({ onOpenAll, onSelect }) => {
+const EatsSection = ({ onOpenAll, onSelect, expanded = false }) => {
   const [eats, setEats] = useState({});
+  const [zoneFilter, setZoneFilter] = useState('all');
 
   useEffect(() => {
     const unsub = onValue(dbRef(database, 'stadiumEats'), (snap) => {
@@ -1386,12 +1492,41 @@ const EatsSection = ({ onOpenAll, onSelect }) => {
 
   if (list.length === 0) return null; // 등록된 가게 없으면 섹션 숨김
 
-  // 토스페이 우선 → 그 외 → 미리보기 6개
+  // 토스페이 우선 → 구역 순
   const sorted = [...list].sort((a, b) => {
     if (!!b.tossPayEnabled !== !!a.tossPayEnabled) return b.tossPayEnabled ? 1 : -1;
     return (a.zone || '').localeCompare(b.zone || '');
   });
-  const preview = sorted.slice(0, 6);
+
+  // 구역 필터 (확장 모드에서만)
+  const zones = Array.from(new Set(sorted.map((e) => e.zone).filter(Boolean)));
+  const filtered = expanded && zoneFilter !== 'all' ? sorted.filter((e) => e.zone === zoneFilter) : sorted;
+  const shown = expanded ? filtered : sorted.slice(0, 6);
+
+  const ShopCard = (e) => {
+    const cat = getCategoryMeta(e.category);
+    return (
+      <button key={e.id} onClick={() => onSelect(e)}
+        className="text-left p-3 rounded-xl transition-colors"
+        style={{
+          background: T.zinc100,
+          border: e.tossPayEnabled ? `1px solid ${T.accentBorder}` : '1px solid transparent',
+        }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-lg leading-none">{cat.emoji}</span>
+          {e.tossPayEnabled && (
+            <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>
+              {e.tossPayRate}% 적립
+            </span>
+          )}
+        </div>
+        <div className="font-bold text-[13px] leading-tight mb-0.5 truncate" style={{ color: T.text }}>
+          {e.name}
+        </div>
+        <div className="text-[11px]" style={{ color: T.textMuted }}>{e.zone}</div>
+      </button>
+    );
+  };
 
   return (
     <div style={cardStyle}>
@@ -1403,7 +1538,7 @@ const EatsSection = ({ onOpenAll, onSelect }) => {
           title="랜더스필드 먹거리"
           meta={`${list.length}곳`}
           action={
-            list.length > 6 ? (
+            !expanded && list.length > 6 ? (
               <button onClick={onOpenAll} className="text-[12px] font-bold px-3 py-1.5 rounded-lg"
                 style={{ background: T.accentBg, color: T.accent }}>
                 전체보기
@@ -1412,33 +1547,26 @@ const EatsSection = ({ onOpenAll, onSelect }) => {
           }
         />
 
-        <div className="grid grid-cols-2 gap-2">
-          {preview.map((e) => {
-            const cat = getCategoryMeta(e.category);
-            return (
-              <button key={e.id} onClick={() => onSelect(e)}
-                className="text-left p-3 rounded-xl transition-colors"
-                style={{
-                  background: T.zinc100,
-                  border: e.tossPayEnabled ? `1px solid ${T.accentBorder}` : '1px solid transparent',
-                }}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-lg leading-none">{cat.emoji}</span>
-                  {e.tossPayEnabled && (
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>
-                      {e.tossPayRate}% 적립
-                    </span>
-                  )}
-                </div>
-                <div className="font-bold text-[13px] leading-tight mb-0.5 truncate" style={{ color: T.text }}>
-                  {e.name}
-                </div>
-                <div className="text-[11px]" style={{ color: T.textMuted }}>
-                  {e.zone}
-                </div>
+        {/* 구역 필터 칩 (확장 모드) */}
+        {expanded && zones.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1" style={{ scrollbarWidth: 'none' }}>
+            <button onClick={() => setZoneFilter('all')}
+              className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap flex-shrink-0"
+              style={{ background: zoneFilter === 'all' ? T.accent : T.zinc100, color: zoneFilter === 'all' ? '#fff' : T.textSecondary }}>
+              전체 {list.length}
+            </button>
+            {zones.map((z) => (
+              <button key={z} onClick={() => setZoneFilter(z)}
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap flex-shrink-0"
+                style={{ background: zoneFilter === z ? T.accent : T.zinc100, color: zoneFilter === z ? '#fff' : T.textSecondary }}>
+                {z}
               </button>
-            );
-          })}
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          {shown.map(ShopCard)}
         </div>
       </div>
     </div>
@@ -1858,29 +1986,31 @@ function TossDashboard() {
   const [loading, setLoading] = useState(true);
   const [myVote, setMyVote] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  // ─── Deep-link 라우팅 ────────────────────────────────────────────
-  // 토스 콘솔 '앱 내 기능' 등록용 경로:
-  //   /toss/log         → 직관 기록 모달 자동 오픈
-  //   /toss/eats        → 먹거리 모달 자동 오픈
-  //   /toss/leaderboard → 리더보드 자동 오픈
-  // 모달 닫으면 history.replaceState로 /toss 메인 경로 복원.
+  // ─── Deep-link → 초기 탭 ─────────────────────────────────────────
+  // 토스 콘솔 '앱 내 기능' 경로가 해당 탭으로 진입:
+  //   /toss/log → 직관, /toss/eats → 먹거리, /toss/leaderboard → MY
   const initialPath = typeof window !== 'undefined' ? window.location.pathname : '/toss';
-  const isLogPath = /^\/toss\/log\/?$/.test(initialPath);
-  const isEatsPath = /^\/toss\/eats\/?$/.test(initialPath);
-  const isLeaderboardPath = /^\/toss\/leaderboard\/?$/.test(initialPath);
+  const initialTab =
+    /^\/toss\/log\/?$/.test(initialPath) ? 'log' :
+    /^\/toss\/eats\/?$/.test(initialPath) ? 'eats' :
+    /^\/toss\/leaderboard\/?$/.test(initialPath) ? 'my' : 'home';
 
+  const [tab, setTab] = useState(initialTab);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(isLeaderboardPath);
-  const [showStadiumLog, setShowStadiumLog] = useState(isLogPath);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showStadiumLog, setShowStadiumLog] = useState(false);
   const [stadiumLogs, setStadiumLogs] = useState(null);
-  const [eatsModalShop, setEatsModalShop] = useState(isEatsPath ? true : null); // 객체 = 상세, true = 목록, null = 닫힘
+  const [eatsModalShop, setEatsModalShop] = useState(null); // 객체 = 상세, true = 목록, null = 닫힘
 
-  // deep-link 진입 시 URL은 /toss 로 정규화 (뒤로가기 시 깔끔)
+  // deep-link 진입 시 URL은 /toss 로 정규화
   useEffect(() => {
-    if (isLogPath || isEatsPath || isLeaderboardPath) {
+    if (initialPath !== '/toss' && /^\/toss\/(log|eats|leaderboard)\/?$/.test(initialPath)) {
       window.history.replaceState(null, '', '/toss');
     }
   }, []);
+
+  // 탭 전환 시 스크롤 맨 위로
+  useEffect(() => { window.scrollTo(0, 0); }, [tab]);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -1998,7 +2128,7 @@ function TossDashboard() {
       </header>
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-3"
-        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
 
         {loading ? (
           <div className="py-20 text-center">
@@ -2006,48 +2136,62 @@ function TossDashboard() {
           </div>
         ) : (
           <>
-            {/* 1. 사용자 정체성 */}
-            <MyStatsCard
-              userStats={userProfile?.stats}
-              nickname={userProfile?.nickname}
-              onSetNickname={() => setShowNicknameModal(true)}
-              onOpenLeaderboard={() => setShowLeaderboard(true)}
-            />
+            {/* ── 홈 탭: 투표 → 분석 → 라인업 → 응원톡 ── */}
+            {tab === 'home' && (
+              <>
+                <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
+                <PredictionCard prediction={prediction} />
+                <VideoCard prediction={prediction} />
+                <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
+                <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
+              </>
+            )}
 
-            {/* 2~4. 오늘 핵심: 분석 → 라인업 → 투표 */}
-            <PredictionCard prediction={prediction} />
-            <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
-            <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
+            {/* ── 직관 탭 ── */}
+            {tab === 'log' && (
+              <>
+                <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
+                <StadiumLogList logs={stadiumLogs} />
+              </>
+            )}
 
-            {/* 5. 응원 톡 — 투표 직후 자연스러운 참여 동선 */}
-            <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
+            {/* ── 먹거리 탭 ── */}
+            {tab === 'eats' && (
+              <EatsSection expanded onSelect={(shop) => setEatsModalShop(shop)} />
+            )}
 
-            {/* 6~7. 참여형: 직관 기록 → 먹거리 */}
-            <StadiumLogCard logs={stadiumLogs} onOpen={() => setShowStadiumLog(true)} />
-            <EatsSection
-              onOpenAll={() => setEatsModalShop(true)}
-              onSelect={(shop) => setEatsModalShop(shop)}
-            />
+            {/* ── MY 탭 ── */}
+            {tab === 'my' && (
+              <>
+                <MyStatsCard
+                  userStats={userProfile?.stats}
+                  nickname={userProfile?.nickname}
+                  onSetNickname={() => setShowNicknameModal(true)}
+                  onOpenLeaderboard={() => setShowLeaderboard(true)}
+                />
+                <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
 
-            {/* 8~9. 부가 정보: 어제 회고 → 분석 영상 */}
-            <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
-            <VideoCard prediction={prediction} />
+                {/* 정책 링크 — MY 탭 하단 */}
+                <div className="pt-2">
+                  <div className="flex gap-2 justify-center text-[11px] mb-2">
+                    <a href="/toss/about"   onClick={() => trackAction(ACTIONS.ABOUT_CLICKED)}   style={{ color: T.textMuted }}>서비스 소개</a>
+                    <span style={{ color: T.zinc300 }}>·</span>
+                    <a href="/toss/privacy" onClick={() => trackAction(ACTIONS.PRIVACY_CLICKED)} style={{ color: T.textMuted }}>개인정보 처리방침</a>
+                    <span style={{ color: T.zinc300 }}>·</span>
+                    <a href="/toss/terms"   onClick={() => trackAction(ACTIONS.TERMS_CLICKED)}   style={{ color: T.textMuted }}>이용약관</a>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[10px]" style={{ color: T.zinc400 }}>FACTPEPE · @factpepe_</span>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
-
-        <div className="pt-3">
-          <div className="flex gap-2 justify-center text-[10px] mb-2">
-            <a href="/toss/about"   onClick={() => trackAction(ACTIONS.ABOUT_CLICKED)}   style={{ color: T.textMuted }}>서비스 소개</a>
-            <span style={{ color: T.zinc300 }}>·</span>
-            <a href="/toss/privacy" onClick={() => trackAction(ACTIONS.PRIVACY_CLICKED)} style={{ color: T.textMuted }}>개인정보 처리방침</a>
-            <span style={{ color: T.zinc300 }}>·</span>
-            <a href="/toss/terms"   onClick={() => trackAction(ACTIONS.TERMS_CLICKED)}   style={{ color: T.textMuted }}>이용약관</a>
-          </div>
-          <div className="text-center">
-            <span className="text-[10px]" style={{ color: T.zinc400 }}>FACTPEPE · @factpepe_</span>
-          </div>
-        </div>
       </main>
+
+      {/* 하단 탭바 */}
+      <TabBar tab={tab} onChange={setTab} />
 
       {/* 닉네임 설정 모달 */}
       {showNicknameModal && (
