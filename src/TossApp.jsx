@@ -16,6 +16,7 @@ import {
   dateInputToKey, keyToDateInput, keyToDisplay, getTodayIso,
 } from './stadiumLog.js';
 import { EATS_ZONES, EATS_CATEGORIES, getCategoryMeta } from './EatsAdmin.jsx';
+import { closeApp, onBackEvent } from './tossBridge.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -917,6 +918,30 @@ const LeaderboardModal = ({ onClose, userId, nickname }) => {
 };
 
 // ─── 닉네임 설정 모달 ────────────────────────────────────────────
+// ─── 종료 확인 모달 (토스 가이드: X/뒤로가기 시 표시) ───────────────
+const ExitConfirmModal = ({ onCancel, onExit }) => (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.45)' }}>
+    <div className="w-full max-w-xs rounded-2xl p-5" style={{ background: T.card, boxShadow: T.shadowStrong }}>
+      <p className="text-center text-[15px] font-extrabold mb-1" style={{ color: T.text }}>
+        팩트페페:인천 야구를 종료할까요?
+      </p>
+      <p className="text-center text-[12px] mb-4" style={{ color: T.textMuted }}>
+        다음에 또 만나요!
+      </p>
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="flex-1 py-3 rounded-xl font-bold text-[14px]"
+          style={{ background: T.zinc100, color: T.textSecondary }}>
+          닫기
+        </button>
+        <button onClick={onExit} className="flex-1 py-3 rounded-xl font-bold text-[14px]"
+          style={{ background: T.accent, color: '#fff' }}>
+          종료하기
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const NicknameModal = ({ initial = '', onSave, onClose }) => {
   const [value, setValue] = useState(initial);
   const [error, setError] = useState('');
@@ -2085,6 +2110,7 @@ function TossDashboard() {
   const [eatsModalShop, setEatsModalShop] = useState(null); // 객체 = 상세, true = 목록, null = 닫힘
   const [stadiumSeg, setStadiumSeg] = useState('all'); // 직관 통계 토글 (all|stadium|opponent)
   const [stadiumPicked, setStadiumPicked] = useState(null); // 선택된 구장/상대 (일지 필터)
+  const [showExitModal, setShowExitModal] = useState(false); // 종료 확인 모달
 
   // deep-link 진입 시 URL은 /toss 로 정규화
   useEffect(() => {
@@ -2095,6 +2121,21 @@ function TossDashboard() {
 
   // 탭 전환 시 스크롤 맨 위로
   useEffect(() => { window.scrollTo(0, 0); }, [tab]);
+
+  // 네이티브 뒤로가기 + AOS 시스템 백버튼 처리
+  // 우선순위: 모달 닫기 → 비홈 탭이면 홈으로 → 최초 화면(홈)이면 종료 확인 모달
+  useEffect(() => {
+    const handleBack = () => {
+      if (showExitModal) { setShowExitModal(false); return; }
+      if (showNicknameModal) { setShowNicknameModal(false); return; }
+      if (showLeaderboard) { setShowLeaderboard(false); return; }
+      if (showStadiumLog) { setShowStadiumLog(false); return; }
+      if (eatsModalShop) { setEatsModalShop(null); return; }
+      if (tab !== 'home') { setTab('home'); return; }
+      setShowExitModal(true); // 최초 화면 → 종료 확인
+    };
+    return onBackEvent(handleBack);
+  }, [tab, showExitModal, showNicknameModal, showLeaderboard, showStadiumLog, eatsModalShop]);
 
   // 어제 날짜 키
   const yesterdayKey = (() => {
@@ -2313,6 +2354,13 @@ function TossDashboard() {
         <EatsModal
           initialShop={typeof eatsModalShop === 'object' ? eatsModalShop : null}
           onClose={() => setEatsModalShop(null)}
+        />
+      )}
+      {/* 종료 확인 모달 */}
+      {showExitModal && (
+        <ExitConfirmModal
+          onCancel={() => setShowExitModal(false)}
+          onExit={() => { setShowExitModal(false); closeApp(); }}
         />
       )}
     </div>

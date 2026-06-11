@@ -20,6 +20,17 @@ export default defineConfig({
     },
   },
 
+  // 비게임 표준 WebView 프레임 (앱인토스 공통 내비게이션 바)
+  webViewProps: {
+    type: 'partner',
+  },
+
+  // 표준 내비게이션 바: 뒤로가기 + 홈 버튼 + 더보기(자동 제공)
+  navigationBar: {
+    withBackButton: true,
+    withHomeButton: true,
+  },
+
   permissions: [],
 
   // 빌드 결과물 폴더
