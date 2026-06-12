@@ -2085,6 +2085,7 @@ function TossDashboard() {
   const todayKey = getTodayKey();
   const userId = useRef(getUserId()).current;
   const [prediction, setPrediction] = useState(null);
+  const [todayGame, setTodayGame] = useState(null); // games/{today} — 오늘 경기 마스터(상대/홈원정)
   const [lineup, setLineup] = useState(null);
   const [lineupYesterday, setLineupYesterday] = useState(null);
   const [yesterdayPrediction, setYesterdayPrediction] = useState(null);
@@ -2148,6 +2149,9 @@ function TossDashboard() {
     const unsubP = onValue(dbRef(database, `prediction/${todayKey}`), (snap) => {
       setPrediction(snap.val());
     });
+    const unsubTG = onValue(dbRef(database, `games/${todayKey}`), (snap) => {
+      setTodayGame(snap.val());
+    });
     const unsubL = onValue(dbRef(database, 'lineup/latest'), (snap) => {
       setLineup(snap.val());
       setLoading(false);
@@ -2170,7 +2174,7 @@ function TossDashboard() {
     const unsubStadium = onValue(dbRef(database, `users/${userId}/stadiumLog`), (snap) => {
       setStadiumLogs(snap.val());
     });
-    return () => { unsubP(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); unsubStadium(); };
+    return () => { unsubP(); unsubTG(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); unsubStadium(); };
   }, [todayKey, yesterdayKey, userId]);
 
   const saveNickname = async (newNickname) => {
@@ -2215,7 +2219,11 @@ function TossDashboard() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const opponent = lineup?.opponent || prediction?.opponent || '';
+  // 오늘 상대팀: games/{today}(스케줄 진실) 우선 → 오늘자 라인업 → 예측 순.
+  // lineup/latest 는 라인업 발표 전까지 어제 경기로 남아있으므로 단독 신뢰 불가.
+  const lineupIsToday = lineup?.date && lineup.date.replaceAll('.', '') === todayKey;
+  const opponent = todayGame?.opponent || (lineupIsToday ? lineup?.opponent : null) || prediction?.opponent || '';
+  const isAwayToday = todayGame ? todayGame.isHome === false : null;
 
   const today = new Date();
   const dateDisplay = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
@@ -2245,7 +2253,7 @@ function TossDashboard() {
             {opponent && (
               <div className="text-[11px] font-black mt-0.5 inline-block px-1.5 py-0.5 rounded"
                 style={{ background: T.accentBg, color: T.accent }}>
-                vs {opponent}
+                {isAwayToday === true ? '원정' : isAwayToday === false ? '홈' : 'vs'} {opponent}
               </div>
             )}
           </div>

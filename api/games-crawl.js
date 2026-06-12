@@ -45,6 +45,20 @@ const NAVER_HEADERS = {
 
 const SSG_HOME_STADIUM = '인천 SSG 랜더스필드';
 
+// 네이버 팀 코드 → 홈구장 (원정 경기 구장명 보강용)
+const KBO_STADIUMS = {
+  SK: '인천 SSG 랜더스필드',     // SSG
+  SS: '대구 삼성라이온즈파크',    // 삼성
+  LG: '서울 잠실야구장',          // LG
+  OB: '서울 잠실야구장',          // 두산
+  KT: '수원 KT위즈파크',          // KT
+  HT: '광주 기아챔피언스필드',    // KIA
+  LT: '부산 사직야구장',          // 롯데
+  NC: '창원 NC파크',              // NC
+  WO: '고척 스카이돔',            // 키움
+  HH: '대전 한화생명볼파크',      // 한화
+};
+
 /** KST 기준 N일 전 날짜 객체 */
 function getKstDate(offset = 0) {
   const now = new Date();
@@ -85,11 +99,10 @@ async function fetchSsgGames(fromIso, toIso) {
 /** 네이버 게임 객체 → 우리 스키마로 정규화 */
 function normalizeGame(g) {
   const isAway = g.awayTeamCode === SSG_CODE;
-  const ssgScore = isAway ? g.awayTeamScore : g.homeTeamScore;
-  const oppScore = isAway ? g.homeTeamScore : g.awayTeamScore;
   const opponent = isAway ? g.homeTeamName : g.awayTeamName;
+  const homeCode = g.homeTeamCode;
   const stadium = isAway
-    ? (g.stadium || `${g.homeTeamName} 홈구장`)
+    ? (g.stadium || KBO_STADIUMS[homeCode] || `${g.homeTeamName} 홈구장`)
     : SSG_HOME_STADIUM;
 
   let result;
@@ -98,6 +111,11 @@ function normalizeGame(g) {
   else if (g.winner === 'DRAW') result = 'draw';
   else if (g.winner === (isAway ? 'AWAY' : 'HOME')) result = 'win';
   else result = 'lose';
+
+  // 결과 확정(RESULT) 전이면 스코어는 null (다가오는 경기에 가짜 0:0 저장 방지)
+  const finished = result !== 'pending';
+  const ssgScore = finished ? (isAway ? g.awayTeamScore : g.homeTeamScore) ?? null : null;
+  const oppScore = finished ? (isAway ? g.homeTeamScore : g.awayTeamScore) ?? null : null;
 
   // 게임 날짜 추출
   // - gameDate: "2026-06-07" (ISO) 또는 "20260607" (compact)
@@ -112,8 +130,8 @@ function normalizeGame(g) {
     dateKey: isoToKey(dateIso),
     gameId: g.gameId,
     opponent,
-    ssgScore: ssgScore ?? null,
-    oppScore: oppScore ?? null,
+    ssgScore,
+    oppScore,
     result,
     isHome: !isAway,
     stadium,
@@ -171,9 +189,12 @@ export default async function handler(req, res) {
       fromIso = from;
       toIso = to;
     } else {
-      // 기본: 오늘 1일치 (크론 호출 시)
-      const today = getKstDate(0);
-      fromIso = toIso = today.iso;
+      // 기본(크론): 어제 ~ 3일 후
+      // - 어제: 종료된 경기 결과 확정 갱신
+      // - 오늘~3일 후: 다가오는 경기의 상대/홈원정을 미리 확보
+      //   (헤더 '오늘 상대'가 라인업 발표 전에도 정확히 표시되도록)
+      fromIso = getKstDate(-1).iso;
+      toIso = getKstDate(3).iso;
     }
 
     // 네이버 API는 한 번 호출에 결과 10개까지만 반환 → 1일씩 쪼개서 호출
@@ -204,9 +225,10 @@ export default async function handler(req, res) {
 
     for (const raw of allGames) {
       const normalized = normalizeGame(raw);
-      // 아직 결과 미확정(pending) + 스코어 없는 미래 경기는 스킵
-      if (normalized.result === 'pending' && normalized.ssgScore == null) {
-        results.push({ date: normalized.date, skipped: 'future_or_pending' });
+      // pending(미래) 경기도 저장 — 상대/홈원정 정보를 헤더에서 미리 사용.
+      // (스코어는 null로 저장되며, 직관 기록 모달은 pending 저장을 막음)
+      if (!normalized.dateKey) {
+        results.push({ skipped: 'no_date' });
         continue;
       }
       const saveRes = await saveGame(normalized);
