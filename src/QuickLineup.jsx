@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { database, parseLineupText } from './App.jsx';
-import { ref as dbRef, set } from 'firebase/database';
+import { parseLineupText } from './App.jsx';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import EatsAdmin from './EatsAdmin.jsx';
@@ -18,15 +17,17 @@ import EatsAdmin from './EatsAdmin.jsx';
  * 목표 소요 시간: 5~10초
  */
 
-// PIN 코드 — 운영자가 본인이 설정
-// 보안을 위해 환경변수 또는 빌드 시 주입 권장
-const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '8012';
-const PIN_STORAGE_KEY = 'factpepe_q_auth';
+// PIN은 서버(ADMIN_PIN 환경변수)에서만 검증한다. 클라이언트 번들엔 PIN 없음.
+// 인증 성공 시 서버가 발급한 단기 토큰을 sessionStorage에 보관하고,
+// 이후 쓰기(/api/admin-write)에 사용한다.
+const TOKEN_STORAGE_KEY = 'factpepe_q_token';
 
 const QuickLineup = () => {
   const [authed, setAuthed] = useState(false);
+  const [token, setToken] = useState('');
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [authing, setAuthing] = useState(false);
   const [tab, setTab] = useState('lineup'); // 'lineup' | 'eats'
   const [text, setText] = useState('');
   const [opponent, setOpponent] = useState('');
@@ -36,11 +37,10 @@ const QuickLineup = () => {
   const [error, setError] = useState('');
   const textareaRef = useRef(null);
 
-  // 인증 확인
+  // 인증 복원 (토큰 보관 시 — 만료는 서버가 쓰기 시 검증)
   useEffect(() => {
-    if (sessionStorage.getItem(PIN_STORAGE_KEY) === '1') {
-      setAuthed(true);
-    }
+    const saved = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    if (saved) { setToken(saved); setAuthed(true); }
   }, []);
 
   // 텍스트 변경 시 자동 파싱
@@ -57,15 +57,29 @@ const QuickLineup = () => {
     }
   }, [text]);
 
-  const handlePin = (e) => {
+  const handlePin = async (e) => {
     e.preventDefault();
-    if (pin === ADMIN_PIN) {
-      sessionStorage.setItem(PIN_STORAGE_KEY, '1');
-      setAuthed(true);
-      setPinError('');
-    } else {
-      setPinError('PIN이 맞지 않습니다');
-      setPin('');
+    setAuthing(true);
+    setPinError('');
+    try {
+      const res = await fetch('/api/admin-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.token) {
+        sessionStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+        setToken(data.token);
+        setAuthed(true);
+      } else {
+        setPinError(data.error || 'PIN이 맞지 않습니다');
+        setPin('');
+      }
+    } catch (err) {
+      setPinError('인증 서버 연결 실패');
+    } finally {
+      setAuthing(false);
     }
   };
 
@@ -101,17 +115,26 @@ const QuickLineup = () => {
         updatedAt: Date.now(),
       };
 
-      // lineup/latest 와 history 동시 저장
-      await Promise.all([
-        set(dbRef(database, 'lineup/latest'), record),
-        set(dbRef(database, `lineup/history/${Date.now()}`), record),
-      ]);
+      // 서버 API 경유 발행 (lineup/latest + history)
+      const res = await fetch('/api/admin-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, action: 'publishLineup', payload: { record } }),
+      });
+      const data = await res.json();
+      if (res.status === 401) {
+        // 토큰 만료 → 재로그인
+        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+        setAuthed(false); setToken('');
+        setError('세션이 만료됐어요. 다시 로그인해주세요.');
+        return;
+      }
+      if (!res.ok || !data.ok) throw new Error(data.error || '발행 실패');
 
       setPublishedAt(Date.now());
       setText('');
       setOpponent('');
       setParsed(null);
-      // 5초 후 메시지 사라짐
       setTimeout(() => setPublishedAt(null), 5000);
     } catch (e) {
       setError('발행 실패: ' + e.message);
@@ -155,11 +178,11 @@ const QuickLineup = () => {
 
           <button
             type="submit"
-            disabled={pin.length !== 4}
+            disabled={pin.length !== 4 || authing}
             className="w-full py-3 rounded-2xl font-black text-base transition-all disabled:opacity-40"
             style={{ background: T.accent, color: '#fff', boxShadow: T.shadow }}
           >
-            확인
+            {authing ? '확인 중…' : '확인'}
           </button>
         </form>
       </div>
@@ -187,7 +210,7 @@ const QuickLineup = () => {
             </div>
           </div>
           <button
-            onClick={() => { sessionStorage.removeItem(PIN_STORAGE_KEY); setAuthed(false); }}
+            onClick={() => { sessionStorage.removeItem(TOKEN_STORAGE_KEY); setAuthed(false); setToken(''); }}
             className="text-[10px]" style={{ color: T.textMuted }}
           >
             로그아웃
@@ -217,7 +240,7 @@ const QuickLineup = () => {
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
         {tab === 'eats' ? (
-          <EatsAdmin />
+          <EatsAdmin token={token} />
         ) : (
           <>
         {/* 발행 완료 안내 */}

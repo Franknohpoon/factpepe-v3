@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { ref as dbRef, onValue, push, set, remove, update } from 'firebase/database';
+import { ref as dbRef, onValue } from 'firebase/database';
 import { database } from './App.jsx';
 import { T } from './tossTheme.js';
+
+/** 운영자 쓰기는 서버 API 경유 (/api/admin-write) */
+async function adminWrite(token, action, payload) {
+  const res = await fetch('/api/admin-write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, action, payload }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new Error('세션이 만료됐어요. 다시 로그인해주세요.');
+  if (!res.ok || !data.ok) throw new Error(data.error || '저장 실패');
+  return data;
+}
 
 /**
  * 먹거리 (Stadium Eats) 운영자 관리 페이지
@@ -62,7 +75,7 @@ const emptyForm = {
 };
 
 // ─── 메인 컴포넌트 ───────────────────────────────────────────────────
-const EatsAdmin = () => {
+const EatsAdmin = ({ token }) => {
   const [eats, setEats] = useState({});
   const [editingId, setEditingId] = useState(null); // null = 새로 추가
   const [form, setForm] = useState(emptyForm);
@@ -111,7 +124,7 @@ const EatsAdmin = () => {
     setSaving(true);
     setError('');
     try {
-      const payload = {
+      const shop = {
         name: form.name.trim(),
         zone: form.zone,
         category: form.category,
@@ -121,14 +134,12 @@ const EatsAdmin = () => {
         tossPayEnabled: !!form.tossPayEnabled,
         tossPayRate: Number(form.tossPayRate) || 0,
         active: !!form.active,
-        updatedAt: Date.now(),
       };
 
       if (editingId) {
-        await update(dbRef(database, `stadiumEats/${editingId}`), payload);
+        await adminWrite(token, 'eatsUpdate', { id: editingId, patch: shop });
       } else {
-        payload.createdAt = Date.now();
-        await push(dbRef(database, 'stadiumEats'), payload);
+        await adminWrite(token, 'eatsCreate', { shop });
       }
 
       setSavedMsg(editingId ? '수정 완료!' : '등록 완료!');
@@ -145,7 +156,7 @@ const EatsAdmin = () => {
     const e = eats[id];
     if (!confirm(`'${e?.name}' 가게를 삭제할까요?`)) return;
     try {
-      await remove(dbRef(database, `stadiumEats/${id}`));
+      await adminWrite(token, 'eatsDelete', { id });
     } catch (err) {
       alert('삭제 실패: ' + err.message);
     }
@@ -154,10 +165,11 @@ const EatsAdmin = () => {
   const handleToggleActive = async (id) => {
     const e = eats[id];
     if (!e) return;
-    await update(dbRef(database, `stadiumEats/${id}`), {
-      active: !(e.active !== false),
-      updatedAt: Date.now(),
-    });
+    try {
+      await adminWrite(token, 'eatsUpdate', { id, patch: { active: !(e.active !== false) } });
+    } catch (err) {
+      alert('변경 실패: ' + err.message);
+    }
   };
 
   const list = Object.entries(eats || {})
