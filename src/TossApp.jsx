@@ -1100,14 +1100,31 @@ const RecapCard = ({ yesterdayPrediction, stats, nickname, userStats }) => {
 };
 
 // ─── 분석 카드 (승률) — 데이터 (토스 블루 좌측 바) ────────────────
-const PredictionCard = ({ prediction }) => {
+// isNext: 휴식일 등으로 '다음 경기' 분석을 보여주는 경우
+// nextGame: { gameDate:'2026-06-16', opponent, isHome } (휴식일일 때)
+const PredictionCard = ({ prediction, isNext = false, nextGame = null }) => {
+  const kicker = isNext ? '다음 경기 분석' : '오늘의 분석';
+  // 다음 경기 날짜 라벨: "2026-06-16" → "6/16 (화)"
+  const nextLabel = (() => {
+    if (!isNext || !nextGame?.gameDate) return null;
+    const [y, m, d] = nextGame.gameDate.split('-');
+    const wd = ['일','월','화','수','목','금','토'][new Date(`${nextGame.gameDate}T00:00:00+09:00`).getDay()];
+    return `${Number(m)}/${Number(d)} (${wd})`;
+  })();
+
   if (!prediction) {
     return (
       <div style={cardStyle}>
         <ColorBar color={T.brand} />
-        <div className="pl-5 pr-4 py-6 flex items-center gap-3">
-          <Pepe mood="sleepy" size={40} />
-          <p className="text-[13px]" style={{ color: T.textMuted }}>오늘의 분석이 아직 등록되지 않았어요</p>
+        <div className="pl-5 pr-4 py-4">
+          <SectionHead kicker={kicker} kickerColor={T.brand} title="팩트 승률"
+            meta={isNext && nextGame?.opponent ? `${nextLabel} vs ${nextGame.opponent}` : null} />
+          <div className="flex items-center gap-3 pt-1 pb-2">
+            <Pepe mood="sleepy" size={40} />
+            <p className="text-[13px]" style={{ color: T.textMuted }}>
+              {isNext ? '다음 경기 분석을 준비하고 있어요' : '오늘의 분석이 아직 등록되지 않았어요'}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -1122,10 +1139,12 @@ const PredictionCard = ({ prediction }) => {
       <ColorBar color={T.brand} />
       <div className="pl-5 pr-4 py-4">
         <SectionHead
-          kicker="오늘의 분석"
+          kicker={kicker}
           kickerColor={T.brand}
           title="팩트 승률"
-          meta={prediction.opponent ? `vs ${prediction.opponent}` : null}
+          meta={isNext
+            ? (nextLabel ? `${nextLabel} vs ${prediction.opponent || nextGame?.opponent || ''}` : `vs ${prediction.opponent || ''}`)
+            : (prediction.opponent ? `vs ${prediction.opponent}` : null)}
           action={
             <span className="text-[11px] font-bold px-2 py-1 rounded-md" style={{
               background: prediction.source === 'manual' ? 'rgba(245,158,11,0.12)' : T.zinc100,
@@ -2085,6 +2104,7 @@ function TossDashboard() {
   const todayKey = getTodayKey();
   const userId = useRef(getUserId()).current;
   const [prediction, setPrediction] = useState(null);
+  const [nextGamePrediction, setNextGamePrediction] = useState(null); // 휴식일용 다음 경기 분석
   const [todayGame, setTodayGame] = useState(null); // games/{today} — 오늘 경기 마스터(상대/홈원정)
   const [lineup, setLineup] = useState(null);
   const [lineupYesterday, setLineupYesterday] = useState(null);
@@ -2122,6 +2142,15 @@ function TossDashboard() {
 
   // 탭 전환 시 스크롤 맨 위로
   useEffect(() => { window.scrollTo(0, 0); }, [tab]);
+
+  // 휴식일이면 다음 경기 분석 구독 (prediction/{다음경기일})
+  useEffect(() => {
+    const off = noGame && noGame.date === `${todayKey.slice(0, 4)}.${todayKey.slice(4, 6)}.${todayKey.slice(6, 8)}`;
+    const key = off && noGame?.nextGame?.gameDate ? noGame.nextGame.gameDate.replaceAll('-', '') : null;
+    if (!key) { setNextGamePrediction(null); return; }
+    const unsub = onValue(dbRef(database, `prediction/${key}`), (snap) => setNextGamePrediction(snap.val()));
+    return () => unsub();
+  }, [noGame, todayKey]);
 
   // 네이티브 뒤로가기 + AOS 시스템 백버튼 처리
   // 우선순위: 모달 닫기 → 비홈 탭이면 홈으로 → 최초 화면(홈)이면 종료 확인 모달
@@ -2219,11 +2248,22 @@ function TossDashboard() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 오늘 상대팀: games/{today}(스케줄 진실) 우선 → 오늘자 라인업 → 예측 순.
+  // 휴식일(월요일 등) 판정: lineup/noGame.date 가 오늘이면 경기 없음.
+  // 이때 '오늘의 분석'은 다음 경기(noGame.nextGame) 분석으로 대체.
+  const todayFull = `${todayKey.slice(0, 4)}.${todayKey.slice(4, 6)}.${todayKey.slice(6, 8)}`;
+  const isOffDay = !!noGame && noGame.date === todayFull;
+  const nextGameMeta = isOffDay ? noGame?.nextGame : null;
+  const effectivePrediction = isOffDay ? nextGamePrediction : prediction;
+
+  // 오늘 상대팀: 휴식일이면 다음 경기 상대 → 아니면 games/{today}(스케줄 진실) → 오늘자 라인업 → 예측.
   // lineup/latest 는 라인업 발표 전까지 어제 경기로 남아있으므로 단독 신뢰 불가.
   const lineupIsToday = lineup?.date && lineup.date.replaceAll('.', '') === todayKey;
-  const opponent = todayGame?.opponent || (lineupIsToday ? lineup?.opponent : null) || prediction?.opponent || '';
-  const isAwayToday = todayGame ? todayGame.isHome === false : null;
+  const opponent = isOffDay
+    ? (nextGameMeta?.opponent || '')
+    : (todayGame?.opponent || (lineupIsToday ? lineup?.opponent : null) || prediction?.opponent || '');
+  const isAwayToday = isOffDay
+    ? (nextGameMeta ? nextGameMeta.isHome === false : null)
+    : (todayGame ? todayGame.isHome === false : null);
 
   const today = new Date();
   const dateDisplay = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
@@ -2270,11 +2310,12 @@ function TossDashboard() {
         ) : (
           <>
             {/* ── 홈 탭: 투표 → 분석 → 라인업 → 응원톡 ── */}
+            {/* 휴식일이면 '오늘 결과 투표'는 숨기고 분석은 다음 경기 기준 */}
             {tab === 'home' && (
               <>
-                <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />
-                <PredictionCard prediction={prediction} />
-                <VideoCard prediction={prediction} />
+                {!isOffDay && <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />}
+                <PredictionCard prediction={effectivePrediction} isNext={isOffDay} nextGame={nextGameMeta} />
+                <VideoCard prediction={effectivePrediction} />
                 <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
                 <ChatCard todayKey={todayKey} hasVoted={!!myVote} nickname={userProfile?.nickname} />
               </>

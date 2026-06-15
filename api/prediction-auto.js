@@ -62,6 +62,32 @@ async function findSSGGame(dateIso) {
   };
 }
 
+/**
+ * 오늘 경기 우선, 없으면 다가오는 경기를 찾아 날짜와 함께 반환.
+ * 월요일(KBO 휴식일)처럼 오늘 경기가 없으면 다음 경기일(화요일)의 분석을
+ * 미리 생성하기 위함.
+ * @param {string} startIso - YYYY-MM-DD (오늘)
+ * @returns {{ game, dateIso, dateDisplay, dateCompact, isToday } | null}
+ */
+async function findUpcomingSSGGame(startIso) {
+  for (let i = 0; i <= 4; i++) {
+    const d = new Date(`${startIso}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+    const game = await findSSGGame(iso); // 해당 날짜 SSG 경기 (없으면 null)
+    if (game) {
+      return {
+        game,
+        dateIso: iso,
+        dateDisplay: iso.replaceAll('-', '.'),
+        dateCompact: iso.replaceAll('-', ''),
+        isToday: i === 0,
+      };
+    }
+  }
+  return null;
+}
+
 /** /preview API에서 통계 데이터 추출 */
 async function fetchStats(gameId, isHome) {
   const url = `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`;
@@ -238,18 +264,22 @@ export default async function handler(req, res) {
   const isPreview = req.query.preview === '1';
   const forceSave = req.query.save === '1';
   const force = req.query.force === '1';
-  const { iso: dateIso, display: dateDisplay, compact: dateCompact } = getKSTDate();
+  const { iso: todayIso } = getKSTDate();
+
+  // 분석 대상: 오늘 경기 우선, 없으면 다가오는 경기(휴식일 대응)
+  let dateIso, dateDisplay, dateCompact, game, isToday;
 
   try {
-    // 1. 오늘 SSG 경기 찾기
-    const game = await findSSGGame(dateIso);
-    if (!game) {
+    // 1. 오늘 또는 다가오는 SSG 경기 찾기
+    const found = await findUpcomingSSGGame(todayIso);
+    if (!found) {
       return res.status(200).json({
         ok: false,
         reason: 'no_game',
-        message: `오늘(${dateDisplay}) SSG 경기 없음`,
+        message: `오늘부터 4일 내 SSG 경기 없음`,
       });
     }
+    ({ dateIso, dateDisplay, dateCompact, game, isToday } = found);
 
     // 2. 통계 수집
     const stats = await fetchStats(game.gameId, game.isHome);
@@ -281,6 +311,7 @@ export default async function handler(req, res) {
         await saveToFirebase(dateCompact, {
           date: dateDisplay,
           opponent: game.opponent,
+          isHome: game.isHome,
           winRate: rate,
           reason,
           source: 'auto-stats',
@@ -303,6 +334,7 @@ export default async function handler(req, res) {
       skipped,
       skipReason,
       date: dateDisplay,
+      isToday,
       opponent: game.opponent,
       isHome: game.isHome,
       winRate: rate,
@@ -311,7 +343,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[prediction-auto] error:', err);
-    logCronResult(dateIso, 'prediction', false, err.message).catch(() => {});
+    logCronResult(dateIso || todayIso, 'prediction', false, err.message).catch(() => {});
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
