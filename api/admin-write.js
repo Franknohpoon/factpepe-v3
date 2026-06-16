@@ -104,6 +104,29 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
+      // ── 오늘의 분석(팩트 승률) 설정 ──
+      case 'predictionSet': {
+        const { dateKey, winRate, reason, opponent, isHome } = payload;
+        if (!/^[0-9]{8}$/.test(String(dateKey || ''))) {
+          return res.status(400).json({ ok: false, error: '날짜(YYYYMMDD) 형식 오류' });
+        }
+        const rate = Math.max(0, Math.min(100, Math.round(Number(winRate))));
+        if (!Number.isFinite(rate)) return res.status(400).json({ ok: false, error: '승률 숫자 오류' });
+        const display = `${dateKey.slice(0, 4)}.${dateKey.slice(4, 6)}.${dateKey.slice(6, 8)}`;
+        // PATCH로 기존 videoUrl/result 등 보존
+        const patch = {
+          date: display,
+          winRate: rate,
+          reason: clampStr(reason, 200),
+          source: 'manual',
+          updatedAt: Date.now(),
+        };
+        if (opponent !== undefined) patch.opponent = clampStr(opponent, 30);
+        if (isHome !== undefined) patch.isHome = !!isHome;
+        await fbWrite(`prediction/${dateKey}`, 'PATCH', patch);
+        return res.status(200).json({ ok: true });
+      }
+
       // ── 먹거리 삭제 ──
       case 'eatsDelete': {
         const { id } = payload;

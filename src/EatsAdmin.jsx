@@ -2,19 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref as dbRef, onValue } from 'firebase/database';
 import { database } from './App.jsx';
 import { T } from './tossTheme.js';
-
-/** 운영자 쓰기는 서버 API 경유 (/api/admin-write) */
-async function adminWrite(token, action, payload) {
-  const res = await fetch('/api/admin-write', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, action, payload }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401) throw new Error('세션이 만료됐어요. 다시 로그인해주세요.');
-  if (!res.ok || !data.ok) throw new Error(data.error || '저장 실패');
-  return data;
-}
+import { adminWrite } from './adminApi.js';
 
 /**
  * 먹거리 (Stadium Eats) 운영자 관리 페이지
