@@ -8,7 +8,7 @@ import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import { BADGES, LEVELS, computeBadges, computeLevel, nextLevelProgress, getBadge } from './badges.js';
-import { generateStatsCard, generateHitCard, shareOrDownload } from './shareCard.js';
+import { generateStatsCard, generateHitCard, generateStadiumCard, shareOrDownload } from './shareCard.js';
 import {
   STADIUM_ZONES, getZoneLabel, getZoneEmoji,
   fetchGameByDate, saveStadiumLog, deleteStadiumLog,
@@ -345,7 +345,7 @@ const FilledRow = ({ label, winRate, sub, active, onClick }) => {
   );
 };
 
-const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick }) => {
+const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick, nickname }) => {
   const stats = computeStadiumStats(logs);
   const earnedBadges = computeStadiumBadges(stats);
   const heroMood = stats.winRate >= 60 ? 'excited' : stats.winRate >= 45 ? 'happy' : 'sad';
@@ -413,6 +413,19 @@ const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick }) => {
                 </div>
                 <Pepe mood={heroMood} size={76} />
               </div>
+              {/* 공유 버튼 */}
+              <button
+                onClick={async () => {
+                  const url = await generateStadiumCard({
+                    winRate: stats.winRate, wins: stats.wins, losses: stats.losses, draws: stats.draws,
+                    nickname: nickname || '', scope: seg === 'stadium' ? '구장별' : '전체',
+                  });
+                  shareOrDownload(url, `factpepe-stadium-${nickname || 'fan'}.png`);
+                }}
+                className="relative w-full py-2 text-[12px] font-bold border-t"
+                style={{ borderColor: T.cardBorder, color: T.accent, background: 'rgba(255,255,255,0.4)' }}>
+                📤 직관 승률 공유
+              </button>
             </div>
 
             {/* 인증 뱃지 */}
@@ -664,39 +677,54 @@ const StadiumLogModal = ({ userId, logs, onClose }) => {
                 />
               </label>
 
-              {/* 자동 채움 — 경기 정보 */}
-              <div className="mb-3 rounded-lg p-3" style={{ background: T.zinc100 }}>
+              {/* 경기 정보 — 응원팀 VS 상대팀 + 큰 스코어 (레퍼런스 스타일) */}
+              <div className="mb-3 rounded-2xl p-4" style={{ background: T.cardSoft, border: `1px solid ${T.cardBorder}` }}>
                 {gameLoading ? (
-                  <div className="text-xs text-center py-2" style={{ color: T.textMuted }}>경기 정보 불러오는 중…</div>
+                  <div className="text-xs text-center py-6" style={{ color: T.textMuted }}>경기 정보 불러오는 중…</div>
                 ) : !game ? (
-                  <div className="text-xs text-center py-2" style={{ color: T.textMuted }}>
+                  <div className="text-xs text-center py-6" style={{ color: T.textMuted }}>
                     이 날짜에는 SSG 경기가 없어요.
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>
-                        {game.isHome ? '🏟️ 홈' : '✈️ 원정'} · {game.stadium}
+                    {/* 홈/원정 + 구장 + 결과 배지 */}
+                    <div className="flex items-center justify-center gap-1.5 mb-3">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: T.zinc100, color: T.textSecondary }}>
+                        {game.isHome ? '홈' : '원정'} · {game.stadium}
                       </span>
-                      {game.result === 'win' && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.accent, color: '#fff' }}>승</span>
-                      )}
-                      {game.result === 'lose' && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc300, color: T.textMuted }}>패</span>
-                      )}
-                      {game.result === 'draw' && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: T.zinc200, color: T.textSecondary }}>무</span>
-                      )}
+                      {game.result === 'win' && <ResultBadge result="win" />}
+                      {game.result === 'lose' && <ResultBadge result="lose" />}
+                      {game.result === 'draw' && <ResultBadge result="draw" />}
                       {game.result === 'pending' && (
-                        <span className="text-[10px] font-bold" style={{ color: T.warning }}>진행중</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.15)', color: T.warning }}>진행중</span>
                       )}
                     </div>
-                    <div className="flex items-center justify-center gap-3 py-2">
-                      <span className="font-black text-base" style={{ color: T.text }}>SSG</span>
-                      <span className="font-black text-2xl" style={{ color: T.accent }}>{game.ssgScore ?? '-'}</span>
-                      <span className="text-xs font-bold" style={{ color: T.textMuted }}>:</span>
-                      <span className="font-black text-2xl" style={{ color: T.text }}>{game.oppScore ?? '-'}</span>
-                      <span className="font-black text-base" style={{ color: T.text }}>{game.opponent}</span>
+                    {/* VS 블록 */}
+                    <div className="flex items-center justify-between">
+                      {/* SSG */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="rounded-full mb-1.5 flex items-center justify-center"
+                          style={{ width: 52, height: 52, background: T.accentBg, border: `2px solid ${T.accentBorder}` }}>
+                          <Pepe mood="cheering" size={40} />
+                        </div>
+                        <span className="text-[12px] font-black" style={{ color: T.accent }}>SSG</span>
+                      </div>
+                      {/* 스코어 */}
+                      <div className="flex items-center gap-2 px-2">
+                        <span style={{ ...HERO_NUM, fontSize: '40px', color: T.accent }}>{game.ssgScore ?? '-'}</span>
+                        <span className="text-base font-bold" style={{ color: T.zinc400 }}>:</span>
+                        <span style={{ ...HERO_NUM, fontSize: '40px', color: T.text }}>{game.oppScore ?? '-'}</span>
+                      </div>
+                      {/* 상대 */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="rounded-full mb-1.5 flex items-center justify-center"
+                          style={{ width: 52, height: 52, background: T.zinc100, border: `2px solid ${T.zinc200}` }}>
+                          <span className="text-[15px] font-black" style={{ color: T.textSecondary }}>
+                            {(game.opponent || '').slice(0, 2)}
+                          </span>
+                        </div>
+                        <span className="text-[12px] font-black" style={{ color: T.textSecondary }}>{game.opponent}</span>
+                      </div>
                     </div>
                   </>
                 )}
@@ -1632,13 +1660,22 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
 
         {total > 0 && (
           <div>
+            {/* 히어로 숫자 — 우세 쪽 강조 */}
+            <div className="flex items-end justify-between mb-1.5">
+              <div className="flex items-baseline gap-1">
+                <span style={{ ...HERO_NUM, fontSize: '28px', color: T.accent }}>{winPct}</span>
+                <span className="text-[13px] font-black" style={{ color: T.accent }}>%</span>
+                <span className="text-[11px] font-bold ml-1" style={{ color: T.textMuted }}>SSG 승</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[11px] font-bold mr-1" style={{ color: T.textMuted }}>{opponent || '상대'} 승</span>
+                <span style={{ ...HERO_NUM, fontSize: '28px', color: T.zinc400 }}>{losePct}</span>
+                <span className="text-[13px] font-black" style={{ color: T.zinc400 }}>%</span>
+              </div>
+            </div>
             <div className="flex h-2 rounded-full overflow-hidden" style={{ background: T.zinc200 }}>
               <div style={{ width: `${winPct}%`, background: T.accent }} />
               <div style={{ width: `${losePct}%`, background: T.zinc400 }} />
-            </div>
-            <div className="flex justify-between text-[11px] mt-1.5 font-bold">
-              <span style={{ color: T.accent }}>SSG {winPct}%</span>
-              <span style={{ color: T.textMuted }}>{opponent || '상대'} {losePct}%</span>
             </div>
           </div>
         )}
@@ -2380,6 +2417,7 @@ function TossDashboard() {
                   onSegChange={setStadiumSeg}
                   picked={stadiumPicked}
                   onPick={setStadiumPicked}
+                  nickname={userProfile?.nickname}
                 />
                 <StadiumLogList logs={stadiumLogs} seg={stadiumSeg} picked={stadiumPicked} />
               </>

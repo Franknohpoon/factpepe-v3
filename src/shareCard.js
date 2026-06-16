@@ -341,6 +341,97 @@ export async function generateHitCard({ predictedRate, actual, ssgScore, oppScor
   return canvas.toDataURL('image/png');
 }
 
+// ─── 직관 승률 카드 (티켓형) ───────────────────────────────────────
+// 레퍼런스: 빨강 배경 + 큰 승률 숫자 + 페페 + 점선 퍼포레이션 + 세로 브랜드.
+
+export async function generateStadiumCard({ winRate, wins, losses, draws, nickname, scope = '전체' }) {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const STRIP = 150;            // 우측 흰색 티켓 스트립 폭
+  const perfX = W - STRIP;      // 점선 위치
+
+  // 좌측 레드 패널
+  ctx.fillStyle = ACCENT;
+  ctx.fillRect(0, 0, perfX, H);
+
+  // 크로스해치 텍스처 (흰색 저투명)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, perfX, H); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 2;
+  for (let i = -H; i < perfX + H; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i, H); ctx.lineTo(i + H, 0); ctx.stroke();
+  }
+  ctx.restore();
+
+  // 우측 흰 스트립
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(perfX, 0, STRIP, H);
+
+  // 점선 퍼포레이션
+  ctx.save();
+  ctx.setLineDash([14, 12]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(perfX, 30); ctx.lineTo(perfX, H - 30); ctx.stroke();
+  ctx.restore();
+
+  // 상단 라벨
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = '700 30px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('나의 직관 승률', 70, 150);
+  if (nickname) {
+    ctx.font = '600 24px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText(nickname, 70, 192);
+  }
+
+  // 거대 승률 숫자
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 320px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${winRate}`, 50, 540);
+  const numW = ctx.measureText(`${winRate}`).width;
+  ctx.font = '900 110px -apple-system, sans-serif';
+  ctx.fillText('%', 50 + numW + 10, 430);
+
+  // 전적
+  ctx.font = '700 34px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText(`${wins}승 ${losses}패${draws ? ` ${draws}무` : ''}`, 70, 620);
+
+  // 페페 (승률별 표정)
+  const mood = winRate >= 60 ? 'excited' : winRate >= 45 ? 'happy' : 'sad';
+  const pepe = await loadPepeImg(mood);
+  if (pepe) {
+    const size = 340;
+    ctx.drawImage(pepe, (perfX - size) / 2, H - size - 90, size, size);
+  }
+
+  // 우측 세로 브랜드 텍스트
+  ctx.save();
+  ctx.translate(perfX + STRIP / 2, H / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TEXT_DARK;
+  ctx.font = '900 56px -apple-system, sans-serif';
+  ctx.fillText('팩트페페', 0, 0);
+  ctx.fillStyle = TEXT_MUTED;
+  ctx.font = '700 26px -apple-system, sans-serif';
+  ctx.fillText('SSG 랜더스 직관', -260, -8);
+  ctx.fillStyle = ACCENT;
+  ctx.font = '800 26px -apple-system, sans-serif';
+  ctx.fillText(scope, 300, 0);
+  ctx.restore();
+
+  return canvas.toDataURL('image/png');
+}
+
 // ─── 공유 실행 ──────────────────────────────────────────────────────
 
 export async function shareOrDownload(dataUrl, filename = 'factpepe-card.png') {
