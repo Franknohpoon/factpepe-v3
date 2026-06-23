@@ -36,6 +36,8 @@ const QuickLineup = () => {
   const [publishing, setPublishing] = useState(false);
   const [publishedAt, setPublishedAt] = useState(null);
   const [error, setError] = useState('');
+  const [autoFetching, setAutoFetching] = useState(false);
+  const [autoFetchMsg, setAutoFetchMsg] = useState('');
   const textareaRef = useRef(null);
 
   // 인증 복원 (토큰 보관 시 — 만료는 서버가 쓰기 시 검증)
@@ -81,6 +83,45 @@ const QuickLineup = () => {
       setPinError('인증 서버 연결 실패');
     } finally {
       setAuthing(false);
+    }
+  };
+
+  // 네이버스포츠 API에서 오늘 SSG 라인업 자동 불러오기 (메인앱과 동일 엔드포인트)
+  // 결과를 트윗 textarea에 채워 기존 파서/발행 흐름을 그대로 활용한다.
+  const handleAutoFetch = async () => {
+    setAutoFetching(true);
+    setAutoFetchMsg('');
+    setError('');
+    try {
+      const res = await fetch('/api/lineup-auto?preview=1&token=factpepe-lineup-2026');
+      const data = await res.json();
+
+      // 라인업 미발표여도 상대팀/선발은 받을 수 있음
+      if (data.opponent) setOpponent(data.opponent);
+
+      if (!data.ok) {
+        const msgs = {
+          no_game: '오늘 SSG 경기가 없습니다.',
+          lineup_not_ready: '타순 미발표 — 상대팀/선발만 채웠어요. 타순은 트윗을 붙여넣으세요.',
+        };
+        // 선발투수만 있으면 한 줄로 텍스트박스에 표기
+        if (data.pitcher) setText((t) => (t.trim() ? t : `선발 ${data.pitcher}`));
+        setAutoFetchMsg('⚠️ ' + (msgs[data.reason] || data.message || data.error || '불러오기 실패'));
+        return;
+      }
+
+      // 라인업 객체 → 파서가 인식하는 트윗 텍스트로 직렬화
+      const lines = [];
+      if (data.pitcher) lines.push(`선발 ${data.pitcher}`);
+      (data.players || []).slice(0, 9).forEach((p, i) => {
+        lines.push(`${i + 1}. ${p.name}${p.pos ? ` (${p.pos})` : ''}`);
+      });
+      setText(lines.join('\n'));
+      setAutoFetchMsg(`✅ ${data.gameId || ''} 라인업 ${data.players?.length || 0}명 + 선발 채움 — 확인 후 발행하세요.`);
+    } catch (err) {
+      setAutoFetchMsg('❌ 서버 오류: ' + err.message);
+    } finally {
+      setAutoFetching(false);
     }
   };
 
@@ -266,6 +307,29 @@ const QuickLineup = () => {
             </p>
           </div>
         )}
+
+        {/* 네이버 자동 불러오기 */}
+        <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '12px' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black tracking-widest" style={{ color: T.textMuted }}>자동 채움</span>
+            {autoFetchMsg && (
+              <span className="text-[10px] font-bold truncate ml-2"
+                style={{ color: autoFetchMsg.startsWith('✅') ? T.success : autoFetchMsg.startsWith('⚠️') ? T.warning : T.error }}>
+                {autoFetchMsg}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={handleAutoFetch}
+            disabled={autoFetching}
+            className="w-full py-2.5 rounded-lg font-black text-sm transition-all disabled:opacity-40 active:scale-95"
+            style={{ background: T.accentBg, color: T.accent, border: `1px solid ${T.accentBorder}` }}>
+            {autoFetching ? '⏳ 네이버에서 불러오는 중…' : '⚡ 네이버에서 라인업 자동 불러오기'}
+          </button>
+          <p className="text-[10px] mt-1.5" style={{ color: T.zinc400 }}>
+            오늘 SSG 라인업·선발·상대팀을 자동 채워요. 미발표면 받을 수 있는 것만 채워집니다.
+          </p>
+        </div>
 
         {/* 상대팀 입력 */}
         <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '12px' }}>
