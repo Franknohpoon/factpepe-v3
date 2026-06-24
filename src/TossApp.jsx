@@ -16,7 +16,8 @@ import {
   dateInputToKey, keyToDateInput, keyToDisplay, getTodayIso,
 } from './stadiumLog.js';
 import { EATS_ZONES, EATS_CATEGORIES, getCategoryMeta } from './EatsAdmin.jsx';
-import { closeApp, onBackEvent } from './tossBridge.js';
+import { closeApp, onBackEvent, requestPushAgreement } from './tossBridge.js';
+import { PUSH_SCENARIOS, PUSH_LOCAL_KEY, PUSH_ANALYTICS_PATH } from './notifications.js';
 
 /**
  * 토스 미니앱 단일 대시보드
@@ -2311,6 +2312,91 @@ const ChatCard = ({ todayKey, hasVoted, nickname }) => {
   );
 };
 
+// ─── 알림 동의 카드 (MY 탭) ──────────────────────────────────────
+// 토스 스마트 발송 동의문 코드(VITE_PUSH_TPL_*)가 있으면 동의 UI를 띄움.
+// 토스 웹뷰 밖(브라우저)에서는 unsupported로 표시만 됨.
+const NotificationCard = () => {
+  const [state, setState] = useState({}); // { game: 'newAgreement'|'alreadyAgreed'|'agreementRejected'|'unsupported'|null }
+  const [busyId, setBusyId] = useState(null);
+
+  // localStorage에서 이전 응답 복원
+  useEffect(() => {
+    const next = {};
+    Object.keys(PUSH_SCENARIOS).forEach((id) => {
+      const v = typeof window !== 'undefined' ? localStorage.getItem(PUSH_LOCAL_KEY(id)) : null;
+      if (v) next[id] = v;
+    });
+    setState(next);
+  }, []);
+
+  const request = async (scenario) => {
+    if (!scenario.templateCode) {
+      setState((s) => ({ ...s, [scenario.id]: 'unsupported' }));
+      return;
+    }
+    setBusyId(scenario.id);
+    try {
+      const result = await requestPushAgreement(scenario.templateCode);
+      setState((s) => ({ ...s, [scenario.id]: result }));
+      localStorage.setItem(PUSH_LOCAL_KEY(scenario.id), result);
+      // 분석: 카운터 +1 (best-effort)
+      runTransaction(dbRef(database, PUSH_ANALYTICS_PATH(scenario.id, result)), (v) => (v || 0) + 1).catch(() => {});
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const list = Object.values(PUSH_SCENARIOS).filter((s) => s.templateCode);
+  if (list.length === 0) return null; // 동의문 코드 미설정이면 카드 자체를 숨김
+
+  return (
+    <div style={cardStyle}>
+      <ColorBar color={T.brand} />
+      <div className="pl-5 pr-4 py-4">
+        <SectionHead
+          kicker="알림"
+          kickerColor={T.brand}
+          title="경기 알림 받기"
+          meta="언제든 끌 수 있어요"
+        />
+        <p className="text-[12px] mb-3" style={{ color: T.textMuted }}>
+          토스 앱 푸시로 SSG 경기 소식을 받아보세요. 토스 → 알림 설정에서 언제든 바꿀 수 있어요.
+        </p>
+        <div className="space-y-2">
+          {list.map((s) => {
+            const v = state[s.id];
+            const agreed = v === 'newAgreement' || v === 'alreadyAgreed';
+            const rejected = v === 'agreementRejected';
+            const unsupported = v === 'unsupported';
+            const label = agreed ? '✓ 알림 받는 중' : rejected ? '받지 않음 — 다시 받기' : unsupported ? '토스 앱에서만 동작' : '알림 받기';
+            return (
+              <button key={s.id} onClick={() => !unsupported && request(s)}
+                disabled={busyId === s.id || unsupported}
+                className="w-full text-left rounded-xl p-3 transition-colors"
+                style={{
+                  background: agreed ? T.brandBg : T.zinc100,
+                  border: `1px solid ${agreed ? T.brandBorder : 'transparent'}`,
+                  opacity: unsupported ? 0.6 : 1,
+                }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[13px] font-extrabold" style={{ color: agreed ? T.brand : T.text }}>{s.label}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: T.textMuted }}>{s.description}</div>
+                  </div>
+                  <span className="text-[11px] font-bold flex-shrink-0 ml-2"
+                    style={{ color: agreed ? T.brand : rejected ? T.warning : T.textSecondary }}>
+                    {busyId === s.id ? '요청 중…' : label}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── 메인 대시보드 ─────────────────────────────────────────────────
 function TossDashboard() {
   const todayKey = getTodayKey();
@@ -2564,6 +2650,7 @@ function TossDashboard() {
                   onSetNickname={() => setShowNicknameModal(true)}
                   onOpenLeaderboard={() => setShowLeaderboard(true)}
                 />
+                <NotificationCard />
                 <RecapCard yesterdayPrediction={yesterdayPrediction} stats={predictionStats} nickname={userProfile?.nickname} userStats={userProfile?.stats} />
 
                 {/* 정책 링크 — MY 탭 하단 */}

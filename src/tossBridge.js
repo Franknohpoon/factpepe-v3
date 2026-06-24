@@ -9,7 +9,7 @@
  *   → 반환된 cleanup 으로 해제. (토스 밖에서는 no-op)
  */
 
-import { closeView, graniteEvent } from '@apps-in-toss/web-framework';
+import { closeView, graniteEvent, requestNotificationAgreement } from '@apps-in-toss/web-framework';
 
 /** 미니앱 종료 */
 export async function closeApp() {
@@ -37,4 +37,29 @@ export function onBackEvent(handler) {
     console.warn('[bridge] backEvent unsupported:', e?.message);
     return () => {};
   }
+}
+
+/**
+ * 푸시 알림 동의 UI를 요청한다.
+ * 토스 콘솔 '스마트 발송 > 알림 동의문'에서 발급받은 templateCode 필요.
+ * @param {string} templateCode
+ * @returns {Promise<'newAgreement'|'alreadyAgreed'|'agreementRejected'|'unsupported'>}
+ */
+export function requestPushAgreement(templateCode) {
+  return new Promise((resolve) => {
+    if (!templateCode) { resolve('unsupported'); return; }
+    try {
+      requestNotificationAgreement({
+        options: { templateCode },
+        onEvent: ({ type }) => resolve(type),
+        onError: (err) => {
+          console.warn('[bridge] requestNotificationAgreement error:', err?.message || err);
+          resolve('unsupported');
+        },
+      });
+    } catch (e) {
+      console.warn('[bridge] requestNotificationAgreement unsupported:', e?.message);
+      resolve('unsupported');
+    }
+  });
 }

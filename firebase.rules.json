@@ -300,6 +300,14 @@
         "$date": {
           "$uid": { ".write": "newData.isNumber() && newData.val() >= 0" }
         }
+      },
+      "push": {
+        "$scenario": {
+          ".validate": "$scenario.matches(/^[a-z_]{1,20}$/)",
+          "$result": {
+            ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10000000 && $result.matches(/^(newAgreement|alreadyAgreed|agreementRejected|unsupported)$/)"
+          }
+        }
       }
     }
   }
