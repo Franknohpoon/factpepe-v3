@@ -127,6 +127,62 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
+      // ── 라이브 투표 생성/마감/결과 ──
+      // payload: { dateKey, action: 'create'|'close'|'resolve', poll? , pollId?, correctIdx? }
+      case 'pollCreate': {
+        const { dateKey, poll } = payload;
+        if (!/^[0-9]{8}$/.test(String(dateKey || ''))) {
+          return res.status(400).json({ ok: false, error: '날짜 형식 오류' });
+        }
+        if (!poll || !poll.question || !Array.isArray(poll.options) || poll.options.length < 2 || poll.options.length > 6) {
+          return res.status(400).json({ ok: false, error: 'poll 형식 오류 (질문 + 옵션 2~6개)' });
+        }
+        const now = Date.now();
+        const safePoll = {
+          inning: Number(poll.inning) || 0,
+          side: poll.side === 'top' ? 'top' : poll.side === 'bot' ? 'bot' : '',
+          question: clampStr(poll.question, 60),
+          options: poll.options.slice(0, 6).map((o) => clampStr(o, 20)),
+          status: 'open',
+          correctIdx: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        // pollId: 동일 이닝 중복 방지를 위해 타임스탬프 사용
+        const pollId = `p${now}`;
+        await fbWrite(`livePolls/${dateKey}/${pollId}`, 'PUT', safePoll);
+        return res.status(200).json({ ok: true, pollId });
+      }
+
+      case 'pollClose': {
+        const { dateKey, pollId } = payload;
+        if (!dateKey || !pollId) return res.status(400).json({ ok: false, error: 'dateKey/pollId 필수' });
+        await fbWrite(`livePolls/${dateKey}/${pollId}`, 'PATCH', {
+          status: 'closed', closedAt: Date.now(), updatedAt: Date.now(),
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'pollResolve': {
+        const { dateKey, pollId, correctIdx } = payload;
+        if (!dateKey || !pollId) return res.status(400).json({ ok: false, error: 'dateKey/pollId 필수' });
+        const idx = Number(correctIdx);
+        if (!Number.isFinite(idx) || idx < 0 || idx > 9) {
+          return res.status(400).json({ ok: false, error: 'correctIdx 0~9' });
+        }
+        await fbWrite(`livePolls/${dateKey}/${pollId}`, 'PATCH', {
+          status: 'resolved', correctIdx: idx, resolvedAt: Date.now(), updatedAt: Date.now(),
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      case 'pollDelete': {
+        const { dateKey, pollId } = payload;
+        if (!dateKey || !pollId) return res.status(400).json({ ok: false, error: 'dateKey/pollId 필수' });
+        await fbWrite(`livePolls/${dateKey}/${pollId}`, 'DELETE');
+        return res.status(200).json({ ok: true });
+      }
+
       // ── 먹거리 삭제 ──
       case 'eatsDelete': {
         const { id } = payload;

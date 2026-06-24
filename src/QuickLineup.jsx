@@ -4,6 +4,7 @@ import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import EatsAdmin from './EatsAdmin.jsx';
 import PredictionAdmin from './PredictionAdmin.jsx';
+import LivePollAdmin from './LivePollAdmin.jsx';
 
 /**
  * 운영자 초고속 라인업 입력 모드
@@ -247,7 +248,10 @@ const QuickLineup = () => {
             <div>
               <div className="font-black text-sm" style={{ color: T.text }}>운영자 콘솔</div>
               <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>
-                {tab === 'lineup' ? '트윗 붙여넣고 즉시 발행' : tab === 'eats' ? '랜더스필드 먹거리 관리' : '오늘의 팩트 승률 설정'}
+                {tab === 'lineup' ? '트윗 붙여넣고 즉시 발행'
+                  : tab === 'eats' ? '랜더스필드 먹거리 관리'
+                  : tab === 'prediction' ? '오늘의 팩트 승률 설정'
+                  : '이닝별 라이브 투표 운영'}
               </div>
             </div>
           </div>
@@ -277,6 +281,14 @@ const QuickLineup = () => {
             }}>
             📊 예측
           </button>
+          <button onClick={() => setTab('live')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'live' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'live' ? T.accent : 'transparent'}`,
+            }}>
+            ⚡ 라이브
+          </button>
           <button onClick={() => setTab('eats')}
             className="flex-1 py-2.5 text-xs font-bold transition-all"
             style={{
@@ -293,6 +305,8 @@ const QuickLineup = () => {
           <EatsAdmin token={token} />
         ) : tab === 'prediction' ? (
           <PredictionAdmin token={token} />
+        ) : tab === 'live' ? (
+          <LivePollAdmin token={token} />
         ) : (
           <>
         {/* 발행 완료 안내 */}

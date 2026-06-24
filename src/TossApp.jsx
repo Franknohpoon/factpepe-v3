@@ -1684,6 +1684,132 @@ const VoteCard = ({ todayKey, opponent, onVoteChange }) => {
   );
 };
 
+// ─── 라이브 투표 섹션 (이닝별, 운영자 생성) ────────────────────────
+// 진행 중(open) 또는 마감/확정된 폴 중 오늘자만. 사용자 1표/폴.
+const LivePollSection = ({ todayKey }) => {
+  const userId = useRef(getUserId()).current;
+  const [polls, setPolls] = useState({});
+  const [myVotes, setMyVotes] = useState({}); // { pollId: idx }
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    const unsub = onValue(dbRef(database, `livePolls/${todayKey}`), (snap) => setPolls(snap.val() || {}));
+    return () => unsub();
+  }, [todayKey]);
+
+  // 내 투표 이력 (모든 폴의 users/{userId} 일괄 구독은 비용 큼 → 폴 변경 시 한 번만 fetch)
+  useEffect(() => {
+    let alive = true;
+    const ids = Object.keys(polls);
+    if (ids.length === 0) { setMyVotes({}); return; }
+    Promise.all(ids.map((id) =>
+      fetch(`https://factpepe-1bb4f-default-rtdb.asia-southeast1.firebasedatabase.app/livePolls/${todayKey}/${id}/users/${userId}.json`)
+        .then((r) => r.json()).catch(() => null)
+        .then((v) => [id, v?.idx ?? null])
+    )).then((pairs) => {
+      if (!alive) return;
+      const m = {};
+      pairs.forEach(([id, idx]) => { if (idx != null) m[id] = idx; });
+      setMyVotes(m);
+    });
+    return () => { alive = false; };
+  }, [polls, todayKey, userId]);
+
+  const visible = Object.entries(polls)
+    .map(([id, v]) => ({ id, ...v }))
+    .filter((p) => p.status === 'open' || p.status === 'closed' || p.status === 'resolved')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 4); // 화면 과부하 방지
+
+  if (visible.length === 0) return null;
+
+  const submit = async (poll, idx) => {
+    if (poll.status !== 'open') return;
+    if (myVotes[poll.id] !== undefined) return; // 1표
+    setBusyId(poll.id);
+    try {
+      // 1) 사용자 기록
+      await set(dbRef(database, `livePolls/${todayKey}/${poll.id}/users/${userId}`), { idx, at: Date.now() });
+      // 2) 카운트 +1
+      await runTransaction(dbRef(database, `livePolls/${todayKey}/${poll.id}/counts/${idx}`), (v) => (v || 0) + 1);
+      setMyVotes((m) => ({ ...m, [poll.id]: idx }));
+    } catch (e) {
+      console.error('[livePoll] vote failed:', e);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div style={cardStyle}>
+      <ColorBar color={T.accent} />
+      <div className="pl-5 pr-4 py-4">
+        <SectionHead
+          kicker="SSG · 라이브"
+          kickerColor={T.accent}
+          title="이닝 투표"
+          meta={`${visible.length}건`}
+        />
+        <div className="space-y-3">
+          {visible.map((p) => {
+            const total = Object.values(p.counts || {}).reduce((s, v) => s + (v || 0), 0);
+            const myIdx = myVotes[p.id];
+            const voted = myIdx !== undefined;
+            const closed = p.status !== 'open';
+            return (
+              <div key={p.id} className="rounded-xl p-3" style={{ background: T.zinc100 }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold" style={{ color: T.accent }}>
+                    {p.inning}회{p.side === 'top' ? '초' : '말'}
+                  </span>
+                  <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>
+                    {p.status === 'resolved' ? '결과 발표' : p.status === 'closed' ? '마감' : `${total}명`}
+                  </span>
+                </div>
+                <p className="text-[13px] font-bold mb-2" style={{ color: T.text }}>{p.question}</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(p.options || []).map((opt, i) => {
+                    const c = (p.counts || {})[i] || 0;
+                    const pct = total > 0 ? Math.round((c / total) * 100) : 0;
+                    const isMine = myIdx === i;
+                    const isCorrect = p.status === 'resolved' && p.correctIdx === i;
+                    const isWrong = p.status === 'resolved' && isMine && p.correctIdx !== i;
+                    const showBar = voted || closed;
+                    return (
+                      <button key={i} onClick={() => submit(p, i)}
+                        disabled={voted || closed || busyId === p.id}
+                        className="relative overflow-hidden rounded-lg text-left transition-colors disabled:cursor-default"
+                        style={{
+                          background: isCorrect ? T.accent : isWrong ? T.zinc300 : T.card,
+                          border: `1px solid ${isMine ? T.accentBorder : 'transparent'}`,
+                        }}>
+                        {showBar && pct > 0 && !isCorrect && (
+                          <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'rgba(206,17,65,0.10)' }} />
+                        )}
+                        <div className="relative flex items-center justify-between px-3 py-2">
+                          <span className="text-[12px] font-bold" style={{ color: isCorrect ? '#fff' : T.text }}>{opt}</span>
+                          {showBar && (
+                            <span className="text-[11px] font-black" style={{ color: isCorrect ? '#fff' : T.textMuted }}>{pct}%</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {p.status === 'resolved' && voted && (
+                  <p className="text-[11px] font-bold mt-1.5" style={{ color: p.correctIdx === myIdx ? T.success : T.textMuted }}>
+                    {p.correctIdx === myIdx ? '🎯 적중!' : '아쉬워요 — 다음 이닝에 도전!'}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── 먹거리 섹션 (대시보드) ─────────────────────────────────────────
 // 운영자가 사전 등록한 가게 노출. active=false 가게는 숨김.
 // 토스페이 적립 가게를 상단 강조 (장기 리워드 연동 목표).
@@ -2400,6 +2526,7 @@ function TossDashboard() {
             {tab === 'home' && (
               <>
                 {!isOffDay && <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />}
+                {!isOffDay && <LivePollSection todayKey={todayKey} />}
                 <PredictionCard prediction={effectivePrediction} isNext={isOffDay} nextGame={nextGameMeta} />
                 <VideoCard prediction={effectivePrediction} />
                 <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />
