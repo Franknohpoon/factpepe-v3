@@ -89,6 +89,94 @@ async function fetchPrediction(dateCompact) {
   return await res.json();
 }
 
+/**
+ * 룰 기반 하이라이트 생성 — LLM 없이 점수/결과/홈원정으로 한 줄 카피 작성.
+ * 추후 LLM 토글로 교체 가능. source: 'auto-rule'.
+ */
+function generateHighlight(game, dateDisplay) {
+  const { ssgScore, oppScore, opponent, isHome, result } = game;
+  const diff = (ssgScore ?? 0) - (oppScore ?? 0);
+  const absDiff = Math.abs(diff);
+  const total = (ssgScore ?? 0) + (oppScore ?? 0);
+
+  let headline, summary, tone, pepeQuote;
+
+  if (result === 'win') {
+    tone = 'excited';
+    if (oppScore === 0 && ssgScore >= 1) {
+      headline = '완봉승의 여유';
+      summary = `${ssgScore}:0 완봉 ${isHome ? '홈' : '원정'} 승리`;
+      pepeQuote = '오늘 우리 투수, 완벽했어요!';
+    } else if (absDiff >= 7) {
+      headline = '시원한 대승';
+      summary = `${ssgScore}:${oppScore} 7점차 이상 대승`;
+      pepeQuote = '이런 날만 같아라!';
+    } else if (absDiff >= 4) {
+      headline = '여유 있는 승리';
+      summary = `${ssgScore}:${oppScore} ${isHome ? '홈' : '원정'} 안정적 승리`;
+      pepeQuote = '안심하고 본 경기였어요';
+    } else if (absDiff === 1) {
+      headline = '짜릿한 1점차';
+      summary = `${ssgScore}:${oppScore} 끝까지 손에 땀`;
+      pepeQuote = '심장 떨어질 뻔!';
+    } else {
+      headline = '오늘도 승리';
+      summary = `${ssgScore}:${oppScore} vs ${opponent} 승리`;
+      pepeQuote = '랜더스 화이팅!';
+    }
+  } else if (result === 'lose') {
+    tone = 'sad';
+    if (ssgScore === 0 && oppScore >= 1) {
+      headline = '쓰린 영봉패';
+      summary = `0:${oppScore} ${isHome ? '홈' : '원정'} 영봉패`;
+      pepeQuote = '내일은 우리가 이길 거예요';
+    } else if (absDiff >= 7) {
+      headline = '아쉬운 한 판';
+      summary = `${ssgScore}:${oppScore} 큰 점수차 패배`;
+      pepeQuote = '잊고, 다시 시작해요';
+    } else if (absDiff === 1) {
+      headline = '1점차 패배';
+      summary = `${ssgScore}:${oppScore} 정말 아쉬운 끝`;
+      pepeQuote = '다음엔 우리가요';
+    } else {
+      headline = '아쉬운 결과';
+      summary = `${ssgScore}:${oppScore} vs ${opponent}`;
+      pepeQuote = '괜찮아요, 다음 경기!';
+    }
+  } else if (result === 'draw') {
+    tone = 'analyzing';
+    headline = '팽팽한 무승부';
+    summary = `${ssgScore}:${oppScore} ${total >= 10 ? '난타전' : ''} 무승부`;
+    pepeQuote = '비긴 것도 잘한 경기죠';
+  } else {
+    return null; // cancelled/pending은 하이라이트 생성 X
+  }
+
+  return {
+    date: dateDisplay,
+    opponent,
+    ssgScore: ssgScore ?? 0,
+    oppScore: oppScore ?? 0,
+    isHome: !!isHome,
+    result,
+    headline: headline.slice(0, 15),
+    summary: summary.slice(0, 40),
+    tone,
+    pepeQuote: pepeQuote.slice(0, 30),
+    source: 'auto-rule',
+    createdAt: Date.now(),
+  };
+}
+
+/** highlights/{date} 저장 (PUT, 기존 manual은 보존 안 함 — 룰은 매번 덮어씀) */
+async function saveHighlight(dateCompact, highlight) {
+  await fetch(`${FIREBASE_URL}/highlights/${dateCompact}.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(highlight),
+  });
+}
+
 /** prediction에 result 부분 업데이트 */
 async function patchResult(dateCompact, resultData) {
   await fetch(`${FIREBASE_URL}/prediction/${dateCompact}.json`, {
@@ -308,10 +396,19 @@ export default async function handler(req, res) {
     let saved = false;
     let stats = null;
 
+    // 룰 기반 하이라이트 (win/lose/draw만)
+    const highlight = generateHighlight(gameResult, dateInfo.display);
+
     let voteProcessed = null;
     if (shouldSave) {
       // result 부분 업데이트
       await patchResult(dateInfo.compact, resultRecord);
+
+      // 하이라이트 저장 (생성 가능한 경기만)
+      if (highlight) {
+        try { await saveHighlight(dateInfo.compact, highlight); }
+        catch (e) { console.error('[recap] saveHighlight failed:', e); }
+      }
 
       // 누적 통계 업데이트 (적중 판정 가능할 때만)
       if (correct !== null && prediction) {
@@ -336,6 +433,7 @@ export default async function handler(req, res) {
       result: resultRecord,
       stats,
       voteProcessed,
+      highlight,
     });
   } catch (err) {
     console.error('[recap-auto] error:', err);

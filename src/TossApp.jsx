@@ -1068,6 +1068,52 @@ const NicknameModal = ({ initial = '', onSave, onClose }) => {
 };
 
 // ─── 회고 카드 (어제 예측 vs 실제 결과 + 시즌 누적 적중률) ─────────
+// ─── 어제의 하이라이트 카드 (recap-auto 룰 생성) ───────────────────
+// highlights/{yesterday} 가 있을 때만 노출. 페페 한 마디 + 한 줄 요약.
+const HighlightCard = ({ highlight }) => {
+  if (!highlight) return null;
+  const mood = highlight.tone === 'excited' ? 'excited'
+    : highlight.tone === 'happy' ? 'happy'
+    : highlight.tone === 'sad' ? 'sad'
+    : 'analyzing';
+  const barColor = highlight.result === 'win' ? T.accent : highlight.result === 'lose' ? T.zinc400 : T.brand;
+  const accentText = highlight.result === 'win' ? T.accent : highlight.result === 'lose' ? T.textSecondary : T.brand;
+
+  return (
+    <div style={cardStyle}>
+      <ColorBar color={barColor} />
+      <div className="relative pl-5 pr-4 py-4 overflow-hidden">
+        <div style={{ position: 'absolute', inset: 0, background: crossHatch(highlight.result === 'win' ? 'rgba(206,17,65,0.05)' : 'rgba(139,149,161,0.05)'), pointerEvents: 'none' }} />
+        <div className="relative">
+          <SectionHead
+            kicker={`어제 · ${highlight.date?.slice(5) || ''}`}
+            kickerColor={accentText}
+            title={highlight.headline}
+            meta={highlight.result === 'win' ? '승' : highlight.result === 'lose' ? '패' : '무'}
+          />
+          <div className="flex items-end justify-between mb-2">
+            <div className="flex items-baseline gap-1.5">
+              <span style={{ ...HERO_NUM, fontSize: '40px', color: accentText }}>{highlight.ssgScore}</span>
+              <span className="text-[16px] font-black" style={{ color: T.zinc400 }}>:</span>
+              <span style={{ ...HERO_NUM, fontSize: '40px', color: T.text }}>{highlight.oppScore}</span>
+              <span className="text-[12px] font-bold ml-1.5" style={{ color: T.textMuted }}>
+                vs {highlight.opponent} · {highlight.isHome ? '홈' : '원정'}
+              </span>
+            </div>
+            <Pepe mood={mood} size={56} />
+          </div>
+          <p className="text-[13px] mt-1" style={{ color: T.textSecondary }}>{highlight.summary}</p>
+          {highlight.pepeQuote && (
+            <p className="text-[12px] mt-2 px-3 py-2 rounded-lg" style={{ background: T.zinc100, color: T.textSecondary }}>
+              🐸 {highlight.pepeQuote}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RecapCard = ({ yesterdayPrediction, stats, nickname, userStats }) => {
   // 어제 결과 데이터가 있을 때만 표시
   const result = yesterdayPrediction?.result;
@@ -2403,6 +2449,7 @@ function TossDashboard() {
   const userId = useRef(getUserId()).current;
   const [prediction, setPrediction] = useState(null);
   const [nextGamePrediction, setNextGamePrediction] = useState(null); // 휴식일용 다음 경기 분석
+  const [highlight, setHighlight] = useState(null); // 어제의 하이라이트
   const [todayGame, setTodayGame] = useState(null); // games/{today} — 오늘 경기 마스터(상대/홈원정)
   const [lineup, setLineup] = useState(null);
   const [lineupYesterday, setLineupYesterday] = useState(null);
@@ -2489,6 +2536,9 @@ function TossDashboard() {
     const unsubNG = onValue(dbRef(database, 'lineup/noGame'), (snap) => {
       setNoGame(snap.val());
     });
+    const unsubHL = onValue(dbRef(database, `highlights/${yesterdayKey}`), (snap) => {
+      setHighlight(snap.val());
+    });
     const unsubYP = onValue(dbRef(database, `prediction/${yesterdayKey}`), (snap) => {
       setYesterdayPrediction(snap.val());
     });
@@ -2501,7 +2551,7 @@ function TossDashboard() {
     const unsubStadium = onValue(dbRef(database, `users/${userId}/stadiumLog`), (snap) => {
       setStadiumLogs(snap.val());
     });
-    return () => { unsubP(); unsubTG(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); unsubStadium(); };
+    return () => { unsubP(); unsubTG(); unsubL(); unsubLY(); unsubNG(); unsubYP(); unsubStats(); unsubUser(); unsubStadium(); unsubHL(); };
   }, [todayKey, yesterdayKey, userId]);
 
   const saveNickname = async (newNickname) => {
@@ -2613,6 +2663,7 @@ function TossDashboard() {
               <>
                 {!isOffDay && <VoteCard todayKey={todayKey} opponent={opponent} onVoteChange={setMyVote} />}
                 {!isOffDay && <LivePollSection todayKey={todayKey} />}
+                <HighlightCard highlight={highlight} />
                 <PredictionCard prediction={effectivePrediction} isNext={isOffDay} nextGame={nextGameMeta} />
                 <VideoCard prediction={effectivePrediction} />
                 <LineupBoard lineup={lineup} lineupYesterday={lineupYesterday} noGame={noGame} />

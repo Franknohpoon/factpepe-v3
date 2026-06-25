@@ -139,6 +139,14 @@
       }
     },
 
+    "highlights": {
+      ".read": true,
+      "$date": {
+        ".write": "$date.matches(/^[0-9]{8}$/)",
+        ".validate": "!newData.exists() || (newData.hasChildren(['result']) && newData.child('result').val().length <= 12 && (!newData.hasChild('headline') || newData.child('headline').val().length <= 20) && (!newData.hasChild('summary') || newData.child('summary').val().length <= 60) && (!newData.hasChild('pepeQuote') || newData.child('pepeQuote').val().length <= 40) && (!newData.hasChild('tone') || newData.child('tone').val().length <= 20))"
+      }
+    },
+
     "stadiumEats": {
       ".read": true,
       "$shopId": {
