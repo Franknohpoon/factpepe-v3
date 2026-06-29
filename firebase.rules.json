@@ -155,6 +155,16 @@
       }
     },
 
+    "liveMonitor": {
+      ".read": true,
+      "$date": {
+        ".validate": "$date.matches(/^[0-9]{8}$/)",
+        "$ts": {
+          ".write": "newData.hasChild('ts') && newData.child('ts').isNumber() && $ts.matches(/^[0-9]+$/)"
+        }
+      }
+    },
+
     "livePolls": {
       ".read": true,
       "$date": {
