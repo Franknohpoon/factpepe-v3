@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { parseLineupText } from './App.jsx';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
-import EatsAdmin from './EatsAdmin.jsx';
 import PredictionAdmin from './PredictionAdmin.jsx';
 import LivePollAdmin from './LivePollAdmin.jsx';
 
@@ -30,7 +29,7 @@ const QuickLineup = () => {
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [authing, setAuthing] = useState(false);
-  const [tab, setTab] = useState('lineup'); // 'lineup' | 'eats'
+  const [tab, setTab] = useState('lineup'); // 'lineup' | 'prediction' | 'live'
   const [text, setText] = useState('');
   const [opponent, setOpponent] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -249,7 +248,6 @@ const QuickLineup = () => {
               <div className="font-black text-sm" style={{ color: T.text }}>운영자 콘솔</div>
               <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>
                 {tab === 'lineup' ? '트윗 붙여넣고 즉시 발행'
-                  : tab === 'eats' ? '랜더스필드 먹거리 관리'
                   : tab === 'prediction' ? '오늘의 팩트 승률 설정'
                   : '이닝별 라이브 투표 운영'}
               </div>
@@ -289,21 +287,11 @@ const QuickLineup = () => {
             }}>
             ⚡ 라이브
           </button>
-          <button onClick={() => setTab('eats')}
-            className="flex-1 py-2.5 text-xs font-bold transition-all"
-            style={{
-              color: tab === 'eats' ? T.accent : T.textMuted,
-              borderBottom: `2px solid ${tab === 'eats' ? T.accent : 'transparent'}`,
-            }}>
-            🍽️ 먹거리
-          </button>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
-        {tab === 'eats' ? (
-          <EatsAdmin token={token} />
-        ) : tab === 'prediction' ? (
+        {tab === 'prediction' ? (
           <PredictionAdmin token={token} />
         ) : tab === 'live' ? (
           <LivePollAdmin token={token} />
