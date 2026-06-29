@@ -1807,7 +1807,7 @@ const LivePollSection = ({ todayKey }) => {
               <div key={p.id} className="rounded-xl p-3" style={{ background: T.zinc100 }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold" style={{ color: T.accent }}>
-                    {p.inning}회{p.side === 'top' ? '초' : '말'}
+                    {p.autoCreated ? '오늘 경기' : `${p.inning}회${p.side === 'top' ? '초' : '말'}`}
                   </span>
                   <span className="text-[10px] font-bold" style={{ color: T.textMuted }}>
                     {p.status === 'resolved' ? '결과 발표' : p.status === 'closed' ? '마감' : `${total}명`}

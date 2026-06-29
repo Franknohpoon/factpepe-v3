@@ -168,6 +168,54 @@ function generateHighlight(game, dateDisplay) {
   };
 }
 
+/**
+ * 어제의 자동 라이브 폴들에 정답 자동 확정.
+ * autoKind 기준으로 ssgScore/oppScore 등을 룰로 매핑.
+ * 운영자가 만든 폴(autoCreated 없음)은 건드리지 않음.
+ */
+async function resolveAutoPolls(dateCompact, game) {
+  try {
+    const r = await fetch(`${FIREBASE_URL}/livePolls/${dateCompact}.json`);
+    if (!r.ok) return { processed: 0 };
+    const polls = await r.json();
+    if (!polls) return { processed: 0 };
+
+    let processed = 0;
+    for (const [pollId, poll] of Object.entries(polls)) {
+      if (!poll?.autoCreated) continue;
+      if (poll.status === 'resolved') continue;
+      if (poll.correctIdx != null) continue;
+
+      let correctIdx = null;
+      if (poll.autoKind === 'totalRuns') {
+        // 옵션: ['0~2점', '3~4점', '5~6점', '7점+']
+        const s = game.ssgScore ?? 0;
+        if (s <= 2) correctIdx = 0;
+        else if (s <= 4) correctIdx = 1;
+        else if (s <= 6) correctIdx = 2;
+        else correctIdx = 3;
+      }
+      if (correctIdx == null) continue;
+
+      await fetch(`${FIREBASE_URL}/livePolls/${dateCompact}/${pollId}.json`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'resolved',
+          correctIdx,
+          resolvedAt: Date.now(),
+          updatedAt: Date.now(),
+        }),
+      });
+      processed++;
+    }
+    return { processed };
+  } catch (e) {
+    console.error('[recap] resolveAutoPolls failed:', e);
+    return { processed: 0, error: e.message };
+  }
+}
+
 /** highlights/{date} 저장 (PUT, 기존 manual은 보존 안 함 — 룰은 매번 덮어씀) */
 async function saveHighlight(dateCompact, highlight) {
   await fetch(`${FIREBASE_URL}/highlights/${dateCompact}.json`, {
@@ -410,6 +458,11 @@ export default async function handler(req, res) {
         catch (e) { console.error('[recap] saveHighlight failed:', e); }
       }
 
+      // 자동 라이브 폴 정답 확정 (운영자 미발행 대비 Phase A)
+      var autoPollResolved = null;
+      try { autoPollResolved = await resolveAutoPolls(dateInfo.compact, gameResult); }
+      catch (e) { console.error('[recap] resolveAutoPolls failed:', e); }
+
       // 누적 통계 업데이트 (적중 판정 가능할 때만)
       if (correct !== null && prediction) {
         stats = await updateStats(correct, prediction.source);
@@ -434,6 +487,7 @@ export default async function handler(req, res) {
       stats,
       voteProcessed,
       highlight,
+      autoPollResolved: typeof autoPollResolved !== 'undefined' ? autoPollResolved : null,
     });
   } catch (err) {
     console.error('[recap-auto] error:', err);
