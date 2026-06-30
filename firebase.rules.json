@@ -170,6 +170,8 @@
       "$date": {
         ".validate": "$date.matches(/^[0-9]{8}$/)",
         "$pollId": {
+          ".write": true,
+          ".validate": "!newData.exists() || (newData.hasChild('question') && newData.child('question').isString() && newData.child('question').val().length <= 80 && (!newData.hasChild('status') || newData.child('status').val().length <= 12))",
           "users": {
             "$uid": {
               ".write": "newData.hasChildren(['idx', 'at']) && newData.child('idx').isNumber() && newData.child('idx').val() >= 0 && newData.child('idx').val() < 10 && $uid.matches(/^[a-zA-Z0-9_]{4,80}$/)"
