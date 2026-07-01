@@ -3528,6 +3528,13 @@ const POS_ALIASES = {
 
 const CIRCLED_NUM = { '①': '1', '②': '2', '③': '3', '④': '4', '⑤': '5', '⑥': '6', '⑦': '7', '⑧': '8', '⑨': '9' };
 
+// 야구 스코어카드 수비 포지션 코드 (현장 기자 속기 표기)
+// 예) "4정준재 6박성한 D최정 …" → 4=2루수, 6=유격수, D=지명타자 …
+const POS_CODE = {
+  '1': '투수', '2': '포수', '3': '1루수', '4': '2루수', '5': '3루수',
+  '6': '유격수', '7': '좌익수', '8': '중견수', '9': '우익수', 'D': '지명타자',
+};
+
 const detectPos = (token) => {
   if (!token) return '';
   const clean = token.replace(/[()[\]·\-:：.\s]/g, '').trim();
@@ -3535,11 +3542,60 @@ const detectPos = (token) => {
 };
 
 /**
+ * 현장 기자 속기 포맷 파서 — "SSG 라인업. 4정준재 6박성한 D최정 … 선발 김민준."
+ * 이름 앞 숫자/D = 수비 포지션 코드, 타순 = 나열 순서.
+ * 인식 성공 시 { pitcher, players } 반환, 실패 시 null.
+ */
+const parseByPositionCode = (text) => {
+  // 선발투수 추출
+  let pitcher = '';
+  const pm = text.match(/선발\s*(?:투수)?\s*[:：\-]?\s*([가-힣]{2,5})/);
+  if (pm) pitcher = pm[1].trim();
+
+  // 키워드·선발 구절 제거 후 "코드+이름" 토큰 추출
+  const cleaned = text
+    .replace(/선발\s*(?:투수)?\s*[:：\-]?\s*[가-힣]{2,5}/g, ' ')
+    .replace(/(SSG|SK|랜더스|라인업|엔트리|명단|타선|오더|타순|vs|VS|선발)/gi, ' ');
+  const tokens = cleaned.match(/([1-9D])\s*([가-힣]{2,4})/g) || [];
+
+  const batters = [];
+  for (const tok of tokens) {
+    const mm = tok.match(/([1-9D])\s*([가-힣]{2,4})/);
+    if (!mm) continue;
+    const code = mm[1].toUpperCase();
+    const name = mm[2];
+    if (code === '1') continue; // 투수(1)는 지명타자제 타순 제외
+    batters.push({ name, pos: POS_CODE[code] || '', code });
+  }
+
+  if (batters.length < 5) return null; // 이 포맷 아님
+
+  // 배팅오더 번호(1~9 오름차순 나열) 오인 방지 — 이 포맷의 강한 신호:
+  //  · 'D'(지명타자) 코드가 있거나
+  //  · 코드가 1~9 순차 증가가 아님(수비 위치라 뒤죽박죽)
+  const codes = batters.map((b) => b.code);
+  const hasD = codes.includes('D');
+  const digits = codes.filter((c) => c !== 'D').map(Number);
+  const ascending = digits.every((n, i) => i === 0 || n > digits[i - 1]);
+  if (!hasD && ascending) return null; // 타순 번호 형식일 가능성 → fallback
+
+  return { pitcher, players: batters.slice(0, 9).map((b) => ({ name: b.name, pos: b.pos })) };
+};
+
+/**
  * 트윗/OCR 라인업 텍스트 → { pitcher, players: [{name, pos}] }
- * 지원 포맷: "1. 최지훈 (중)", "1번 최지훈 중견수", "① 최지훈 중", "1) 최지훈-중견수" 등
+ * 지원 포맷:
+ *  A) 현장 속기: "4정준재 6박성한 D최정 … 선발 김민준" (포지션 코드)
+ *  B) 타순 번호: "1. 최지훈 (중)", "1번 최지훈 중견수", "① 최지훈 중" 등
  */
 const parseLineupText = (raw) => {
   const text = (raw || '').replace(/[①②③④⑤⑥⑦⑧⑨]/g, (m) => CIRCLED_NUM[m]);
+
+  // 포맷 A 우선 시도 (현장 기자 속기)
+  const byCode = parseByPositionCode(text);
+  if (byCode) return byCode;
+
+  // 포맷 B fallback (기존 타순 번호 줄 기반)
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   const players = [];
   let pitcher = '';

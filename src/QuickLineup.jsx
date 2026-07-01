@@ -46,6 +46,19 @@ const QuickLineup = () => {
     if (saved) { setToken(saved); setAuthed(true); }
   }, []);
 
+  // URL 프리필 — /q?paste=<라인업 텍스트> (iOS 단축어/공유용)
+  // X에서 트윗 텍스트 공유 → 단축어가 이 URL을 열면 textarea 자동 채움 + 파싱
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('paste');
+      if (p) {
+        setText(p);
+        // URL에서 paste 제거 (새로고침 시 재적용 방지)
+        window.history.replaceState(null, '', '/q');
+      }
+    } catch (e) { /* noop */ }
+  }, []);
+
   // 텍스트 변경 시 자동 파싱
   useEffect(() => {
     if (!text.trim()) {
