@@ -3552,21 +3552,32 @@ const parseByPositionCode = (text) => {
   const pm = text.match(/선발\s*(?:투수)?\s*[:：\-]?\s*([가-힣]{2,5})/);
   if (pm) pitcher = pm[1].trim();
 
-  // 키워드·선발 구절 제거 후 "코드+이름" 토큰 추출
+  // 키워드·선발 구절·등록/말소 꼬리 제거
   const cleaned = text
     .replace(/선발\s*(?:투수)?\s*[:：\-]?\s*[가-힣]{2,5}/g, ' ')
-    .replace(/(SSG|SK|랜더스|라인업|엔트리|명단|타선|오더|타순|vs|VS|선발)/gi, ' ');
-  const tokens = cleaned.match(/([1-9D])\s*([가-힣]{2,4})/g) || [];
+    .replace(/등록[\s\S]*/g, ' ')   // "등록 …, 말소 …" 이후 잘라냄
+    .replace(/말소[\s\S]*/g, ' ')
+    .replace(/(SSG|SK|랜더스|라인업|엔트리|명단|타선|오더|타순|vs|VS|선발)/gi, ' ')
+    .replace(/[.,·]/g, ' ');
 
-  const batters = [];
-  for (const tok of tokens) {
-    const mm = tok.match(/([1-9D])\s*([가-힣]{2,4})/);
-    if (!mm) continue;
-    const code = mm[1].toUpperCase();
-    const name = mm[2];
-    if (code === '1') continue; // 투수(1)는 지명타자제 타순 제외
-    batters.push({ name, pos: POS_CODE[code] || '', code });
-  }
+  // 접두(코드+이름)·접미(이름+코드) 각각 추출 후 더 많이 잡히는 쪽 채택
+  const extract = (mode) => {
+    const re = mode === 'prefix'
+      ? /(?:^|\s)([1-9D])\s*([가-힣]{2,4})(?=\s|$)/g
+      : /(?:^|\s)([가-힣]{2,4})\s*([1-9D])(?=\s|$)/g;
+    const out = [];
+    let m;
+    while ((m = re.exec(cleaned)) !== null) {
+      const code = (mode === 'prefix' ? m[1] : m[2]).toUpperCase();
+      const name = mode === 'prefix' ? m[2] : m[1];
+      if (code === '1') continue; // 투수 코드는 타순 제외 (DH제)
+      out.push({ name, pos: POS_CODE[code] || '', code });
+    }
+    return out;
+  };
+  const pre = extract('prefix');
+  const suf = extract('suffix');
+  const batters = pre.length >= suf.length ? pre : suf;
 
   if (batters.length < 5) return null; // 이 포맷 아님
 
