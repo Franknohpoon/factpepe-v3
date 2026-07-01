@@ -362,16 +362,19 @@ const QuickLineup = () => {
         {/* 트윗 텍스트 영역 */}
         <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '12px' }}>
           <label className="text-[10px] font-black tracking-widest mb-1.5 block" style={{ color: T.textMuted }}>
-            트윗 텍스트 (붙여넣기)
+            X·트윗 텍스트 붙여넣기
           </label>
+          <p className="text-[10px] mb-1.5" style={{ color: T.zinc400 }}>
+            X 기자 형식도 자동 인식해요 — "SSG 라인업. 4정준재 6박성한 D최정 …" / "최인호7 페라자9 …"
+          </p>
           <textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`1. 최지훈 (중)\n2. 박성한 (유)\n...\n선발 베니지아노`}
-            rows={6}
+            placeholder={`SSG 라인업. 4정준재 6박성한 D최정 7김재환 9에레디아 3오태곤 5고명준 8김성욱 2조형우. 선발 김민준.`}
+            rows={5}
             className="w-full text-sm font-medium rounded-lg py-2.5 px-3 resize-y leading-relaxed"
-            style={{ background: T.zinc100, color: T.text, minHeight: '120px' }}
+            style={{ background: T.zinc100, color: T.text, minHeight: '110px' }}
           />
           {text && (
             <button
