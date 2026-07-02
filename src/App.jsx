@@ -235,6 +235,56 @@ const STYLE_PRESETS = {
     overlay: 'linear-gradient(180deg, rgba(10,26,15,0.92) 0%, rgba(6,15,8,0.95) 100%)',
     shadow: '0 8px 40px rgba(74,222,128,0.15)',
   },
+  gold: {
+    label: 'GOLD',
+    bg: '#0c0a06',
+    accent: '#E8C56A',
+    text: '#fff',
+    sub: 'rgba(232,197,106,0.5)',
+    row: 'rgba(232,197,106,0.05)',
+    border: 'rgba(232,197,106,0.18)',
+    gradient: 'linear-gradient(180deg, #14100a 0%, #0a0805 100%)',
+    overlay: 'linear-gradient(180deg, rgba(20,16,10,0.9) 0%, rgba(10,8,5,0.95) 100%)',
+    shadow: '0 8px 40px rgba(232,197,106,0.22)',
+  },
+  cream: {
+    label: 'CREAM',
+    bg: '#FFF8EB',
+    accent: '#CE1141',
+    text: '#1a0a0a',
+    sub: 'rgba(26,10,10,0.4)',
+    row: 'rgba(206,17,65,0.05)',
+    border: 'rgba(206,17,65,0.12)',
+    gradient: 'linear-gradient(180deg, #FFF8EB 0%, #FBEFD9 100%)',
+    overlay: 'linear-gradient(180deg, rgba(255,248,235,0.9) 0%, rgba(251,239,217,0.95) 100%)',
+    shadow: '0 8px 40px rgba(206,17,65,0.15)',
+    dark: true,
+  },
+  navy: {
+    label: 'NAVY',
+    bg: '#0b1730',
+    accent: '#ff3b5c',
+    text: '#fff',
+    sub: 'rgba(255,255,255,0.4)',
+    row: 'rgba(255,255,255,0.05)',
+    border: 'rgba(120,150,220,0.15)',
+    gradient: 'linear-gradient(180deg, #0f1e3d 0%, #08122a 100%)',
+    overlay: 'linear-gradient(180deg, rgba(15,30,61,0.9) 0%, rgba(8,18,42,0.95) 100%)',
+    shadow: '0 8px 40px rgba(20,40,90,0.5)',
+  },
+  vintage: {
+    label: 'RETRO',
+    bg: '#ECE1CC',
+    accent: '#A32636',
+    text: '#2b1d14',
+    sub: 'rgba(43,29,20,0.45)',
+    row: 'rgba(163,38,54,0.06)',
+    border: 'rgba(163,38,54,0.15)',
+    gradient: 'linear-gradient(180deg, #EFE6D2 0%, #E3D5BB 100%)',
+    overlay: 'linear-gradient(180deg, rgba(236,225,204,0.9) 0%, rgba(227,213,187,0.95) 100%)',
+    shadow: '0 8px 40px rgba(120,90,50,0.3)',
+    dark: true,
+  },
 };
 
 // 사진 압축 (모바일 업로드 최적화)
@@ -1389,10 +1439,10 @@ const LineupTab = () => {
         {/* 스타일 프리셋 + 로고 + 텍스트 */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2.5">
           <p className="text-zinc-500 text-[10px] font-bold tracking-wider">STYLE</p>
-          <div className="flex gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {Object.entries(STYLE_PRESETS).map(([k, v]) => (
               <button key={k} onClick={() => { setStylePreset(k); setAccentColor(''); }}
-                className={`flex-1 py-2 rounded-lg text-xs font-black tracking-wider transition-all ${stylePreset === k ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
+                className={`py-2 rounded-lg text-xs font-black tracking-wider transition-all ${stylePreset === k ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}>
                 {v.label}
               </button>
             ))}
