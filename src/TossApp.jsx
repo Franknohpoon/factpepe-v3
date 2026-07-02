@@ -8,7 +8,7 @@ import { trackSession, trackAction, ACTIONS, FUNNEL } from './tossAnalytics.js';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import { BADGES, LEVELS, computeBadges, computeLevel, nextLevelProgress, getBadge } from './badges.js';
-import { generateStatsCard, generateHitCard, generateStadiumCard, shareOrDownload } from './shareCard.js';
+import { generateStatsCard, generateHitCard, generateStadiumCard, generateLineupCard, shareOrDownload } from './shareCard.js';
 import {
   STADIUM_ZONES, getZoneLabel, getZoneEmoji,
   fetchGameByDate, saveStadiumLog, deleteStadiumLog,
@@ -1544,6 +1544,26 @@ const NoGameBox = ({ nextGame }) => {
 // 라인업 콘텐츠 (정상/partial/fallback 톤 분기 — 크림 테마)
 const LineupContent = ({ lineup, tone = 'normal', isFallback = false, fallbackDate }) => {
   const players = Object.values(lineup.players || {});
+  const [shareBusy, setShareBusy] = useState(false);
+
+  const shareLineup = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    try {
+      const url = await generateLineupCard({
+        opponent: lineup.opponent,
+        date: lineup.date,
+        isHome: typeof lineup.isHome === 'boolean' ? lineup.isHome : undefined,
+        pitcher: lineup.pitcher,
+        players: players.map((p) => ({ name: p.name, pos: p.pos })),
+      });
+      await shareOrDownload(url, `factpepe-lineup-${(lineup.date || '').replace(/\./g, '')}.png`);
+    } catch (e) {
+      console.error('[lineup share]', e);
+    } finally {
+      setShareBusy(false);
+    }
+  };
 
   // 톤별 스타일 (밝은 테마)
   const toneStyles = {
@@ -1628,6 +1648,15 @@ const LineupContent = ({ lineup, tone = 'normal', isFallback = false, fallbackDa
           <p className="text-xs text-center py-3" style={{ color: T.textMuted }}>타순 미발표</p>
         )}
       </div>
+
+      {/* 라인업 카드 저장/공유 — 정식 라인업(타순 있음)일 때만 */}
+      {tone === 'normal' && players.length > 0 && (
+        <button onClick={shareLineup} disabled={shareBusy}
+          className="w-full mt-3 py-2.5 rounded-lg text-[13px] font-bold transition-colors disabled:opacity-50"
+          style={{ background: T.accentBg, color: T.accent, border: `1px solid ${T.accentBorder}` }}>
+          {shareBusy ? '이미지 만드는 중…' : '📤 라인업 카드 저장·공유'}
+        </button>
+      )}
     </div>
   );
 };

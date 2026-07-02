@@ -432,6 +432,103 @@ export async function generateStadiumCard({ winRate, wins, losses, draws, nickna
   return canvas.toDataURL('image/png');
 }
 
+// ─── 선발 라인업 카드 ──────────────────────────────────────────────
+// 크림 배경 + SSG 레드 헤더 + SP + 9타순. theme으로 색 변형.
+
+const POS_ABBR_CARD = {
+  '포수': 'C', '1루수': '1B', '2루수': '2B', '3루수': '3B', '유격수': 'SS',
+  '좌익수': 'LF', '중견수': 'CF', '우익수': 'RF', '지명타자': 'DH', '투수': 'P',
+};
+
+const LINEUP_THEMES = {
+  cream: { bg: CREAM, headBar: ACCENT, head: '#fff', num: ACCENT, name: TEXT_DARK, pos: TEXT_MUTED, row: '#FFFFFF', rowAlt: '#FBF2E2', spBg: 'rgba(206,17,65,0.10)' },
+  noir:  { bg: '#0d0d10', headBar: ACCENT, head: '#fff', num: '#ff3b5c', name: '#fff', pos: 'rgba(255,255,255,0.45)', row: 'rgba(255,255,255,0.04)', rowAlt: 'rgba(255,255,255,0.07)', spBg: 'rgba(206,17,65,0.22)' },
+  navy:  { bg: '#0b1730', headBar: '#ff3b5c', head: '#fff', num: '#ff3b5c', name: '#fff', pos: 'rgba(255,255,255,0.45)', row: 'rgba(255,255,255,0.05)', rowAlt: 'rgba(255,255,255,0.08)', spBg: 'rgba(255,59,92,0.2)' },
+};
+
+export async function generateLineupCard({ opponent, date, isHome, pitcher, players = [], theme = 'cream' }) {
+  const t = LINEUP_THEMES[theme] || LINEUP_THEMES.cream;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // 배경
+  ctx.fillStyle = t.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 헤더 (레드 블록 + 줄무늬) ──
+  roundRect(ctx, 40, 44, W - 80, 176, 24);
+  ctx.fillStyle = t.headBar;
+  ctx.fill();
+  ctx.save();
+  roundRect(ctx, 40, 44, W - 80, 176, 24); ctx.clip();
+  drawDiagonalStripes(ctx, 40, 44, W - 80, 176, 'rgba(255,255,255,0.12)', 22, 5);
+  ctx.restore();
+
+  ctx.fillStyle = t.head;
+  ctx.textAlign = 'left';
+  ctx.font = '800 30px -apple-system, sans-serif';
+  ctx.fillText('SSG 선발 라인업', 76, 108);
+  ctx.font = '600 24px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  const homeLabel = isHome === true ? '홈 · ' : isHome === false ? '원정 · ' : '';
+  const vs = opponent ? `${homeLabel}vs ${opponent}` : '';
+  ctx.fillText(vs, 76, 150);
+  if (date) {
+    ctx.textAlign = 'right';
+    ctx.font = '700 24px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText(date, W - 76, 108);
+  }
+
+  // ── 선발투수 ──
+  let y = 250;
+  if (pitcher) {
+    roundRect(ctx, 40, y, W - 80, 66, 16);
+    ctx.fillStyle = t.spBg; ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.font = '800 22px -apple-system, sans-serif';
+    ctx.fillStyle = t.num;
+    ctx.fillText('SP', 72, y + 42);
+    ctx.font = '700 30px -apple-system, sans-serif';
+    ctx.fillStyle = t.name;
+    ctx.fillText(pitcher, 130, y + 43);
+    y += 84;
+  }
+
+  // ── 타순 9명 ──
+  const rows = players.slice(0, 9);
+  const rowH = Math.min(74, Math.floor((H - y - 120) / Math.max(rows.length, 1)));
+  rows.forEach((p, i) => {
+    const ry = y + i * rowH;
+    roundRect(ctx, 40, ry, W - 80, rowH - 8, 14);
+    ctx.fillStyle = i % 2 === 0 ? t.row : t.rowAlt;
+    ctx.fill();
+    // 타순 번호
+    ctx.textAlign = 'left';
+    ctx.font = '800 26px -apple-system, sans-serif';
+    ctx.fillStyle = t.num;
+    ctx.fillText(`${i + 1}`, 72, ry + (rowH - 8) / 2 + 9);
+    // 이름
+    ctx.font = '700 30px -apple-system, sans-serif';
+    ctx.fillStyle = p.name ? t.name : t.pos;
+    ctx.fillText(p.name || '-', 128, ry + (rowH - 8) / 2 + 10);
+    // 포지션 약어
+    ctx.textAlign = 'right';
+    ctx.font = '700 22px -apple-system, sans-serif';
+    ctx.fillStyle = t.pos;
+    ctx.fillText(POS_ABBR_CARD[p.pos] || p.pos || '', W - 76, ry + (rowH - 8) / 2 + 8);
+  });
+
+  // ── 페페 + 브랜드 ──
+  const pepe = await loadPepeImg('cheering');
+  if (pepe) ctx.drawImage(pepe, 40, H - 150, 92, 92);
+  drawBrandFooter(ctx);
+
+  return canvas.toDataURL('image/png');
+}
+
 // ─── 공유 실행 ──────────────────────────────────────────────────────
 
 export async function shareOrDownload(dataUrl, filename = 'factpepe-card.png') {
