@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { parseLineupText } from './App.jsx';
+import { parseLineupText, AdminPage } from './App.jsx';
 import { T } from './tossTheme.js';
 import { Pepe } from './Pepe.jsx';
 import PredictionAdmin from './PredictionAdmin.jsx';
@@ -262,7 +262,8 @@ const QuickLineup = () => {
               <div className="text-[10px] font-bold" style={{ color: T.textMuted }}>
                 {tab === 'lineup' ? '트윗 붙여넣고 즉시 발행'
                   : tab === 'prediction' ? '오늘의 팩트 승률 설정'
-                  : '이닝별 라이브 투표 운영'}
+                  : tab === 'live' ? '이닝별 라이브 투표 운영'
+                  : '뉴스·매치업·응원톡·좌석·먹거리 관리'}
               </div>
             </div>
           </div>
@@ -300,9 +301,25 @@ const QuickLineup = () => {
             }}>
             ⚡ 라이브
           </button>
+          <button onClick={() => setTab('admin')}
+            className="flex-1 py-2.5 text-xs font-bold transition-all"
+            style={{
+              color: tab === 'admin' ? T.accent : T.textMuted,
+              borderBottom: `2px solid ${tab === 'admin' ? T.accent : 'transparent'}`,
+            }}>
+            🔧 관리
+          </button>
         </div>
       </header>
 
+      {tab === 'admin' ? (
+        /* 🔧 전체 관리 — 다크 셸(뉴스·매치업·응원톡·좌석·먹거리·트래픽) */
+        <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
+          <div className="max-w-3xl mx-auto px-4 py-5" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+            <AdminPage />
+          </div>
+        </div>
+      ) : (
       <main className="max-w-md mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
         {tab === 'prediction' ? (
           <PredictionAdmin token={token} />
@@ -442,6 +459,7 @@ const QuickLineup = () => {
           </>
         )}
       </main>
+      )}
     </div>
   );
 };

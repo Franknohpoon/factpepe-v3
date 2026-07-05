@@ -34,7 +34,7 @@ const uploadToCloudinary = async (file) => {
 
 // ─── 상수 ────────────────────────────────────────────────────────────
 
-const ADMIN_PASSWORD = 'landers2026'; // ← 변경 권장
+// 운영자 콘솔은 /q(서버 PIN 인증)로 일원화됨. 메인 웹앱에는 어드민 진입 없음.
 
 const SSG_PLAYERS = [
   // 타자
@@ -308,11 +308,7 @@ const compressImage = (file, maxWidth = 1200) =>
 
 function App() {
   const [activeTab, setActiveTab] = useState('news');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [tapCount, setTapCount] = useState(0);
-  const tapTimer = useRef(null);
 
   // 세션 시작 트래킹 (하루 한번)
   useEffect(() => {
@@ -332,18 +328,6 @@ function App() {
     runTransaction(dbRef(database, `analytics/daily/${today}/tabs/${activeTab}`), v => (v || 0) + 1).catch(() => {});
   }, [activeTab]);
 
-  const handleLogoTap = () => {
-    const next = tapCount + 1;
-    setTapCount(next);
-    clearTimeout(tapTimer.current);
-    if (next >= 5) {
-      setShowAdminLogin(true);
-      setTapCount(0);
-    } else {
-      tapTimer.current = setTimeout(() => setTapCount(0), 2000);
-    }
-  };
-
   // 하단 탭바에 표시할 주요 탭 (4개)
   const primaryTabs = [
     { id: 'news',   name: '뉴스',    emoji: '🐸', component: FactNewsTab },
@@ -357,18 +341,16 @@ function App() {
     { id: 'chant',    name: '응원가',  emoji: '🎵', component: ChantTab },
     { id: 'comic',    name: '4컷',     emoji: '🎨', component: ComicTab },
   ];
-  const baseTabs = [...primaryTabs, ...moreTabs];
-  const adminTab = { id: 'admin', name: '관리', emoji: '🔧', component: AdminPage };
-  const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
+  const tabs = [...primaryTabs, ...moreTabs];
   const ActiveComponent = tabs.find(t => t.id === activeTab)?.component;
-  const isMoreActive = moreTabs.some(t => t.id === activeTab) || activeTab === 'admin';
+  const isMoreActive = moreTabs.some(t => t.id === activeTab);
 
   return (
     <div className="min-h-screen bg-black">
       {/* 헤더: 브랜드 + 소셜 링크만 */}
       <header className="bg-[#1a0000] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="cursor-pointer select-none flex items-center gap-2.5" onClick={handleLogoTap}>
+          <div className="select-none flex items-center gap-2.5">
             <span className="text-xl leading-none">🐸</span>
             <span className="text-white font-black text-base tracking-tight">팩트페페</span>
           </div>
@@ -386,7 +368,7 @@ function App() {
       {/* 메인 콘텐츠 — 하단 탭바 높이(+safe area)만큼 여백 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"
         style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
-        {ActiveComponent && <ActiveComponent isAdmin={isAdmin} />}
+        {ActiveComponent && <ActiveComponent />}
       </main>
 
       {/* 푸터 — 데스크탑만 표시 */}
@@ -449,63 +431,14 @@ function App() {
                   </span>
                 </button>
               ))}
-              {isAdmin && (
-                <button onClick={() => { setActiveTab('admin'); setShowMoreMenu(false); }}
-                  className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
-                    activeTab === 'admin' ? 'text-white' : 'text-zinc-500 active:text-zinc-400'
-                  }`}>
-                  <span className="text-xl leading-none">🔧</span>
-                  <span className={`text-[10px] font-bold leading-none mt-0.5 ${activeTab === 'admin' ? 'text-red-400' : ''}`}>
-                    관리
-                  </span>
-                </button>
-              )}
             </div>
           </div>
         )}
       </nav>
 
-      {/* 어드민 로그인 모달 */}
-      {showAdminLogin && (
-        <AdminLoginModal
-          onClose={() => setShowAdminLogin(false)}
-          onSuccess={() => { setIsAdmin(true); setShowAdminLogin(false); setActiveTab('admin'); }}
-        />
-      )}
     </div>
   );
 }
-
-const AdminLoginModal = ({ onClose, onSuccess }) => {
-  const [pw, setPw] = useState('');
-  const [error, setError] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (pw === ADMIN_PASSWORD) { onSuccess(); }
-    else { setError(true); setPw(''); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border-2 border-red-600 rounded-2xl p-6 w-full max-w-sm">
-        <h2 className="text-white font-black text-xl mb-4 text-center">🔧 관리자 로그인</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(false); }}
-            placeholder="비밀번호" autoFocus
-            className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-lg p-3 text-center text-lg" />
-          {error && <p className="text-red-500 text-sm text-center">비밀번호가 틀렸습니다</p>}
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose}
-              className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-lg font-bold">취소</button>
-            <button type="submit"
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold">입력</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 // ─── 1. 팩트 뉴스 ────────────────────────────────────────────────────
 const FactPepeCard = () => {
@@ -3495,16 +3428,15 @@ const ComicTab = () => (
 );
 
 // ─── 7. 관리자 페이지 ────────────────────────────────────────────────
-const AdminPage = () => {
+export const AdminPage = () => {
   const [section, setSection] = useState('news');
 
+  // 라인업·예측은 /q의 서버 인증 버전(📡 라인업 / 📊 예측 탭)이 정본이라 여기선 제외.
   const tabs = [
     { id: 'factpepe',   label: '🐸 팩트페페' },
     { id: 'news',       label: '📰 뉴스 작성' },
-    { id: 'lineup',     label: '📋 라인업 입력' },
     { id: 'matchup',    label: '⚔️ 상대전적 입력' },
     { id: 'analytics',  label: '📈 트래픽' },
-    { id: 'prediction', label: '📊 오늘의 분석' },
     { id: 'chat',       label: '💬 응원 톡 관리' },
     { id: 'seatphoto',  label: '📷 시야 사진' },
     { id: 'pending',    label: '🔍 사진 검토' },
@@ -3525,10 +3457,8 @@ const AdminPage = () => {
       </div>
       {section === 'factpepe'   && <AdminFactPepe />}
       {section === 'news'       && <AdminNewsForm />}
-      {section === 'lineup'     && <AdminLineupForm />}
       {section === 'matchup'    && <AdminMatchupForm />}
       {section === 'analytics'  && <AdminAnalytics />}
-      {section === 'prediction' && <AdminPredictionForm />}
       {section === 'chat'       && <AdminChatModeration />}
       {section === 'seatphoto'  && <AdminSeatPhotoUpload />}
       {section === 'pending'    && <AdminPendingPhotos />}
