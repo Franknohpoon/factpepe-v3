@@ -7,7 +7,7 @@ export default defineConfig({
 
   brand: {
     displayName: '팩트페페:인천 야구',
-    primaryColor: '#CE1141', // SSG Red
+    primaryColor: '#D2123F', // SSG Red (스타디움 나이트)
     icon: 'https://factpepe-v3.vercel.app/toss-logo-red.png',
   },
 

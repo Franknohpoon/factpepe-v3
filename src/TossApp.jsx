@@ -39,8 +39,8 @@ const POS_ABBR = { '포수':'C', '1루수':'1B', '2루수':'2B', '3루수':'3B',
 // "사람이 만든" 느낌: 라운드 통일(카드 16 / 내부 10), 이모지 대신 색·타이포,
 // 왼쪽 정렬, 컬러바 3px로 카테고리 구분.
 
-const RADIUS = 16;       // 카드
-const RADIUS_IN = 10;    // 카드 내부 요소
+const RADIUS = 20;       // 카드 (스타디움 나이트)
+const RADIUS_IN = 14;    // 카드 내부 요소
 
 // 콘덴스드 athletic 숫자 스타일 (히어로 통계용) — 시스템 폰트로 근사
 const HERO_NUM = {
@@ -50,6 +50,9 @@ const HERO_NUM = {
   fontVariantNumeric: 'tabular-nums',
   fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
 };
+
+// 스타디움 나이트: 대형 히어로 숫자에만 살짝 이탤릭 스큐 (스포츠 다이내믹)
+const HERO_SKEW = 'skewX(-4deg)';
 
 // 대각선 크로스해치 텍스처 (히어로 배경)
 const crossHatch = (color, gap = 16) =>
@@ -395,22 +398,23 @@ const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick, nickna
           </p>
         ) : (
           <>
-            {/* 히어로 — 큰 승률 숫자 + 페페 + 크로스해치 텍스처 */}
-            <div className="relative rounded-2xl overflow-hidden mb-3" style={{ background: T.cardSoft, border: `1px solid ${T.cardBorder}` }}>
-              <div style={{ position: 'absolute', inset: 0, background: crossHatch('rgba(206,17,65,0.05)'), pointerEvents: 'none' }} />
-              <div className="relative flex items-center justify-between pl-4 pr-3 py-4">
+            {/* 히어로 — 스타디움 나이트: 다크 네이비 그라디언트 + 레드 글로우 */}
+            <div className="relative overflow-hidden mb-3" style={{ borderRadius: `${RADIUS}px`, background: T.heroBg, boxShadow: T.shadowCard }}>
+              {/* 대각선 텍스처 */}
+              <div style={{ position: 'absolute', inset: 0, opacity: 0.10, backgroundImage: `repeating-linear-gradient(115deg, ${T.accent} 0 2px, transparent 2px 26px)`, pointerEvents: 'none' }} />
+              {/* 레드 글로우 */}
+              <div style={{ position: 'absolute', right: -30, top: -30, width: 180, height: 180, borderRadius: '50%', background: T.heroGlow, filter: 'blur(2px)', pointerEvents: 'none' }} />
+              <div className="relative flex items-center justify-between pl-5 pr-4 py-5">
                 <div>
-                  <div className="text-[12px] font-bold mb-1" style={{ color: T.textMuted }}>나의 직관 승률</div>
-                  <div className="flex items-baseline gap-1">
-                    <span style={{ ...HERO_NUM, fontSize: '46px', color: T.accent }}>{stats.winRate}</span>
-                    <span className="text-[22px] font-black" style={{ color: T.accent }}>%</span>
-                    <span className="text-[13px] font-bold ml-2" style={{ color: T.textSecondary }}>
-                      {stats.wins}승 {stats.losses}패{stats.draws > 0 ? ` ${stats.draws}무` : ''}
-                    </span>
+                  <div className="text-[12px] font-bold mb-1" style={{ color: T.heroSub }}>나의 직관 승률</div>
+                  <div className="flex items-baseline gap-1" style={{ transform: HERO_SKEW }}>
+                    <span style={{ ...HERO_NUM, fontSize: '52px', color: T.heroText, lineHeight: 1 }}>{stats.winRate}</span>
+                    <span className="text-[24px] font-black" style={{ color: T.heroAccentText }}>%</span>
                   </div>
-                  {stats.bestWinStreak >= 2 && (
-                    <div className="text-[11px] font-bold mt-1" style={{ color: T.accent }}>최고 {stats.bestWinStreak}연승</div>
-                  )}
+                  <div className="text-[13px] font-bold mt-2" style={{ color: T.heroSub }}>
+                    {stats.wins}승 {stats.losses}패{stats.draws > 0 ? ` ${stats.draws}무` : ''}
+                    {stats.bestWinStreak >= 2 && ` · 최고 ${stats.bestWinStreak}연승`}
+                  </div>
                 </div>
                 <Pepe mood={heroMood} size={76} />
               </div>
@@ -423,9 +427,15 @@ const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick, nickna
                   });
                   shareOrDownload(url, `factpepe-stadium-${nickname || 'fan'}.png`);
                 }}
-                className="relative w-full py-2 text-[12px] font-bold border-t"
-                style={{ borderColor: T.cardBorder, color: T.accent, background: 'rgba(255,255,255,0.4)' }}>
-                📤 직관 승률 공유
+                className="relative w-full py-3 text-[13px] font-bold border-t flex items-center justify-center gap-1.5"
+                style={{ borderColor: T.heroShareBorder, color: T.heroText, background: T.heroShareBg }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <circle cx="18" cy="5" r="2.6" stroke={T.heroText} strokeWidth="1.8" />
+                  <circle cx="6" cy="12" r="2.6" stroke={T.heroText} strokeWidth="1.8" />
+                  <circle cx="18" cy="19" r="2.6" stroke={T.heroText} strokeWidth="1.8" />
+                  <path d="M8.3 10.7 15.7 6.3M8.3 13.3l7.4 4.4" stroke={T.heroText} strokeWidth="1.8" />
+                </svg>
+                직관 승률 공유
               </button>
             </div>
 
@@ -436,8 +446,8 @@ const StadiumLogCard = ({ logs, onOpen, seg, onSegChange, picked, onPick, nickna
                   const b = STADIUM_BADGES.find((x) => x.id === badgeId);
                   if (!b) return null;
                   return (
-                    <span key={b.id} className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md"
-                      style={{ background: T.accentBg, color: T.accent }}>
+                    <span key={b.id} className="inline-flex items-center gap-1 text-[11.5px] font-bold px-3 py-1.5 rounded-full"
+                      style={{ background: T.card, border: `1px solid ${T.cardBorder}`, color: T.textSecondary }}>
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.accent }} />
                       {b.label}
                     </span>
@@ -1132,7 +1142,7 @@ const RecapCard = ({ yesterdayPrediction, stats, nickname, userStats }) => {
   const pepeMood = isCorrect ? 'excited' : isWrong ? 'sad' : 'happy';
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '14px' }}>
+    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '20px', padding: '14px' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <Pepe mood={pepeMood} size={20} />
@@ -1359,7 +1369,7 @@ const VideoCard = ({ prediction }) => {
       rel="noopener noreferrer"
       onClick={handleClick}
       className="block active:opacity-80 transition-all"
-      style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '12px' }}
+      style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '20px', padding: '12px' }}
     >
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-1.5">
@@ -1471,7 +1481,7 @@ const LineupBoard = ({ lineup, lineupYesterday, noGame }) => {
 
   // ───── 상태 5: 완전 빈 상태 ─────
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '20px', padding: '24px', textAlign: 'center' }}>
       <Pepe mood="sleepy" size={48} style={{ marginBottom: '8px' }} />
       <p className="text-sm font-bold" style={{ color: T.textSecondary }}>오늘의 라인업을 불러오는 중입니다</p>
       <p className="text-xs mt-1" style={{ color: T.textMuted }}>경기 시작 1~2시간 전 자동 업데이트</p>
@@ -1494,7 +1504,7 @@ const InfoBox = ({ title, message }) => (
 const NoGameBox = ({ nextGame }) => {
   if (!nextGame) {
     return (
-      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '20px', padding: '24px', textAlign: 'center' }}>
         <Pepe mood="sleepy" size={64} style={{ marginBottom: '8px' }} />
         <p className="text-sm font-bold" style={{ color: T.text }}>오늘 SSG 경기 없는 날</p>
         <p className="text-xs mt-1" style={{ color: T.textMuted }}>잘 쉬세요!</p>
@@ -1511,7 +1521,7 @@ const NoGameBox = ({ nextGame }) => {
     : '';
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '16px', padding: '18px' }}>
+    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '20px', padding: '18px' }}>
       <div className="text-center mb-4">
         <Pepe mood="sleepy" size={64} style={{ marginBottom: '8px' }} />
         <p className="text-sm font-bold" style={{ color: T.text }}>오늘 SSG 경기 없는 날</p>
@@ -1608,7 +1618,7 @@ const LineupContent = ({ lineup, tone = 'normal', isFallback = false, fallbackDa
   const s = toneStyles[tone];
 
   return (
-    <div style={{ ...s.container, borderRadius: '16px', padding: '14px' }}>
+    <div style={{ ...s.container, borderRadius: '20px', padding: '14px' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           {tone !== 'fallback' && <Pepe mood={tone === 'partial' ? 'analyzing' : 'happy'} size={16} />}

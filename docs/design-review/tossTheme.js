@@ -16,45 +16,35 @@
 
 export const TOSS_THEME = {
   // ─── 배경/표면 ─────────────────────────────────────────────────────
-  bg: '#F5F6F9',                                  // 메인 배경 (옅은 그레이)
-  bgGradient: 'linear-gradient(180deg, #F5F6F9 0%, #FFFFFF 100%)',
+  bg: '#F9FAFB',                                  // 메인 배경 (옅은 그레이)
+  bgGradient: 'linear-gradient(180deg, #F9FAFB 0%, #FFFFFF 100%)',
 
   // ─── 카드 ─────────────────────────────────────────────────────────
   card: '#FFFFFF',
-  cardSoft: '#F5F6F9',                            // 카드 내부 보조 영역
-  cardBorder: '#ECEEF2',                          // 깔끔한 회색 보더
+  cardSoft: '#F9FAFB',                            // 카드 내부 보조 영역
+  cardBorder: '#F1F3F5',                          // 깔끔한 회색 보더
 
   // ─── 텍스트 위계 (토스 스타일) ─────────────────────────────────────
-  text: '#12151C',                                // Primary
-  textSecondary: '#4B5563',                       // Body
+  text: '#191F28',                                // Primary
+  textSecondary: '#4E5968',                       // Body
   textMuted: '#8B95A1',                           // Meta/Label
   textInvert: '#FFFFFF',
 
   // ─── 액센트 1: SSG 레드 (정체성·감정·결과) ────────────────────────
-  accent: '#D2123F',
-  accentHover: '#A80E32',
-  accentBg: 'rgba(210, 18, 63, 0.08)',
-  accentBgStrong: 'rgba(210, 18, 63, 0.14)',
-  accentBorder: 'rgba(210, 18, 63, 0.22)',
-  accentBar: '#D2123F',                           // 카드 좌측 3px 바 (정체성)
+  accent: '#CE1141',
+  accentHover: '#A40D34',
+  accentBg: 'rgba(206, 17, 65, 0.08)',
+  accentBgStrong: 'rgba(206, 17, 65, 0.14)',
+  accentBorder: 'rgba(206, 17, 65, 0.22)',
+  accentBar: '#CE1141',                           // 카드 좌측 4px 바 (정체성)
 
   // ─── 액센트 2: 토스 블루 (데이터·분석·신뢰) ───────────────────────
-  brand: '#2F6FED',
-  brandHover: '#1B57D0',
-  brandBg: 'rgba(47, 111, 237, 0.08)',
-  brandBgStrong: 'rgba(47, 111, 237, 0.14)',
-  brandBorder: 'rgba(47, 111, 237, 0.22)',
-  brandBar: '#2F6FED',                            // 카드 좌측 3px 바 (데이터)
-
-  // ─── 스타디움 나이트 히어로 (직관 승률 등 대형 히어로) ─────────────
-  heroBg: 'linear-gradient(135deg, #0B0F1A 0%, #161C2C 55%, #1D2338 100%)',
-  heroText: '#FFFFFF',
-  heroSub: 'rgba(255, 255, 255, 0.55)',
-  heroAccentText: '#FF5C7F',                       // 히어로 위 강조 숫자/기호
-  heroRing: '#D2123F',
-  heroShareBg: 'rgba(255, 255, 255, 0.06)',
-  heroShareBorder: 'rgba(255, 255, 255, 0.10)',
-  heroGlow: 'radial-gradient(circle, rgba(210, 18, 63, 0.35) 0%, rgba(210, 18, 63, 0) 70%)',
+  brand: '#3182F6',
+  brandHover: '#1B64DA',
+  brandBg: 'rgba(49, 130, 246, 0.08)',
+  brandBgStrong: 'rgba(49, 130, 246, 0.14)',
+  brandBorder: 'rgba(49, 130, 246, 0.22)',
+  brandBar: '#3182F6',                            // 카드 좌측 4px 바 (데이터)
 
   // ─── 페페 그린 (캐릭터 전용) ──────────────────────────────────────
   pepe: '#4FAF35',
@@ -80,16 +70,16 @@ export const TOSS_THEME = {
   chatOther: '#F2F4F6',
   chatOtherText: '#191F28',
 
-  // ─── 그림자 (스타디움 나이트: 부드러운 이중 그림자) ────────────────
-  shadow:       '0 2px 8px rgba(15, 20, 30, 0.06)',
-  shadowStrong: '0 20px 60px rgba(10, 14, 25, 0.18)',
-  shadowCard:   '0 1px 2px rgba(15, 20, 30, 0.04), 0 8px 20px rgba(15, 20, 30, 0.06)',
+  // ─── 그림자 (옅게, 토스 스타일) ────────────────────────────────────
+  shadow:       '0 2px 8px rgba(17, 24, 39, 0.06)',
+  shadowStrong: '0 12px 32px rgba(17, 24, 39, 0.12)',
+  shadowCard:   '0 1px 3px rgba(17, 24, 39, 0.05)',
 
-  // ─── 라운드 (스타디움 나이트: 카드 20 / 내부 14) ───────────────────
-  radiusSm: '10px',
-  radiusMd: '14px',
-  radiusLg: '20px',
-  radiusXl: '22px',
+  // ─── 라운드 ───────────────────────────────────────────────────────
+  radiusSm: '8px',
+  radiusMd: '12px',
+  radiusLg: '16px',
+  radiusXl: '20px',
 };
 
 export const T = TOSS_THEME;
