@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ref as dbRef, onValue } from 'firebase/database';
 import { database } from './App.jsx';
 import { T } from './tossTheme.js';
 import { adminWrite } from './adminApi.js';
+
+// 자동 계산 미리보기 엔드포인트 토큰 (라인업 자동 불러오기와 동일 게이트)
+const AUTO_TOKEN = 'factpepe-lineup-2026';
+const pct3 = (v) => (v == null ? '-' : (v * 1000).toFixed(0)); // 0.512 → 512
 
 /**
  * 오늘의 분석(팩트 승률) 운영자 관리 — /q '예측' 탭.
@@ -30,6 +34,11 @@ const PredictionAdmin = ({ token }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+  const [autoCalcing, setAutoCalcing] = useState(false);
+  const [autoCalcMsg, setAutoCalcMsg] = useState('');
+  const [factors, setFactors] = useState(null); // 자동 계산 근거(stats)
+  // 다른 날짜로 자동 계산 시(휴식일 등) 날짜 전환 후에도 값이 초기화되지 않도록 보류.
+  const pendingAuto = useRef(null);
 
   const dateKey = isoToKey(dateIso);
 
@@ -40,7 +49,12 @@ const PredictionAdmin = ({ token }) => {
     const unsubP = onValue(dbRef(database, `prediction/${dateKey}`), (s) => {
       const v = s.val();
       setCurrent(v);
-      if (v) {
+      if (pendingAuto.current) {
+        // 자동 계산으로 날짜를 전환한 직후 — 계산값을 유지(기존 등록값보다 우선)
+        const a = pendingAuto.current;
+        pendingAuto.current = null;
+        setWinRate(a.winRate); setReason(a.reason); setOpponent(a.opponent);
+      } else if (v) {
         setWinRate(Number(v.winRate) || 50);
         setReason(v.reason || '');
         setOpponent(v.opponent || '');
@@ -53,6 +67,40 @@ const PredictionAdmin = ({ token }) => {
 
   // 상대팀: 입력값 우선 → games → prediction
   const effOpponent = opponent || game?.opponent || current?.opponent || '';
+
+  // ⚡ 자동 계산 — 서버(prediction-auto) 미리보기로 승률·근거를 받아 폼에 채운다.
+  // 저장(발행)은 운영자가 검토 후 직접 누른다.
+  const handleAutoCalc = async () => {
+    setAutoCalcing(true); setAutoCalcMsg(''); setError(''); setSavedMsg('');
+    try {
+      const res = await fetch(`/api/prediction-auto?preview=1&token=${AUTO_TOKEN}`);
+      const data = await res.json();
+      if (!data.ok) {
+        const msgs = {
+          no_game: '오늘부터 4일 내 SSG 경기가 없어요.',
+          stats_not_ready: '경기 통계가 아직 발표 전이에요. 경기 당일 오후에 다시 시도하세요.',
+        };
+        setAutoCalcMsg('⚠️ ' + (msgs[data.reason] || data.message || data.error || '자동 계산 실패'));
+        return;
+      }
+      setFactors(data.stats || null);
+      // 계산 대상 날짜(휴식일이면 다음 경기일)로 맞추고 값 채움
+      const targetIso = (data.date || '').replaceAll('.', '-');
+      if (targetIso && targetIso !== dateIso) {
+        pendingAuto.current = { winRate: data.winRate, reason: data.reason || '', opponent: data.opponent || '' };
+        setDateIso(targetIso);
+      } else {
+        setWinRate(data.winRate);
+        setReason(data.reason || '');
+        if (data.opponent) setOpponent(data.opponent);
+      }
+      setAutoCalcMsg(`✅ ${data.date}${data.isToday ? '' : ' (다음 경기)'} · SSG ${data.isHome ? '홈' : '원정'} vs ${data.opponent} — 검토 후 발행하세요.`);
+    } catch (e) {
+      setAutoCalcMsg('❌ 서버 오류: ' + e.message);
+    } finally {
+      setAutoCalcing(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!effOpponent.trim()) { setError('상대팀을 입력하세요'); return; }
@@ -80,6 +128,31 @@ const PredictionAdmin = ({ token }) => {
     <div className="space-y-3">
       <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, boxShadow: T.shadowCard, borderRadius: '14px', padding: '14px' }}>
         <h3 className="font-black text-sm mb-3" style={{ color: T.text }}>📊 오늘의 분석 설정</h3>
+
+        {/* ⚡ 자동 계산 — 시즌 성적·최근 흐름·선발 ERA·홈 어드밴티지로 승률 산출 */}
+        <button onClick={handleAutoCalc} disabled={autoCalcing}
+          className="w-full py-2.5 rounded-lg font-black text-sm mb-2 active:scale-95 transition-all disabled:opacity-50"
+          style={{ background: T.brandBg, color: T.brand, border: `1px solid ${T.brandBorder}` }}>
+          {autoCalcing ? '계산 중…' : '⚡ 자동 계산 (시즌·최근·선발 ERA)'}
+        </button>
+        {autoCalcMsg && (
+          <p className="text-[11px] font-bold mb-2 leading-relaxed"
+            style={{ color: autoCalcMsg.startsWith('✅') ? T.success : autoCalcMsg.startsWith('⚠️') ? T.warning : T.error }}>
+            {autoCalcMsg}
+          </p>
+        )}
+        {factors && (
+          <div className="mb-3 rounded-lg px-3 py-2 text-[11px] space-y-1" style={{ background: T.zinc100, color: T.textSecondary }}>
+            <div className="font-black text-[10px] tracking-widest" style={{ color: T.textMuted }}>계산 근거</div>
+            <div>시즌: <b>SSG {factors.ssg?.seasonW}승 {factors.ssg?.seasonL}패</b>{factors.ssg?.rank ? ` (${factors.ssg.rank}위)` : ''} · 승률 {pct3(factors.ssg?.seasonWinPct)} vs 상대 {pct3(factors.opp?.seasonWinPct)}</div>
+            {factors.ssg?.recent5Detail?.length > 0 && (
+              <div>최근 5경기: <b>{factors.ssg.recent5Detail.join(' ')}</b></div>
+            )}
+            {(factors.ssg?.starterERA != null || factors.opp?.starterERA != null) && (
+              <div>선발 ERA: {factors.ssg?.starterName || 'SSG'} <b>{factors.ssg?.starterERA ?? '-'}</b> vs {factors.opp?.starterName || '상대'} <b>{factors.opp?.starterERA ?? '-'}</b></div>
+            )}
+          </div>
+        )}
 
         {/* 날짜 */}
         <label className="block mb-3">
