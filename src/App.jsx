@@ -1182,10 +1182,10 @@ const LineupTab = () => {
           overflow: 'hidden',
         }}>
           {/* 상단 헤더 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cardRatio === 'wide' ? '10px' : '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: cardRatio === 'wide' ? '10px' : '16px' }}>
             <div>
               <div style={{ color: ac, fontSize: '10px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>{displaySubtitle}</div>
-              <div style={{ color: currentStyle.text, fontWeight: 900, fontSize: cardRatio === 'wide' ? '18px' : '22px', lineHeight: 1.2, marginTop: '2px' }}>SSG <span style={{ color: currentStyle.sub, fontWeight: 400 }}>vs</span> {lineupData.opponent}</div>
+              <div style={{ color: currentStyle.text, fontWeight: 900, fontSize: cardRatio === 'wide' ? '20px' : '27px', lineHeight: 1.1, marginTop: '3px', letterSpacing: '-0.5px' }}>SSG <span style={{ color: currentStyle.sub, fontWeight: 700, fontSize: cardRatio === 'wide' ? '14px' : '18px' }}>vs</span> {lineupData.opponent}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 600 }}>{lineupData.date}</div>
@@ -1195,10 +1195,10 @@ const LineupTab = () => {
 
           {/* 선발 투수 */}
           {lineupData.pitcher && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', marginBottom: '12px', background: currentStyle.row, borderRadius: '10px', border: `1px solid ${currentStyle.border}` }}>
-              <span style={{ color: ac, fontSize: '9px', fontWeight: 800, letterSpacing: '1px' }}>SP</span>
-              <span style={{ color: currentStyle.text, fontSize: '13px', fontWeight: 700, flex: 1 }}>{lineupData.pitcher}</span>
-              <span style={{ color: currentStyle.sub, fontSize: '9px' }}>선발투수</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 12px', marginBottom: '12px', background: `${ac}1A`, borderRadius: '10px', border: `1px solid ${ac}33` }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '21px', padding: '0 7px', borderRadius: '6px', background: ac, color: '#fff', fontSize: '10px', fontWeight: 900, letterSpacing: '0.5px', lineHeight: 1 }}>SP</span>
+              <span style={{ color: currentStyle.text, fontSize: '14px', fontWeight: 800, flex: 1 }}>{lineupData.pitcher}</span>
+              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600 }}>선발</span>
             </div>
           )}
 
@@ -1232,8 +1232,8 @@ const LineupTab = () => {
                   ...(cardRatio === 'wide' && isHL ? { gridColumn: 'span 2' } : {}),
                   transition: 'all 0.2s',
                 }}>
-                  <span style={{ color: ac, fontWeight: 900, fontSize: isHL ? '13px' : '12px', width: '18px', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
-                  <span style={{ color: currentStyle.text, fontWeight: isHL ? 900 : 700, fontSize: isHL ? '14px' : '13px', flex: 1, letterSpacing: '-0.2px' }}>{p.name}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: isHL ? '23px' : '21px', height: isHL ? '23px' : '21px', borderRadius: '6px', background: ac, color: '#fff', fontWeight: 900, fontSize: isHL ? '12px' : '11px', marginRight: '9px', flexShrink: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{i + 1}</span>
+                  <span style={{ color: currentStyle.text, fontWeight: isHL ? 900 : 800, fontSize: isHL ? '15px' : '14px', flex: 1, letterSpacing: '-0.3px' }}>{p.name}</span>
                   {isHL && <span style={{ color: ac, fontSize: '10px', marginRight: '4px', fontWeight: 800 }}>MY PICK</span>}
                   <span style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 500 }}>{p.pos}</span>
                 </div>
@@ -1257,8 +1257,8 @@ const LineupTab = () => {
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600, letterSpacing: '1px' }}>FACTPEPE</span>
-              <span style={{ color: currentStyle.sub, fontSize: '9px' }}>@factpepe_</span>
+              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 700, letterSpacing: '1.5px' }}>인천 SSG 랜더스 팬 데이터</span>
+              <span style={{ color: ac, fontSize: '11px', fontWeight: 900, letterSpacing: '0.5px' }}>@factpepe_</span>
             </div>
           </div>
         </div>
@@ -3576,10 +3576,46 @@ const parseByPositionCode = (text) => {
 };
 
 /**
+ * 포지션명 속기 파서 — "박성한 유격수 김성욱 우익수 최정 지명타자 … 선발 김민준"
+ * 숫자 코드 대신 한글 포지션명/약어(SS·RF 등)를 이름 뒤에 나열하는 형태.
+ * 타순 번호가 없어도(한 줄·쉼표·붙여쓰기 모두) 이름+포지션명 쌍을 뽑아낸다.
+ * 인식 성공 시 { pitcher, players }, 실패 시 null.
+ *
+ * ⚠️ 단일 한글 별칭(좌·우·중·유·포·지 등)은 이름과 충돌하므로 제외.
+ *    다글자 포지션명·2글자 축약·영문 약어만 사용한다.
+ */
+const parseByPositionName = (text) => {
+  let pitcher = '';
+  const pm = text.match(/선발\s*(?:투수)?\s*[:：\-]?\s*([가-힣]{2,5})/);
+  if (pm) pitcher = pm[1].trim();
+
+  const cleaned = text
+    .replace(/선발\s*(?:투수)?\s*[:：\-]?\s*[가-힣]{2,5}/g, ' ')
+    .replace(/등록[\s\S]*/g, ' ')
+    .replace(/말소[\s\S]*/g, ' ')
+    .replace(/(SSG|SK|랜더스|라인업|엔트리|명단|타선|오더|타순|vs|VS)/gi, ' ')
+    .replace(/[.,·()[\]]/g, ' ');
+
+  // 긴 토큰 우선(유격수 before 유격, 1루수 before 1루). 코드는 detectPos로 정규화.
+  const POS = '지명타자|유격수|좌익수|중견수|우익수|일루수|이루수|삼루수|[123]루수|지명|유격|좌익|중견|우익|[123]루|포수|투수|SS|RF|DH|LF|CF|[123]B|C|P';
+  const re = new RegExp(`([가-힣]{2,5}?)\\s*(${POS})(?=[가-힣]|\\s|$)`, 'g');
+  const out = [];
+  let m;
+  while ((m = re.exec(cleaned)) !== null) {
+    const pos = detectPos(m[2]);
+    if (!pos || pos === '투수') continue; // 투수는 타순 제외(DH제)
+    out.push({ name: m[1], pos });
+  }
+  if (out.length < 5) return null;
+  return { pitcher, players: out.slice(0, 9).map((b) => ({ name: b.name, pos: b.pos })) };
+};
+
+/**
  * 트윗/OCR 라인업 텍스트 → { pitcher, players: [{name, pos}] }
  * 지원 포맷:
- *  A) 현장 속기: "4정준재 6박성한 D최정 … 선발 김민준" (포지션 코드)
+ *  A) 코드 속기: "4정준재 6박성한 D최정 … 선발 김민준" (포지션 숫자 코드)
  *  B) 타순 번호: "1. 최지훈 (중)", "1번 최지훈 중견수", "① 최지훈 중" 등
+ *  C) 포지션명 속기: "박성한 유격수 김성욱 우익수 …" (번호 없이 이름+포지션명 나열)
  */
 const parseLineupText = (raw) => {
   const text = (raw || '').replace(/[①②③④⑤⑥⑦⑧⑨]/g, (m) => CIRCLED_NUM[m]);
@@ -3631,6 +3667,14 @@ const parseLineupText = (raw) => {
     const name = nameM ? nameM[0].trim() : '';
     if (name && !NON_NAME.test(name)) players.push({ name, pos });
   }
+
+  // 포맷 B가 충분히 잡았으면(≥5명) 그대로 사용 — 번호+포지션명, 외국인 2단어 이름 등
+  // 은 여기서 정확히 처리된다(회귀 방지).
+  if (players.length >= 5) return { pitcher, players };
+
+  // 포맷 C: 번호 없는 포지션명 속기("박성한 유격수 …")를 마지막으로 시도
+  const byName = parseByPositionName(text);
+  if (byName) return byName;
 
   return { pitcher, players };
 };
