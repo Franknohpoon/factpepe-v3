@@ -440,91 +440,128 @@ const POS_ABBR_CARD = {
   '좌익수': 'LF', '중견수': 'CF', '우익수': 'RF', '지명타자': 'DH', '투수': 'P',
 };
 
+// 스타디움 나이트(기본): 다크 프리미엄 트레이딩 카드. cream: 라이트 대안.
 const LINEUP_THEMES = {
-  cream: { bg: CREAM, headBar: ACCENT, head: '#fff', num: ACCENT, name: TEXT_DARK, pos: TEXT_MUTED, row: '#FFFFFF', rowAlt: '#FBF2E2', spBg: 'rgba(206,17,65,0.10)' },
-  noir:  { bg: '#0d0d10', headBar: ACCENT, head: '#fff', num: '#ff3b5c', name: '#fff', pos: 'rgba(255,255,255,0.45)', row: 'rgba(255,255,255,0.04)', rowAlt: 'rgba(255,255,255,0.07)', spBg: 'rgba(206,17,65,0.22)' },
-  navy:  { bg: '#0b1730', headBar: '#ff3b5c', head: '#fff', num: '#ff3b5c', name: '#fff', pos: 'rgba(255,255,255,0.45)', row: 'rgba(255,255,255,0.05)', rowAlt: 'rgba(255,255,255,0.08)', spBg: 'rgba(255,59,92,0.2)' },
+  night: {
+    dark: true, name: '#FFFFFF', muted: 'rgba(255,255,255,0.56)', coral: '#FF5C7F',
+    kicker: 'rgba(255,92,127,0.92)', texture: 'rgba(255,255,255,0.045)',
+    frame: 'rgba(255,92,127,0.30)', divider: 'rgba(255,255,255,0.14)',
+    spBg: 'rgba(210,18,63,0.22)', row: 'rgba(255,255,255,0.05)', rowAlt: 'rgba(255,255,255,0.08)',
+    numBadge: '#D2123F', numText: '#FFFFFF',
+  },
+  cream: {
+    dark: false, bg: CREAM, name: TEXT_DARK, muted: '#8b7355', coral: ACCENT,
+    kicker: ACCENT, texture: 'rgba(206,17,65,0.05)',
+    frame: 'rgba(206,17,65,0.25)', divider: 'rgba(139,115,85,0.28)',
+    spBg: 'rgba(206,17,65,0.10)', row: '#FFFFFF', rowAlt: '#FBF2E2',
+    numBadge: ACCENT, numText: '#FFFFFF',
+  },
 };
 
-export async function generateLineupCard({ opponent, date, isHome, pitcher, players = [], theme = 'cream' }) {
-  const t = LINEUP_THEMES[theme] || LINEUP_THEMES.cream;
+export async function generateLineupCard({ opponent, date, isHome, pitcher, players = [], theme = 'night' }) {
+  const t = LINEUP_THEMES[theme] || LINEUP_THEMES.night;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
+  const PAD = 54;
 
-  // 배경
-  ctx.fillStyle = t.bg;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── 헤더 (레드 블록 + 줄무늬) ──
-  roundRect(ctx, 40, 44, W - 80, 176, 24);
-  ctx.fillStyle = t.headBar;
-  ctx.fill();
-  ctx.save();
-  roundRect(ctx, 40, 44, W - 80, 176, 24); ctx.clip();
-  drawDiagonalStripes(ctx, 40, 44, W - 80, 176, 'rgba(255,255,255,0.12)', 22, 5);
-  ctx.restore();
-
-  ctx.fillStyle = t.head;
-  ctx.textAlign = 'left';
-  ctx.font = '800 30px -apple-system, sans-serif';
-  ctx.fillText('SSG 선발 라인업', 76, 108);
-  ctx.font = '600 24px -apple-system, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  const homeLabel = isHome === true ? '홈 · ' : isHome === false ? '원정 · ' : '';
-  const vs = opponent ? `${homeLabel}vs ${opponent}` : '';
-  ctx.fillText(vs, 76, 150);
-  if (date) {
-    ctx.textAlign = 'right';
-    ctx.font = '700 24px -apple-system, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText(date, W - 76, 108);
+  // ── 배경 ──
+  if (t.dark) {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#0B0F1A'); g.addColorStop(0.55, '#161C2C'); g.addColorStop(1, '#1D2338');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 레드 글로우 (우상단)
+    const rg = ctx.createRadialGradient(W - 40, 110, 0, W - 40, 110, 340);
+    rg.addColorStop(0, 'rgba(210,18,63,0.36)'); rg.addColorStop(1, 'rgba(210,18,63,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = t.bg; ctx.fillRect(0, 0, W, H);
   }
+  drawDiagonalStripes(ctx, 0, 0, W, H, t.texture, 26, 2);
 
-  // ── 선발투수 ──
-  let y = 250;
+  // 트레이딩 카드 프레임
+  roundRect(ctx, 22, 22, W - 44, H - 44, 30);
+  ctx.strokeStyle = t.frame; ctx.lineWidth = 2; ctx.stroke();
+
+  // ── 헤더: 킥커 + 매치업 + 홈/원정·날짜 ──
+  ctx.textAlign = 'left';
+  ctx.fillStyle = t.kicker;
+  ctx.font = '800 22px -apple-system, sans-serif';
+  ctx.fillText('STARTING LINEUP', PAD, 96);
+
+  let mx = PAD;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = t.name; ctx.font = '900 62px -apple-system, sans-serif';
+  ctx.fillText('SSG', mx, 158); mx += ctx.measureText('SSG').width + 20;
+  ctx.fillStyle = t.muted; ctx.font = '800 34px -apple-system, sans-serif';
+  ctx.fillText('vs', mx, 156); mx += ctx.measureText('vs').width + 18;
+  ctx.fillStyle = t.name; ctx.font = '900 62px -apple-system, sans-serif';
+  ctx.fillText(opponent || '상대', mx, 158);
+
+  ctx.fillStyle = t.coral; ctx.font = '700 24px -apple-system, sans-serif';
+  const homeLabel = isHome === true ? '홈' : isHome === false ? '원정' : '';
+  const sub = [homeLabel, date].filter(Boolean).join('  ·  ');
+  ctx.fillText(sub, PAD, 202);
+
+  // 구분선
+  ctx.strokeStyle = t.divider; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD, 230); ctx.lineTo(W - PAD, 230); ctx.stroke();
+
+  // ── 선발투수 (SP 강조) ──
+  let y = 256;
   if (pitcher) {
-    roundRect(ctx, 40, y, W - 80, 66, 16);
+    roundRect(ctx, PAD, y, W - 2 * PAD, 74, 16);
     ctx.fillStyle = t.spBg; ctx.fill();
     ctx.textAlign = 'left';
-    ctx.font = '800 22px -apple-system, sans-serif';
-    ctx.fillStyle = t.num;
-    ctx.fillText('SP', 72, y + 42);
-    ctx.font = '700 30px -apple-system, sans-serif';
-    ctx.fillStyle = t.name;
-    ctx.fillText(pitcher, 130, y + 43);
-    y += 84;
+    ctx.fillStyle = t.coral; ctx.font = '900 22px -apple-system, sans-serif';
+    ctx.fillText('SP', PAD + 22, y + 47);
+    ctx.fillStyle = t.name; ctx.font = '800 32px -apple-system, sans-serif';
+    ctx.fillText(pitcher, PAD + 82, y + 48);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = t.muted; ctx.font = '700 22px -apple-system, sans-serif';
+    ctx.fillText('선발', W - PAD - 22, y + 47);
+    y += 92;
   }
 
   // ── 타순 9명 ──
   const rows = players.slice(0, 9);
-  const rowH = Math.min(74, Math.floor((H - y - 120) / Math.max(rows.length, 1)));
+  const bottomLimit = 1078;
+  const rowH = Math.min(84, Math.floor((bottomLimit - y) / Math.max(rows.length, 1)));
   rows.forEach((p, i) => {
     const ry = y + i * rowH;
-    roundRect(ctx, 40, ry, W - 80, rowH - 8, 14);
-    ctx.fillStyle = i % 2 === 0 ? t.row : t.rowAlt;
-    ctx.fill();
-    // 타순 번호
-    ctx.textAlign = 'left';
-    ctx.font = '800 26px -apple-system, sans-serif';
-    ctx.fillStyle = t.num;
-    ctx.fillText(`${i + 1}`, 72, ry + (rowH - 8) / 2 + 9);
+    const h = rowH - 8;
+    roundRect(ctx, PAD, ry, W - 2 * PAD, h, 14);
+    ctx.fillStyle = i % 2 === 0 ? t.row : t.rowAlt; ctx.fill();
+    // 번호 배지
+    const bs = 42, by = ry + (h - bs) / 2;
+    roundRect(ctx, PAD + 14, by, bs, bs, 11);
+    ctx.fillStyle = t.numBadge; ctx.fill();
+    ctx.textAlign = 'center'; ctx.fillStyle = t.numText; ctx.font = '900 24px -apple-system, sans-serif';
+    ctx.fillText(`${i + 1}`, PAD + 14 + bs / 2, by + bs / 2 + 9);
     // 이름
-    ctx.font = '700 30px -apple-system, sans-serif';
-    ctx.fillStyle = p.name ? t.name : t.pos;
-    ctx.fillText(p.name || '-', 128, ry + (rowH - 8) / 2 + 10);
+    ctx.textAlign = 'left'; ctx.font = '800 33px -apple-system, sans-serif';
+    ctx.fillStyle = p.name ? t.name : t.muted;
+    ctx.fillText(p.name || '-', PAD + 76, ry + h / 2 + 12);
     // 포지션 약어
-    ctx.textAlign = 'right';
-    ctx.font = '700 22px -apple-system, sans-serif';
-    ctx.fillStyle = t.pos;
-    ctx.fillText(POS_ABBR_CARD[p.pos] || p.pos || '', W - 76, ry + (rowH - 8) / 2 + 8);
+    ctx.textAlign = 'right'; ctx.font = '800 24px -apple-system, sans-serif';
+    ctx.fillStyle = t.coral;
+    ctx.fillText(POS_ABBR_CARD[p.pos] || p.pos || '', W - PAD - 20, ry + h / 2 + 9);
   });
 
-  // ── 페페 + 브랜드 ──
+  // ── 푸터: 점선 + 페페 + @factpepe_ (바이럴 루프) ──
+  const fy = 1112;
+  ctx.setLineDash([6, 7]); ctx.strokeStyle = t.divider; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(PAD, fy); ctx.lineTo(W - PAD, fy); ctx.stroke(); ctx.setLineDash([]);
+
   const pepe = await loadPepeImg('cheering');
-  if (pepe) ctx.drawImage(pepe, 40, H - 150, 92, 92);
-  drawBrandFooter(ctx);
+  if (pepe) ctx.drawImage(pepe, PAD - 6, fy + 12, 112, 112);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = t.coral; ctx.font = '900 32px -apple-system, sans-serif';
+  ctx.fillText('@factpepe_', PAD + 118, fy + 62);
+  ctx.fillStyle = t.muted; ctx.font = '600 22px -apple-system, sans-serif';
+  ctx.fillText('인천 SSG 랜더스 팬 데이터 · 팩트페페', PAD + 118, fy + 96);
 
   return canvas.toDataURL('image/png');
 }
