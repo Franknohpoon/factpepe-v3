@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import html2canvas from 'html2canvas';
+import { parseLineupText } from './App.jsx';
 
 /**
  * KBO 빅매치 라인업 카드 — /bigmatch
  *
- * 완전 독립 페이지. App.jsx / TossApp.jsx 어디서도 import되지 않으며,
- * 이 파일 역시 App.jsx / TossApp.jsx를 import하지 않는다.
+ * 완전 독립 페이지. App.jsx/TossApp.jsx 어디서도 이 파일을 import하지 않는다
  * → 웹 전용 진입점(main.jsx)에만 연결되고, 토스 미니앱 빌드
- *   (main-toss.jsx → TossApp.jsx)의 모듈 그래프에는 절대 포함되지 않는다.
+ *   (main-toss.jsx → TossApp.jsx)의 모듈 그래프에는 절대 도달하지 않는다.
+ *
+ * 이 파일이 App.jsx에서 parseLineupText(순수 함수)를 가져오는 건 안전하다 —
+ * 번들 격리는 "누가 이 파일을 import하는가"로 결정되는데, 이 파일을 import하는
+ * 진입점이 웹(main.jsx)뿐이라 App.jsx를 참조해도 토스 빌드 그래프에는 영향이
+ * 전혀 없다(실측: build:toss 산출물에 BigMatch/빅매치 문자열 0건, 매 변경마다 검증).
  *
  * Firebase 등 외부 상태 없이 순수 입력폼 → 캔버스 이미지 생성기.
  */
@@ -163,9 +168,31 @@ const inputCls = 'w-full bg-zinc-800 text-white text-sm border-none rounded-lg p
 const labelCls = 'text-zinc-500 text-[10px] font-bold tracking-wider mb-1.5 block';
 
 const TeamPlayersEditor = ({ label, team, setTeam, pitcher, setPitcher, players, setPlayers, recentPlayers, listId }) => {
+  const [pasteText, setPasteText] = useState('');
+  const [pasteMsg, setPasteMsg] = useState('');
+
   const setPlayer = (i, patch) => {
     setPlayers((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   };
+
+  // X·트윗 라인업 텍스트 자동 인식 — /q 라인업 탭과 동일한 파서(parseLineupText) 재사용.
+  // 숫자 코드("박성한6")/포지션명("박성한 유격수")/타순 번호 세 형식 모두 지원.
+  const handlePasteChange = (text) => {
+    setPasteText(text);
+    if (!text.trim()) { setPasteMsg(''); return; }
+    try {
+      const parsed = parseLineupText(text);
+      const found = (parsed.players || []).filter((p) => p.name).length;
+      if (found === 0) { setPasteMsg('⚠️ 인식된 선수가 없어요. 형식을 확인해주세요.'); return; }
+      const next = Array.from({ length: 9 }, (_, i) => parsed.players[i] || { name: '', pos: '' });
+      setPlayers(next);
+      if (parsed.pitcher) setPitcher(parsed.pitcher);
+      setPasteMsg(`✅ ${found}명${parsed.pitcher ? ` + 선발 ${parsed.pitcher}` : ''} 인식됨 — 아래에서 확인·수정하세요.`);
+    } catch (e) {
+      setPasteMsg('⚠️ 인식 실패 — 형식을 확인해주세요.');
+    }
+  };
+
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2.5">
       <p className={labelCls}>{label}</p>
@@ -173,6 +200,22 @@ const TeamPlayersEditor = ({ label, team, setTeam, pitcher, setPitcher, players,
         <input type="text" value={team} onChange={(e) => setTeam(e.target.value)} placeholder="팀명 (예: SSG)" className={inputCls} />
         <input type="text" value={pitcher} onChange={(e) => setPitcher(e.target.value)} placeholder="선발투수" list={listId} className={inputCls} />
       </div>
+
+      {/* X·트윗 텍스트 붙여넣기 — 자동 인식 */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-zinc-500 text-[10px] font-bold">X·트윗 텍스트 붙여넣기 (자동 인식)</span>
+          {pasteText && (
+            <button onClick={() => { setPasteText(''); setPasteMsg(''); }} className="text-zinc-600 text-[10px] underline">지우기</button>
+          )}
+        </div>
+        <textarea value={pasteText} onChange={(e) => handlePasteChange(e.target.value)}
+          placeholder={'예: 박성한6 김성욱9 최정D 에레디아7 … 선발 김광현\n(포지션 코드·포지션명·타순 번호 모두 인식)'}
+          rows={2}
+          className="w-full bg-zinc-800 text-white text-xs border-none rounded-lg py-2 px-2.5 placeholder-zinc-600 resize-y" />
+        {pasteMsg && <p className="text-[10px] mt-1" style={{ color: pasteMsg.startsWith('✅') ? '#4ade80' : '#facc15' }}>{pasteMsg}</p>}
+      </div>
+
       <div className="space-y-1.5">
         {players.map((p, i) => (
           <div key={i} className="flex gap-1.5 items-center">

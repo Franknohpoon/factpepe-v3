@@ -267,12 +267,17 @@ const QuickLineup = () => {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => { sessionStorage.removeItem(TOKEN_STORAGE_KEY); setAuthed(false); setToken(''); }}
-            className="text-[10px]" style={{ color: T.textMuted }}
-          >
-            로그아웃
-          </button>
+          <div className="flex items-center gap-3">
+            <a href="/bigmatch" className="text-[10px] font-bold" style={{ color: T.accent }}>
+              ⚾ 빅매치 카드
+            </a>
+            <button
+              onClick={() => { sessionStorage.removeItem(TOKEN_STORAGE_KEY); setAuthed(false); setToken(''); }}
+              className="text-[10px]" style={{ color: T.textMuted }}
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
 
         {/* 탭 헤더 */}
