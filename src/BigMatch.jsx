@@ -39,6 +39,48 @@ function resolveTeamColor(name, fallbackAvoid) {
   return color;
 }
 
+// ─── 통합 붙여넣기: 텍스트 안의 팀명(SSG·두산 등)을 찾아 두 구간으로 분리 ──
+// "SSG 라인업. 6박성한 9김성욱... 선발 김광현\n두산 라인업. 1정수빈... 선발 곽빈"
+// 처럼 한 텍스트에 두 팀이 이어 붙어있을 때, 각 팀 키워드가 처음 등장하는
+// 위치를 경계로 잘라 팀별 구간(textA/textB)과 팀명(teamA/teamB)을 반환한다.
+const KBO_TEAM_KEYS = Object.keys(KBO_COLORS);
+
+function findTeamMentions(text) {
+  const mentions = [];
+  for (const key of KBO_TEAM_KEYS) {
+    let from = 0;
+    while (true) {
+      const idx = text.indexOf(key, from);
+      if (idx === -1) break;
+      const before = idx === 0 ? '' : text[idx - 1];
+      const after = text[idx + key.length] || '';
+      const validBefore = idx === 0 || /[\s\n[("'·]/.test(before);
+      const validAfter = after === '' || /[\s\n.,:!?)\]"'·]/.test(after);
+      if (validBefore && validAfter) mentions.push({ key, index: idx });
+      from = idx + key.length;
+    }
+  }
+  mentions.sort((a, b) => a.index - b.index);
+  return mentions;
+}
+
+function splitBigMatchText(text) {
+  const mentions = findTeamMentions(text);
+  const distinct = [];
+  for (const m of mentions) {
+    if (!distinct.some((d) => d.key === m.key)) distinct.push(m);
+    if (distinct.length === 2) break;
+  }
+  if (distinct.length < 2) return null;
+  const [first, second] = distinct;
+  return {
+    teamA: first.key,
+    teamB: second.key,
+    textA: text.slice(first.index, second.index).trim(),
+    textB: text.slice(second.index).trim(),
+  };
+}
+
 const emptyPlayers = () => Array.from({ length: 9 }, () => ({ name: '', pos: '' }));
 const emptyForm = () => ({
   date: new Date().toISOString().slice(0, 10),
@@ -244,11 +286,43 @@ const BigMatch = () => {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [savePreview, setSavePreview] = useState(null);
+  const [combinedText, setCombinedText] = useState('');
+  const [combinedMsg, setCombinedMsg] = useState('');
   const cardRef = useRef(null);       // 화면에 보이는 미리보기 카드
   const captureRef = useRef(null);    // 캡처 전용 — sticky 헤더 등 페이지 컨텍스트와
                                        // 완전히 격리된 포털에 렌더(offset 버그 회피)
 
   const patch = (p) => setForm((f) => ({ ...f, ...p }));
+
+  // 통합 붙여넣기 — 텍스트 하나에 양팀 라인업이 다 들어있을 때, 팀명 기준으로
+  // 자동 분리 후 각 구간을 parseLineupText로 파싱해 팀명·라인업·선발을 한 번에 채운다.
+  const handleCombinedPaste = (text) => {
+    setCombinedText(text);
+    if (!text.trim()) { setCombinedMsg(''); return; }
+    const split = splitBigMatchText(text);
+    if (!split) {
+      setCombinedMsg('⚠️ 두 팀을 구분하지 못했어요. 팀명(SSG·두산 등)이 텍스트에 포함돼 있는지 확인하거나, 아래 개별 팀 상자에 나눠 붙여넣어주세요.');
+      return;
+    }
+    const parsedA = parseLineupText(split.textA);
+    const parsedB = parseLineupText(split.textB);
+    const foundA = (parsedA.players || []).filter((p) => p.name).length;
+    const foundB = (parsedB.players || []).filter((p) => p.name).length;
+    if (foundA === 0 && foundB === 0) {
+      setCombinedMsg('⚠️ 라인업을 인식하지 못했어요. 형식을 확인해주세요.');
+      return;
+    }
+    setForm((f) => ({
+      ...f,
+      teamA: split.teamA,
+      teamB: split.teamB,
+      playersA: Array.from({ length: 9 }, (_, i) => parsedA.players[i] || { name: '', pos: '' }),
+      playersB: Array.from({ length: 9 }, (_, i) => parsedB.players[i] || { name: '', pos: '' }),
+      pitcherA: parsedA.pitcher || f.pitcherA,
+      pitcherB: parsedB.pitcher || f.pitcherB,
+    }));
+    setCombinedMsg(`✅ ${split.teamA} ${foundA}명${parsedA.pitcher ? ` + 선발 ${parsedA.pitcher}` : ''} · ${split.teamB} ${foundB}명${parsedB.pitcher ? ` + 선발 ${parsedB.pitcher}` : ''} 인식됨 — 아래에서 확인·수정하세요.`);
+  };
 
   const loadLast = () => {
     const last = loadJSON(LS_LAST, null);
@@ -359,6 +433,23 @@ const BigMatch = () => {
 
         {/* 입력 폼 */}
         <div className="space-y-3 mt-4">
+          {/* ⚡ 통합 붙여넣기 — 양팀 라인업이 한 텍스트에 다 있을 때 한 번에 인식 */}
+          <div className="bg-zinc-900/60 border rounded-xl p-3" style={{ borderColor: 'rgba(255,59,92,0.35)' }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] font-bold tracking-wider" style={{ color: '#FF3B5C' }}>⚡ 통합 붙여넣기 — 양팀 팀명·라인업·선발 자동 인식</p>
+              {combinedText && (
+                <button onClick={() => { setCombinedText(''); setCombinedMsg(''); }} className="text-zinc-600 text-[10px] underline">지우기</button>
+              )}
+            </div>
+            <textarea value={combinedText} onChange={(e) => handleCombinedPaste(e.target.value)}
+              placeholder={'예: SSG 라인업. 6박성한 9김성욱 D최정… 선발 김광현\n두산 라인업. 1정수빈 2양의지… 선발 곽빈\n\n(두 팀 텍스트를 이어서 붙여넣으면 팀명까지 자동 분리·인식)'}
+              rows={3}
+              className="w-full bg-zinc-800 text-white text-xs border-none rounded-lg py-2 px-2.5 placeholder-zinc-600 resize-y" />
+            {combinedMsg && <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: combinedMsg.startsWith('✅') ? '#4ade80' : '#facc15' }}>{combinedMsg}</p>}
+          </div>
+
+          <p className="text-zinc-600 text-[10.5px] text-center -mt-1">↑ 한 번에 안 되면 아래 팀별 상자에 나눠 붙여넣어도 돼요</p>
+
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
             <p className={labelCls}>날짜 · 시간</p>
             <div className="grid grid-cols-2 gap-2">
