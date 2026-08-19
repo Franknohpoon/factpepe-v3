@@ -1195,10 +1195,10 @@ const LineupTab = () => {
 
           {/* 선발 투수 */}
           {lineupData.pitcher && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 12px', marginBottom: '12px', background: `${ac}1A`, borderRadius: '10px', border: `1px solid ${ac}33` }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '21px', padding: '0 7px', borderRadius: '6px', background: ac, color: '#fff', fontSize: '10px', fontWeight: 900, letterSpacing: '0.5px', lineHeight: 1 }}>SP</span>
-              <span style={{ color: currentStyle.text, fontSize: '14px', fontWeight: 800, flex: 1 }}>{lineupData.pitcher}</span>
-              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 600 }}>선발</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', marginBottom: '12px', background: currentStyle.row, borderRadius: '10px', border: `1px solid ${currentStyle.border}` }}>
+              <span style={{ color: ac, fontSize: '9px', fontWeight: 800, letterSpacing: '1px' }}>SP</span>
+              <span style={{ color: currentStyle.text, fontSize: '13px', fontWeight: 700, flex: 1 }}>{lineupData.pitcher}</span>
+              <span style={{ color: currentStyle.sub, fontSize: '9px' }}>선발투수</span>
             </div>
           )}
 
@@ -1232,8 +1232,8 @@ const LineupTab = () => {
                   ...(cardRatio === 'wide' && isHL ? { gridColumn: 'span 2' } : {}),
                   transition: 'all 0.2s',
                 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: isHL ? '23px' : '21px', height: isHL ? '23px' : '21px', borderRadius: '6px', background: ac, color: '#fff', fontWeight: 900, fontSize: isHL ? '12px' : '11px', marginRight: '9px', flexShrink: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{i + 1}</span>
-                  <span style={{ color: currentStyle.text, fontWeight: isHL ? 900 : 800, fontSize: isHL ? '15px' : '14px', flex: 1, letterSpacing: '-0.3px' }}>{p.name}</span>
+                  <span style={{ color: ac, fontWeight: 900, fontSize: isHL ? '13px' : '12px', width: '18px', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+                  <span style={{ color: currentStyle.text, fontWeight: isHL ? 900 : 700, fontSize: isHL ? '14px' : '13px', flex: 1, letterSpacing: '-0.2px' }}>{p.name}</span>
                   {isHL && <span style={{ color: ac, fontSize: '10px', marginRight: '4px', fontWeight: 800 }}>MY PICK</span>}
                   <span style={{ color: currentStyle.sub, fontSize: '10px', fontWeight: 500 }}>{p.pos}</span>
                 </div>
