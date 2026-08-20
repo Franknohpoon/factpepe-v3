@@ -1257,7 +1257,7 @@ const LineupTab = () => {
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 700, letterSpacing: '1.5px' }}>인천 SSG 랜더스 팬 데이터</span>
+              <span style={{ color: currentStyle.sub, fontSize: '9px', fontWeight: 700, letterSpacing: '0.8px' }}>KBO를 데이터로 읽는 SSG 팬 계정</span>
               <span style={{ color: ac, fontSize: '11px', fontWeight: 900, letterSpacing: '0.5px' }}>@factpepe_</span>
             </div>
           </div>
