@@ -103,8 +103,14 @@ const loadJSON = (key, fallback) => {
 const CARD_W = 360;
 const CARD_H = 450;
 
+// SSG 라인업 카드처럼 행마다 은은한 필박스 배경(정돈된 리스트 느낌).
+// 다만 특정 팀 색으로 치우치면 안 되므로 배경은 항상 중립 화이트 틴트를 쓴다.
 const PlayerRow = ({ order, pa, pb, colorA, colorB }) => (
-  <div style={{ display: 'flex', alignItems: 'center', height: '24.4px', marginBottom: '1.4px' }}>
+  <div style={{
+    display: 'flex', alignItems: 'center', height: '24px',
+    marginBottom: '3px', padding: '0 10px',
+    background: 'rgba(255,255,255,0.04)', borderRadius: '8px',
+  }}>
     {/* A팀 (오른쪽 정렬, 중앙축을 향함) */}
     <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '5px', overflow: 'hidden', paddingRight: '8px' }}>
       <span style={{ color: colorA, fontSize: '9px', fontWeight: 700, whiteSpace: 'nowrap' }}>{POS_ABBR[pa.pos] || pa.pos || ''}</span>
@@ -112,13 +118,11 @@ const PlayerRow = ({ order, pa, pb, colorA, colorB }) => (
         {pa.name || '-'}
       </span>
     </div>
-    {/* 타순 번호 (중앙축) */}
-    <div style={{
-      width: '22px', height: '22px', flexShrink: 0, borderRadius: '6px',
-      background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'rgba(255,255,255,0.75)', fontSize: '11px', fontWeight: 800, fontVariantNumeric: 'tabular-nums',
-    }}>{order}</div>
+    {/* 타순 번호 (중앙축, 팀 색 없이 중립 톤) */}
+    <span style={{
+      width: '16px', flexShrink: 0, textAlign: 'center',
+      color: 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 800, fontVariantNumeric: 'tabular-nums',
+    }}>{order}</span>
     {/* B팀 (왼쪽 정렬, 중앙축에서 시작) */}
     <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', gap: '5px', overflow: 'hidden', paddingLeft: '8px' }}>
       <span style={{ color: pb.name ? '#F2F3F7' : 'rgba(255,255,255,0.25)', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: 'normal' }}>
@@ -152,27 +156,27 @@ const BigMatchCard = React.forwardRef(({ form }, ref) => {
         backgroundImage: 'repeating-linear-gradient(115deg, #fff 0 1px, transparent 1px 20px)',
       }} />
 
-      {/* 헤더 */}
-      <div style={{ position: 'relative', textAlign: 'center', marginBottom: '10px' }}>
-        <div style={{ color: '#FFD24C', fontSize: '9.5px', fontWeight: 800, letterSpacing: '2px' }}>KBO 오늘의 빅매치</div>
+      {/* 헤더 — SSG 라인업 카드와 같은 캡스 킥커 톤 */}
+      <div style={{ position: 'relative', textAlign: 'center', marginBottom: '11px' }}>
+        <div style={{ color: '#FFD24C', fontSize: '9.5px', fontWeight: 800, letterSpacing: '2.5px' }}>KBO 오늘의 빅매치</div>
         <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', fontWeight: 600, marginTop: '2px' }}>{dateDisp}{timeDisp}</div>
       </div>
 
-      {/* 매치업 (A vs B) */}
+      {/* 매치업 (A vs B) — 팀명 확대, 선발투수는 SP 라벨+이름으로 강조 */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ flex: 1, textAlign: 'right', paddingRight: '10px', overflow: 'hidden' }}>
-          <div style={{ color: colorA, fontWeight: 900, fontSize: '19px', lineHeight: 1.15, letterSpacing: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.teamA || 'A팀'}</div>
-          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', fontWeight: 600, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {form.pitcherA ? `선발 ${form.pitcherA}` : ' '}
+          <div style={{ color: colorA, fontWeight: 900, fontSize: '21px', lineHeight: 1.1, letterSpacing: '-0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.teamA || 'A팀'}</div>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10.5px', fontWeight: 700, marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {form.pitcherA ? <><span style={{ color: colorA, fontWeight: 900 }}>SP</span> {form.pitcherA}</> : ' '}
           </div>
         </div>
         <div style={{ flexShrink: 0, width: '38px', textAlign: 'center' }}>
           <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 800, fontSize: '13px' }}>VS</span>
         </div>
         <div style={{ flex: 1, textAlign: 'left', paddingLeft: '10px', overflow: 'hidden' }}>
-          <div style={{ color: colorB, fontWeight: 900, fontSize: '19px', lineHeight: 1.15, letterSpacing: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.teamB || 'B팀'}</div>
-          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', fontWeight: 600, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {form.pitcherB ? `선발 ${form.pitcherB}` : ' '}
+          <div style={{ color: colorB, fontWeight: 900, fontSize: '21px', lineHeight: 1.1, letterSpacing: '-0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.teamB || 'B팀'}</div>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10.5px', fontWeight: 700, marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {form.pitcherB ? <><span style={{ color: colorB, fontWeight: 900 }}>SP</span> {form.pitcherB}</> : ' '}
           </div>
         </div>
       </div>
@@ -196,8 +200,9 @@ const BigMatchCard = React.forwardRef(({ form }, ref) => {
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '8.5px', fontWeight: 700, letterSpacing: '1px' }}>FACTPEPE · KBO</span>
-          <span style={{ color: '#FF3B5C', fontSize: '10.5px', fontWeight: 900 }}>@factpepe_</span>
+          {/* 빅매치는 특정 팀 전용이 아니라 "랜더스 팬 계정"이 아닌 중립 문구 사용 */}
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.6px' }}>KBO를 데이터로 읽는 페페</span>
+          <span style={{ color: '#FF3B5C', fontSize: '11px', fontWeight: 900 }}>@factpepe_</span>
         </div>
       </div>
     </div>
