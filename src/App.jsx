@@ -965,6 +965,7 @@ const LineupTab = () => {
   const [bgPlayerName, setBgPlayerName] = useState('');
   const [highlightIdx, setHighlightIdx] = useState(-1); // 최애 선수 하이라이트
   const [myComment, setMyComment] = useState(''); // 한줄 코멘트
+  const [insightText, setInsightText] = useState(''); // 라인업 인사이트 — 선발투수 위 참여 유도형 텍스트
   const [cardRatio, setCardRatio] = useState('story'); // 'story' | 'square' | 'wide'
   const [accentColor, setAccentColor] = useState(''); // 포인트 컬러 (빈 문자열=프리셋 기본)
   const [myWatermark, setMyWatermark] = useState(''); // 나만의 워터마크
@@ -1278,12 +1279,21 @@ const LineupTab = () => {
 
       {/* 텍스트 복사 */}
       {(() => {
-        const lineupText = [
-          `[${lineupData.date} SSG 라인업]`,
-          lineupData.pitcher ? `\n선발 ${lineupData.pitcher}\n` : '',
-          ...lineupData.players.map((p, i) => `${i + 1}. ${p.name} (${p.pos})`),
-          myComment ? `\n${myComment}` : '',
-        ].filter(Boolean).join('\n');
+        const pickedPlayer = highlightIdx >= 0 ? lineupData.players[highlightIdx] : null;
+        // 최애 선수(MY PICK) 행은 앞뒤로 빈 줄을 둬서 눈에 띄게 강조
+        const playerLines = lineupData.players
+          .map((p, i) => (i === highlightIdx ? `\n${p.name} (${p.pos})\n` : `${p.name} (${p.pos})`))
+          .join('\n');
+
+        const blocks = [
+          `[${lineupData.date} SSG 라인업${lineupData.opponent ? ` vs ${lineupData.opponent}` : ''}]`,
+          insightText.trim(),                                        // 선발투수 위 — 참여 유도형 텍스트
+          lineupData.pitcher ? `선발 ${lineupData.pitcher}` : '',
+          playerLines,
+          pickedPlayer ? `팩트페페 MY PICK: ${pickedPlayer.name} 🐸` : '',
+          myComment.trim(),                                          // 마무리 코멘트/질문
+        ].filter(Boolean);
+        const lineupText = blocks.join('\n\n');
 
         return (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 mb-3">
@@ -1308,6 +1318,18 @@ const LineupTab = () => {
 
       {/* ── 커스터마이즈 패널 ── */}
       <div className="space-y-3">
+
+        {/* 0) 라인업 인사이트 — 선발투수 위에 표시되는 참여 유도형 텍스트 (텍스트 버전 전용) */}
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+          <p className="text-zinc-500 text-[10px] font-bold tracking-wider mb-2">
+            라인업 인사이트 — 선발투수 위에 표시 ({insightText.length}/400)
+          </p>
+          <textarea value={insightText} onChange={e => setInsightText(e.target.value.slice(0, 400))}
+            placeholder={'예: 오늘 라인업의 핵심은 에레디아 vs 류현진.\n\n에레디아는 류현진 상대 타율 0.381(21타수 8안타) 1홈런 4타점...'}
+            rows={4}
+            className="w-full bg-zinc-800 text-white text-sm border-none rounded-lg py-2 px-3 placeholder-zinc-600 resize-y leading-relaxed" />
+          <p className="text-zinc-700 text-[10px] mt-1">텍스트 버전(아래 TEXT VERSION)에만 반영돼요. 비워두면 생략됩니다.</p>
+        </div>
 
         {/* 1) 최애 선수 하이라이트 — 라인업에서 탭 */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
